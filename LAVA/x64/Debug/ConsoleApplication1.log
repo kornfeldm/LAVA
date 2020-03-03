@@ -1,9 +1,11 @@
 ﻿C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppBuild.targets(452,5): warning MSB8028: The intermediate directory (x64\Debug\) contains files shared from another project (ConsoleApplication1.vcxproj).  This can lead to incorrect clean and rebuild behavior.
   main.cpp
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(19,9): warning C4101: 'fd': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(24,23): warning C4101: 'engine': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(23,17): warning C4101: 'virname': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(22,17): warning C4101: 'mb': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\includes\nuklear_sfml_gl2.h(327,28): warning C4244: '=': conversion from 'const int' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\includes\nuklear_sfml_gl2.h(328,28): warning C4244: '=': conversion from 'const int' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(105,13): warning C4305: '=': truncation from 'double' to 'float'
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(67,9): warning C4101: 'fd': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(72,23): warning C4101: 'engine': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(71,17): warning C4101: 'virname': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(70,17): warning C4101: 'mb': unreferenced local variable
   ConsoleApplication1.vcxproj -> C:\Users\tom\Documents\LAVA2\LAVA\x64\Debug\LAVA.exe
-  ..\clam64stuff\libclamav.dll
-  1 File(s) copied
+  0 File(s) copied
