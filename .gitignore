@@ -1,0 +1,12 @@
+.vs\
+.vs\**
+.vs
+**\.vs\**
+**\.ilk
+**\.pdb
+**\.idb
+**\.tlog
+**\.suo
+**\.ipch
+**\.IPCH
+**\.icph
