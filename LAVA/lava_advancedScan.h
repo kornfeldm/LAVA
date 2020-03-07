@@ -17,3 +17,4 @@
 int scanFile(const char* filePath, struct cl_engine* engine, struct cl_scan_options options);
 bool scanDirectory(std::string dirPath, struct cl_engine* engine, struct cl_scan_options options, std::string antibodyfilelocation);
 bool quickScan(std::string antibodyfilelocation, struct cl_engine* engine, struct cl_scan_options options);
+void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);

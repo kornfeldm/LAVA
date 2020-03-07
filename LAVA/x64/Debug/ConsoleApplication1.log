@@ -1,7 +1,9 @@
 ﻿C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppBuild.targets(459,5): warning MSB8028: The intermediate directory (x64\Debug\) contains files shared from another project (ConsoleApplication1.vcxproj).  This can lead to incorrect clean and rebuild behavior.
+  lava_advancedScan.cpp
   main.cpp
-C:\Users\Mark\source\repos\LAVA-feature-4.1.4-Advanced-Scanning\LAVA\main.cpp(23,9): warning C4101: 'fd': unreferenced local variable
-C:\Users\Mark\source\repos\LAVA-feature-4.1.4-Advanced-Scanning\LAVA\main.cpp(27,17): warning C4101: 'virname': unreferenced local variable
-C:\Users\Mark\source\repos\LAVA-feature-4.1.4-Advanced-Scanning\LAVA\main.cpp(26,17): warning C4101: 'mb': unreferenced local variable
-  ConsoleApplication1.vcxproj -> C:\Users\Mark\source\repos\LAVA-feature-4.1.4-Advanced-Scanning\LAVA\x64\Debug\LAVA.exe
+C:\Users\Mark\Documents\GitHub\LAVA\LAVA\main.cpp(23,9): warning C4101: 'fd': unreferenced local variable
+C:\Users\Mark\Documents\GitHub\LAVA\LAVA\main.cpp(27,17): warning C4101: 'virname': unreferenced local variable
+C:\Users\Mark\Documents\GitHub\LAVA\LAVA\main.cpp(26,17): warning C4101: 'mb': unreferenced local variable
+  Generating Code...
+  ConsoleApplication1.vcxproj -> C:\Users\Mark\Documents\GitHub\LAVA\LAVA\x64\Debug\LAVA.exe
   0 File(s) copied
