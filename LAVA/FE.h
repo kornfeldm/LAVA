@@ -120,7 +120,7 @@ inline bool FE::drawImage(struct nk_image *img)
 inline bool FE::Display() {
 	if (this->view == 0)
 		this->DrawMainPage();
-	if (this->view == 1)
+	else if (this->view == 1)
 		this->DrawScansPage();
 
 	else {
@@ -146,6 +146,7 @@ inline bool FE::DrawMainPage()
 		if (nk_button_label(ctx, "")) {
 			fprintf(stdout, "scans pressed\n");
 			this->view = 1;
+			nk_clear(this->ctx);
 		}
 			
 		this->drawImage(&this->scanImage);
@@ -156,10 +157,11 @@ inline bool FE::DrawMainPage()
 	if (nk_begin(this->ctx, "history", nk_rect(WINDOW_WIDTH * .6, WINDOW_HEIGHT * .49, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3),
 		NK_WINDOW_NO_SCROLLBAR)) {
 		// hidden button behind icon to press
-		nk_layout_row_static(ctx, WINDOW_HEIGHT * .33, WINDOW_HEIGHT * .33, 1);
+		nk_layout_row_static(ctx, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3, 1);
 		if (nk_button_label(ctx, "")) {
 			fprintf(stdout, "history pressed\n");
 			this->view = 2;
+			nk_clear(this->ctx);
 		}
 		this->drawImage(&this->historyImage);
 	}
@@ -177,32 +179,6 @@ inline bool FE::DrawScansPage()
 	}
 	nk_end(this->ctx);
 
-	/* SCAN ICON */
-	if (nk_begin(this->ctx, "scan", nk_rect(WINDOW_WIDTH * .2, WINDOW_HEIGHT * .49, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3),
-		NK_WINDOW_NO_SCROLLBAR)) {
-		// hidden button to press behind icon
-		nk_layout_row_static(ctx, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3, 1);
-		if (nk_button_label(ctx, "")) {
-			fprintf(stdout, "scans pressed\n");
-			this->view = 1;
-		}
-
-		this->drawImage(&this->scanImage);
-	}
-	nk_end(this->ctx);
-
-	/* history ICON */
-	if (nk_begin(this->ctx, "history", nk_rect(WINDOW_WIDTH * .6, WINDOW_HEIGHT * .49, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3),
-		NK_WINDOW_NO_SCROLLBAR)) {
-		// hidden button behind icon to press
-		nk_layout_row_static(ctx, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3, 1);
-		if (nk_button_label(ctx, "")) {
-			fprintf(stdout, "history pressed\n");
-			this->view = 2;
-		}
-		this->drawImage(&this->historyImage);
-	}
-	nk_end(this->ctx);
 
 	return true;
 }
