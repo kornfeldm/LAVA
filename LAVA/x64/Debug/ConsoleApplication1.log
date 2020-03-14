@@ -2,12 +2,12 @@
   main.cpp
 C:\Users\tom\Documents\LAVA2\includes\nuklear_sfml_gl2.h(327,28): warning C4244: '=': conversion from 'const int' to 'float', possible loss of data
 C:\Users\tom\Documents\LAVA2\includes\nuklear_sfml_gl2.h(328,28): warning C4244: '=': conversion from 'const int' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(85,6): warning C4101: 'fd': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(90,20): warning C4101: 'engine': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(103,18): warning C4101: 'rectImage': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(89,14): warning C4101: 'virname': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(104,18): warning C4101: 'trapImage': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(88,14): warning C4101: 'mb': unreferenced local variable
-  LINK : C:\Users\tom\Documents\LAVA2\LAVA\x64\Debug\LAVA.exe not found or not built by the last incremental link; performing full link
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(142,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(156,64): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(200,19): warning C4101: 'bg': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(48,6): warning C4101: 'fd': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(53,20): warning C4101: 'engine': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(52,14): warning C4101: 'virname': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(51,14): warning C4101: 'mb': unreferenced local variable
   ConsoleApplication1.vcxproj -> C:\Users\tom\Documents\LAVA2\LAVA\x64\Debug\LAVA.exe
   0 File(s) copied
