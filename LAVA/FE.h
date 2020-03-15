@@ -43,7 +43,7 @@
 /* Use this function to allocate space for text below an image. see how the back arrow is displayed in the DisplayScansPage function is used
 */
 struct nk_rect SubRectTextBelow(struct nk_rect *big, struct nk_rect *sub ) {
-	return nk_rect(sub->x, sub->h, sub->w, big->h-sub->h);
+	return nk_rect(sub->x, sub->h, sub->w, big->h-sub->h+sub->x);
 }
 
 struct pics {
@@ -189,27 +189,68 @@ inline bool FE::DrawMainPage()
 		this->drawImage(&this->historyImage);
 	}
 	nk_end(this->ctx);
-
+	
 	return true;
 }
 
 inline bool FE::DrawScansPage()
 {
 	/* BACK ARROW ICON */
-	struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08); 
+	struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
 	struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
 	if (nk_begin(this->ctx, "barrow", backArrowAndText,
 		NK_WINDOW_NO_SCROLLBAR)) {
-		// hidden button behind icon to press
-		nk_layout_row_static(ctx, bar.h+36, bar.w, 2);
+
+		/* hidden button behind icon to press */
+		nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
 		if (nk_button_label(ctx, "")) {
 			fprintf(stdout, "back arrow\n");
 			this->view = 0;
 			nk_clear(this->ctx);
 		}
 		this->drawImageSubRect(&this->backArrow, &bar);
-		//nk_label(this->ctx,"BACK",NK_TEXT_CENTERED);
-		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK", 4, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+
+	// vertical line
+	nk_stroke_line(this->canvas, bar.w * 2 + WINDOW_WIDTH * .075, WINDOW_HEIGHT - WINDOW_HEIGHT * .06,
+		bar.w * 2 + WINDOW_WIDTH * .075, 0+WINDOW_HEIGHT * .06, 2, nk_rgb(255, 255, 255));
+
+	int w_space = bar.w * 2 + WINDOW_WIDTH * .075;
+	/* COMPLETE SCAN */
+	struct nk_rect completeScanTextRect = nk_rect(.045*w_space, WINDOW_HEIGHT*.30, w_space*.91, 36);
+	if (nk_begin(this->ctx, "CompleteScan", completeScanTextRect, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_static(this->ctx, completeScanTextRect.y + completeScanTextRect.h, completeScanTextRect.x + completeScanTextRect.w, 2);
+		if (nk_button_label(this->ctx, "")) {
+			fprintf(stdout, "Complete Scan\n");
+			// DO SHIT HERE
+		}
+		nk_draw_text(nk_window_get_canvas(this->ctx), completeScanTextRect, "Complete Scan", 13, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+
+	/* QUICK SCAN */
+	struct nk_rect quickScanTextRect = nk_rect(.045 * w_space, WINDOW_HEIGHT * .45, w_space * .91, 36);
+	if (nk_begin(this->ctx, "QuickScan", quickScanTextRect, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_static(this->ctx, quickScanTextRect.y + quickScanTextRect.h, quickScanTextRect.x + quickScanTextRect.w, 2);
+		if (nk_button_label(this->ctx, "")) {
+			fprintf(stdout, "Quick Scan\n");
+			// DO SHIT HERE
+		}
+		nk_draw_text(nk_window_get_canvas(this->ctx), quickScanTextRect, "Quick Scan", 10, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+
+	/* ADVANCED SCAN */
+	struct nk_rect advScanTextRect = nk_rect(.04 * w_space, WINDOW_HEIGHT * .60, w_space * .92, 36);
+	if (nk_begin(this->ctx, "AdvancedScan", advScanTextRect, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_static(this->ctx, advScanTextRect.y + advScanTextRect.h, advScanTextRect.x + advScanTextRect.w, 2);
+		if (nk_button_label(this->ctx, "")) {
+			fprintf(stdout, "Advanced Scan\n");
+			// DO SHIT HERE
+		}
+		nk_draw_text(nk_window_get_canvas(this->ctx), advScanTextRect, "Advanced Scan", 13, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
 

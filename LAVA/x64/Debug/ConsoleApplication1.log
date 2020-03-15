@@ -2,9 +2,21 @@
   main.cpp
 C:\Users\tom\Documents\LAVA2\includes\nuklear_sfml_gl2.h(327,28): warning C4244: '=': conversion from 'const int' to 'float', possible loss of data
 C:\Users\tom\Documents\LAVA2\includes\nuklear_sfml_gl2.h(328,28): warning C4244: '=': conversion from 'const int' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(169,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(184,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(205,42): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(168,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(183,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(205,55): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(218,13): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(217,41): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(220,14): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(222,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(222,52): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(224,107): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(234,90): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(234,50): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(236,98): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(246,87): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(246,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(248,92): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
 C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(47,6): warning C4101: 'fd': unreferenced local variable
 C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(52,20): warning C4101: 'engine': unreferenced local variable
 C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(51,14): warning C4101: 'virname': unreferenced local variable
