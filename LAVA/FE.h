@@ -219,38 +219,38 @@ inline bool FE::DrawScansPage()
 
 	int w_space = bar.w * 2 + WINDOW_WIDTH * .075;
 	/* COMPLETE SCAN */
-	struct nk_rect completeScanTextRect = nk_rect(.045*w_space, WINDOW_HEIGHT*.30, w_space*.91, 36);
+	struct nk_rect completeScanTextRect = nk_rect(.025*w_space, WINDOW_HEIGHT*.30, w_space*.95, 36);
 	if (nk_begin(this->ctx, "CompleteScan", completeScanTextRect, NK_WINDOW_NO_SCROLLBAR)) {
 		nk_layout_row_static(this->ctx, completeScanTextRect.y + completeScanTextRect.h, completeScanTextRect.x + completeScanTextRect.w, 2);
 		if (nk_button_label(this->ctx, "")) {
 			fprintf(stdout, "Complete Scan\n");
 			// DO SHIT HERE
 		}
-		nk_draw_text(nk_window_get_canvas(this->ctx), completeScanTextRect, "Complete Scan", 13, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		nk_draw_text(nk_window_get_canvas(this->ctx), completeScanTextRect, " Complete Scan", 14, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
 
 	/* QUICK SCAN */
-	struct nk_rect quickScanTextRect = nk_rect(.045 * w_space, WINDOW_HEIGHT * .45, w_space * .91, 36);
+	struct nk_rect quickScanTextRect = nk_rect(.025 * w_space, WINDOW_HEIGHT * .45, w_space * .95, 36);
 	if (nk_begin(this->ctx, "QuickScan", quickScanTextRect, NK_WINDOW_NO_SCROLLBAR)) {
 		nk_layout_row_static(this->ctx, quickScanTextRect.y + quickScanTextRect.h, quickScanTextRect.x + quickScanTextRect.w, 2);
 		if (nk_button_label(this->ctx, "")) {
 			fprintf(stdout, "Quick Scan\n");
 			// DO SHIT HERE
 		}
-		nk_draw_text(nk_window_get_canvas(this->ctx), quickScanTextRect, "Quick Scan", 10, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		nk_draw_text(nk_window_get_canvas(this->ctx), quickScanTextRect, " Quick Scan   ", 14, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
 
 	/* ADVANCED SCAN */
-	struct nk_rect advScanTextRect = nk_rect(.04 * w_space, WINDOW_HEIGHT * .60, w_space * .92, 36);
+	struct nk_rect advScanTextRect = nk_rect(.025 * w_space, WINDOW_HEIGHT * .60, w_space * .95, 36);
 	if (nk_begin(this->ctx, "AdvancedScan", advScanTextRect, NK_WINDOW_NO_SCROLLBAR)) {
 		nk_layout_row_static(this->ctx, advScanTextRect.y + advScanTextRect.h, advScanTextRect.x + advScanTextRect.w, 2);
 		if (nk_button_label(this->ctx, "")) {
 			fprintf(stdout, "Advanced Scan\n");
 			// DO SHIT HERE
 		}
-		nk_draw_text(nk_window_get_canvas(this->ctx), advScanTextRect, "Advanced Scan", 13, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		nk_draw_text(nk_window_get_canvas(this->ctx), advScanTextRect, " Advanced Scan", 14, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
 
