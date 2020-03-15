@@ -2,12 +2,12 @@
   main.cpp
 C:\Users\tom\Documents\LAVA2\includes\nuklear_sfml_gl2.h(327,28): warning C4244: '=': conversion from 'const int' to 'float', possible loss of data
 C:\Users\tom\Documents\LAVA2\includes\nuklear_sfml_gl2.h(328,28): warning C4244: '=': conversion from 'const int' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(145,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(160,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(218,19): warning C4101: 'bg': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(48,6): warning C4101: 'fd': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(53,20): warning C4101: 'engine': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(52,14): warning C4101: 'virname': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(51,14): warning C4101: 'mb': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(169,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(184,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(205,42): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(47,6): warning C4101: 'fd': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(52,20): warning C4101: 'engine': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(51,14): warning C4101: 'virname': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(50,14): warning C4101: 'mb': unreferenced local variable
   ConsoleApplication1.vcxproj -> C:\Users\tom\Documents\LAVA2\LAVA\x64\Debug\LAVA.exe
   0 File(s) copied

@@ -13502,6 +13502,7 @@ nk_font_atlas_add(struct nk_font_atlas *atlas, const struct nk_font_config *conf
     struct nk_font_config *cfg;
 
     NK_ASSERT(atlas);
+	fprintf(stdout, "found font obj successfully.\n");
     NK_ASSERT(atlas->permanent.alloc);
     NK_ASSERT(atlas->permanent.free);
     NK_ASSERT(atlas->temporary.alloc);

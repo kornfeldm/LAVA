@@ -40,12 +40,19 @@
 //#define WINDOW_HEIGHT 800
 //#define IMG_COLOR nk_rgba(255, 255, 255, 255)
 
+/* Use this function to allocate space for text below an image. see how the back arrow is displayed in the DisplayScansPage function is used
+*/
+struct nk_rect SubRectTextBelow(struct nk_rect *big, struct nk_rect *sub ) {
+	return nk_rect(sub->x, sub->h, sub->w, big->h-sub->h);
+}
+
 struct pics {
 	const char* squareLogo;
 	const char* rectLogo;
 	const char* trapLogo;
 	const char* scan;
 	const char* history;
+	const char* backArrow;
 };
 struct nk_command_buffer* canvas;
 struct nk_rect total_space;
@@ -59,16 +66,24 @@ public:
 
 	/* MEMBER VARS */
 	struct nk_context* ctx;
-	struct nk_font_atlas* atlas;
 	struct nk_command_buffer* canvas;
+	// font stuff
+	struct nk_font_atlas* atlas;
+	struct nk_font* font;
+	const char* font_path = "../Assets/font.ttf";
+	//struct nk_font_config* fontCFG;// can be null so commenting out for mem
 	struct nk_colorf bg;
+	struct nk_colorf whiteFont;
 	struct nk_rect total_space;
+	// pics to be loaded (pngs)
 	pics pp;
 	struct nk_image scanImage;
 	struct nk_image rectImage; 
 	struct nk_image trapImage; 
 	struct nk_image squareImage; 
 	struct nk_image historyImage;
+	struct nk_image backArrow;
+	// view screen switch
 	unsigned int view;
 	/*
 		0 : logo screen
@@ -83,6 +98,7 @@ public:
 	/* MEMBER FUNCTIONS */
 	static struct nk_image icon_load(const char* filename, bool flip = false);
 	bool drawImage(struct nk_image *img);
+	bool drawImageSubRect(struct nk_image* img, struct nk_rect* r);
 	bool DrawMainPage();
 	bool DrawScansPage();
 	bool Display();
@@ -114,6 +130,13 @@ inline bool FE::drawImage(struct nk_image *img)
 	canvas = nk_window_get_canvas(this->ctx);
 	total_space = nk_window_get_content_region(this->ctx);
 	nk_draw_image(canvas, total_space, img, IMG_COLOR);
+	return true;
+}
+
+inline bool FE::drawImageSubRect(struct nk_image* img, struct nk_rect *r)
+{
+	canvas = nk_window_get_canvas(this->ctx);
+	nk_draw_image(canvas, *r, img, IMG_COLOR);
 	return true;
 }
 
@@ -172,18 +195,29 @@ inline bool FE::DrawMainPage()
 
 inline bool FE::DrawScansPage()
 {
-	/* LOGO */
-	if (nk_begin(this->ctx, "lavalogo", nk_rect(25, 25, WINDOW_HEIGHT * .33, WINDOW_HEIGHT * .33),
+	/* BACK ARROW ICON */
+	struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08); 
+	struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
+	if (nk_begin(this->ctx, "barrow", backArrowAndText,
 		NK_WINDOW_NO_SCROLLBAR)) {
-		this->drawImage(&this->squareImage);
+		// hidden button behind icon to press
+		nk_layout_row_static(ctx, bar.h+36, bar.w, 2);
+		if (nk_button_label(ctx, "")) {
+			fprintf(stdout, "back arrow\n");
+			this->view = 0;
+			nk_clear(this->ctx);
+		}
+		this->drawImageSubRect(&this->backArrow, &bar);
+		//nk_label(this->ctx,"BACK",NK_TEXT_CENTERED);
+		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK", 4, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
-
 
 	return true;
 }
 
 inline FE::FE(sf::Window *win) {
+	// set view to logo pAGe
 	this->view = 0;
 
 	/* INIT IMAGES */
@@ -192,6 +226,7 @@ inline FE::FE(sf::Window *win) {
 	this->pp.trapLogo = "../Assets/trapLogo.png";
 	this->pp.squareLogo = "../Assets/squareLogo.png";
 	this->pp.history = "../Assets/historylarger.png";
+	this->pp.backArrow = "../Assets/back_arrow.png";
 
 	glewExperimental = 1;
 	if (glewInit() != GLEW_OK) {
@@ -203,11 +238,15 @@ inline FE::FE(sf::Window *win) {
 	/* GUI */
 	//struct nk_context* ctx;
 	this->ctx = nk_sfml_init(win);
-	// load font here if want
-	// load cursor here if want
-	//struct nk_font_atlas* atlas;
-	nk_sfml_font_stash_begin(&this->atlas);
-	nk_sfml_font_stash_end();
+	/* set font shit--kinda confused by nuklear api on this one chiefton */
+	{//struct nk_font_atlas* atlas;
+		nk_sfml_font_stash_begin(&this->atlas);
+		//this->font = nk_font_atlas_add_from_file(this->atlas, this->font_path, 18, NULL);
+		struct nk_font* droid = nk_font_atlas_add_from_file(atlas, "../Assets/font.ttf", 36, 0);
+		nk_sfml_font_stash_end();
+		nk_style_set_font(this->ctx, &droid->handle);
+		//nk_init_default(this->ctx, &font->handle);
+	}
 
 	// load some image stuff
 	//struct nk_buffer cmds;
@@ -215,12 +254,15 @@ inline FE::FE(sf::Window *win) {
 	glEnable(GL_TEXTURE_2D);
 
 	// bg color
-	struct nk_colorf bg;
 	this->bg.r = 45 / 255.0f; this->bg.g = 45 / 255.0f; this->bg.b = 45 / 255.0f; this->bg.a = 1.0f;
-
+	// white txt color
+	this->whiteFont.r = 0; this->whiteFont.g =0; this->whiteFont.b = 0; this->whiteFont.a = 1;
+	
+	// load pngs 
 	this->scanImage = this->icon_load(pp.scan);
 	this->squareImage = this->icon_load(pp.squareLogo);
 	this->historyImage = this->icon_load(pp.history);
+	this->backArrow = this->icon_load(pp.backArrow);
 }
 
 #endif
