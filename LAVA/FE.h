@@ -53,6 +53,7 @@ struct pics {
 	const char* scan;
 	const char* history;
 	const char* backArrow;
+	const char* chooseScan;
 };
 struct nk_command_buffer* canvas;
 struct nk_rect total_space;
@@ -83,18 +84,22 @@ public:
 	struct nk_image squareImage; 
 	struct nk_image historyImage;
 	struct nk_image backArrow;
-	// view screen switch
+	struct nk_image chooseScan;
+	// view screen switch. view ScanViews scanview member for furthger info
 	unsigned int view;
 	/*
 		0 : logo screen
 		1 : scans screen
 		2 : history screen
-		3 : 
-		4 :
-		5 : 
-		6 :
 	*/
-
+	unsigned int m_scanViews;
+	/*
+		0 : plz maam pls choose a scan
+		1 : coimplete scan
+		2 : quick scan
+		3 : advanced scan
+	*/
+	
 	/* MEMBER FUNCTIONS */
 	static struct nk_image icon_load(const char* filename, bool flip = false);
 	bool drawImage(struct nk_image *img);
@@ -102,6 +107,9 @@ public:
 	bool DrawMainPage();
 	bool DrawScansPage();
 	bool Display();
+	bool NoScanView();
+	bool CompleteScanView();
+	bool viewSwap();
 };
 inline struct nk_image FE::icon_load(const char* filename, bool flip)
 {
@@ -168,10 +176,10 @@ inline bool FE::DrawMainPage()
 		nk_layout_row_static(ctx, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3, 1);
 		if (nk_button_label(ctx, "")) {
 			fprintf(stdout, "scans pressed\n");
-			this->view = 1;
+			this->view = 1; // scans page
+			this->m_scanViews = 0; // choose a scan sub view
 			nk_clear(this->ctx);
 		}
-			
 		this->drawImage(&this->scanImage);
 	}
 	nk_end(this->ctx);
@@ -190,6 +198,61 @@ inline bool FE::DrawMainPage()
 	}
 	nk_end(this->ctx);
 	
+	return true;
+}
+
+bool FE::NoScanView() {
+	int filled_width = WINDOW_WIDTH * .08 * 2 + WINDOW_WIDTH * .075; // remaining width ofscreen after side menu
+	int delta = WINDOW_WIDTH - filled_width;
+	/* CHOOSE A SCAN */
+	struct nk_rect center = nk_rect(filled_width + delta * .2, WINDOW_HEIGHT * .20-36, delta * .6, WINDOW_HEIGHT * .6 -36);
+	struct nk_rect centerAndText = nk_rect(center.x, center.h+94, center.w, 36); //36 for font size!
+	if (nk_begin(this->ctx, "ChooseScan", center, NK_WINDOW_NO_SCROLLBAR)) {
+		this->drawImageSubRect(&this->chooseScan, &center);
+		nk_draw_text(nk_window_get_canvas(this->ctx), centerAndText, " Choose A Scan", 14, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+	return true;
+}
+
+bool FE::CompleteScanView() {
+	int filled_width = WINDOW_WIDTH * .08 * 2 + WINDOW_WIDTH * .075; // remaining width ofscreen after side menu
+	int delta = WINDOW_WIDTH - filled_width;
+
+	/* quick scan header and text */
+	if (nk_begin(this->ctx, "Complete Scan", nk_rect(300, WINDOW_HEIGHT * .06, 600, 300),
+		NK_WINDOW_TITLE | NK_WINDOW_NO_SCROLLBAR))
+	{
+		nk_layout_row_dynamic(this->ctx, 40, 1);
+		nk_label_wrap(this->ctx, "                                                        ");
+		nk_layout_row_dynamic(this->ctx, 80, 1);
+		nk_label_wrap(this->ctx, "This scan will traverse all files on the current file-system!");
+
+		// scan now button here ??
+	}
+	nk_end(this->ctx);
+
+	return true;
+}
+
+bool FE::viewSwap() {
+	if (this->m_scanViews == 0) {
+		//fprintf(stdout, "we is in default scan view bruh\n");
+		NoScanView();
+	}
+	else if (this->m_scanViews == 1) {
+		//fprintf(stdout, "we is in compelte scan view bruh\n");
+		CompleteScanView();
+	}
+	else if (this->m_scanViews == 2) {
+		fprintf(stdout, "we is in quick scan view bruh\n");
+	}
+	else if (this->m_scanViews == 3) {
+		fprintf(stdout, "we is in advanced scan view bruh\n");
+	}
+	else {
+		fprintf(stderr, "this shouldnt of happened, mr. freeman\n");
+	}
 	return true;
 }
 
@@ -224,7 +287,8 @@ inline bool FE::DrawScansPage()
 		nk_layout_row_static(this->ctx, completeScanTextRect.y + completeScanTextRect.h, completeScanTextRect.x + completeScanTextRect.w, 2);
 		if (nk_button_label(this->ctx, "")) {
 			fprintf(stdout, "Complete Scan\n");
-			// DO SHIT HERE
+			this->m_scanViews = 1;
+			nk_clear(this->ctx);
 		}
 		nk_draw_text(nk_window_get_canvas(this->ctx), completeScanTextRect, " Complete Scan", 14, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
@@ -236,7 +300,8 @@ inline bool FE::DrawScansPage()
 		nk_layout_row_static(this->ctx, quickScanTextRect.y + quickScanTextRect.h, quickScanTextRect.x + quickScanTextRect.w, 2);
 		if (nk_button_label(this->ctx, "")) {
 			fprintf(stdout, "Quick Scan\n");
-			// DO SHIT HERE
+			this->m_scanViews = 2;
+			nk_clear(this->ctx);
 		}
 		nk_draw_text(nk_window_get_canvas(this->ctx), quickScanTextRect, " Quick Scan   ", 14, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
@@ -248,11 +313,14 @@ inline bool FE::DrawScansPage()
 		nk_layout_row_static(this->ctx, advScanTextRect.y + advScanTextRect.h, advScanTextRect.x + advScanTextRect.w, 2);
 		if (nk_button_label(this->ctx, "")) {
 			fprintf(stdout, "Advanced Scan\n");
-			// DO SHIT HERE
+			this->m_scanViews = 3;
+			nk_clear(this->ctx);
 		}
 		nk_draw_text(nk_window_get_canvas(this->ctx), advScanTextRect, " Advanced Scan", 14, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
+
+	this->viewSwap();
 
 	return true;
 }
@@ -260,7 +328,7 @@ inline bool FE::DrawScansPage()
 inline FE::FE(sf::Window *win) {
 	// set view to logo pAGe
 	this->view = 0;
-
+	this->m_scanViews = 0;
 	/* INIT IMAGES */
 	this->pp.scan = "../Assets/scan2.png";
 	this->pp.rectLogo = "../Assets/rectLogo.png";
@@ -268,6 +336,7 @@ inline FE::FE(sf::Window *win) {
 	this->pp.squareLogo = "../Assets/squareLogo.png";
 	this->pp.history = "../Assets/historylarger.png";
 	this->pp.backArrow = "../Assets/back_arrow.png";
+	this->pp.chooseScan = "../Assets/chooseScan.png";
 
 	glewExperimental = 1;
 	if (glewInit() != GLEW_OK) {
@@ -304,6 +373,7 @@ inline FE::FE(sf::Window *win) {
 	this->squareImage = this->icon_load(pp.squareLogo);
 	this->historyImage = this->icon_load(pp.history);
 	this->backArrow = this->icon_load(pp.backArrow);
+	this->chooseScan = this->icon_load(pp.chooseScan);
 }
 
 #endif
