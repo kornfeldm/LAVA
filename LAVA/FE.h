@@ -54,6 +54,7 @@ struct pics {
 	const char* history;
 	const char* backArrow;
 	const char* chooseScan;
+	const char* triangleButton;
 };
 struct nk_command_buffer* canvas;
 struct nk_rect total_space;
@@ -85,6 +86,7 @@ public:
 	struct nk_image historyImage;
 	struct nk_image backArrow;
 	struct nk_image chooseScan;
+	struct nk_image triangleLogo;
 	// view screen switch. view ScanViews scanview member for furthger info
 	unsigned int view;
 	/*
@@ -205,13 +207,24 @@ bool FE::NoScanView() {
 	int filled_width = WINDOW_WIDTH * .08 * 2 + WINDOW_WIDTH * .075; // remaining width ofscreen after side menu
 	int delta = WINDOW_WIDTH - filled_width;
 	/* CHOOSE A SCAN */
-	struct nk_rect center = nk_rect(filled_width + delta * .2, WINDOW_HEIGHT * .20-36, delta * .6, WINDOW_HEIGHT * .6 -36);
-	struct nk_rect centerAndText = nk_rect(center.x, center.h+94, center.w, 36); //36 for font size!
+	struct nk_rect center = nk_rect(filled_width + delta * .2, WINDOW_HEIGHT * .20-36-50, delta * .6-50, WINDOW_HEIGHT * .6 -36+50);
+	struct nk_rect centerAndText = nk_rect(center.x, center.h+90, center.w+50, 80 + 80+30); //36 for font size!
 	if (nk_begin(this->ctx, "ChooseScan", center, NK_WINDOW_NO_SCROLLBAR)) {
 		this->drawImageSubRect(&this->chooseScan, &center);
-		nk_draw_text(nk_window_get_canvas(this->ctx), centerAndText, " Choose A Scan", 14, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
+	/* TEXT TO CHOOSE A SCAN*/
+	if (nk_begin(this->ctx, "ChooseScantxt", centerAndText, NK_WINDOW_NO_SCROLLBAR))
+	{
+		/*nk_layout_row_dynamic(this->ctx, 40, 1);
+		nk_label_wrap(this->ctx, "                                                        ");
+		nk_layout_row_dynamic(this->ctx, 80, 1);
+		nk_label_wrap(this->ctx, "Chose a Scan, Please!");*/
+		// old way of drawing txt...low level api
+		nk_draw_text(nk_window_get_canvas(this->ctx), centerAndText, "  Choose A Scan, Please!", 24, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+
 	return true;
 }
 
@@ -337,6 +350,7 @@ inline FE::FE(sf::Window *win) {
 	this->pp.history = "../Assets/historylarger.png";
 	this->pp.backArrow = "../Assets/back_arrow.png";
 	this->pp.chooseScan = "../Assets/chooseScan.png";
+	this->pp.triangleButton = "../Assets/triangle.png";
 
 	glewExperimental = 1;
 	if (glewInit() != GLEW_OK) {
@@ -374,6 +388,7 @@ inline FE::FE(sf::Window *win) {
 	this->historyImage = this->icon_load(pp.history);
 	this->backArrow = this->icon_load(pp.backArrow);
 	this->chooseScan = this->icon_load(pp.chooseScan);
+	this->triangleLogo = this->icon_load(pp.triangleButton);
 }
 
 #endif
