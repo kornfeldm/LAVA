@@ -112,6 +112,7 @@ public:
 	bool NoScanView();
 	bool CompleteScanView();
 	bool viewSwap();
+	bool QuickScansView();
 };
 inline struct nk_image FE::icon_load(const char* filename, bool flip)
 {
@@ -240,12 +241,65 @@ bool FE::CompleteScanView() {
 		nk_label_wrap(this->ctx, "                                                        ");
 		nk_layout_row_dynamic(this->ctx, 80, 1);
 		nk_label_wrap(this->ctx, "This scan will traverse all files on the current file-system!");
+	}
+	nk_end(this->ctx);
 
-		// scan now button here ??
+	/* SCAN NOW BUTTON AND TEXT */
+	struct nk_rect scanButton = nk_rect(delta * .5, WINDOW_HEIGHT * .5, 350, 50);
+	if (nk_begin(this->ctx, "Complete Scan Button", scanButton, NK_WINDOW_NO_SCROLLBAR))
+	{
+		nk_layout_row_static(ctx, 65, 400, 1);
+		if (nk_button_label(ctx, "")) {
+			fprintf(stdout, "do complete scan pressed\n");
+			// scan in progress ... blah blah
+			nk_clear(this->ctx);
+		}
+	    // draw txt 
+		struct nk_rect textArea = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
+		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, " Complete Scan! ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		// draw triangle
+		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x+300, textArea.y, textArea.w-300, textArea.h));
 	}
 	nk_end(this->ctx);
 
 	return true;
+}
+
+bool FE::QuickScansView() {
+	int filled_width = WINDOW_WIDTH * .08 * 2 + WINDOW_WIDTH * .075; // remaining width ofscreen after side menu
+	int delta = WINDOW_WIDTH - filled_width;
+
+	/* quick scan header and text */
+	if (nk_begin(this->ctx, "Quick Scan", nk_rect(300, WINDOW_HEIGHT * .06, 600, 300),
+		NK_WINDOW_TITLE | NK_WINDOW_NO_SCROLLBAR))
+	{
+		nk_layout_row_dynamic(this->ctx, 40, 1);
+		nk_label_wrap(this->ctx, "                                                        ");
+		nk_layout_row_dynamic(this->ctx, 120, 1);
+		nk_label_wrap(this->ctx, "This scan will traverse the most commonly affected areas on your system.");
+	}
+	nk_end(this->ctx);
+
+	/* SCAN NOW BUTTON AND TEXT */
+	struct nk_rect scanButton = nk_rect(delta * .5, WINDOW_HEIGHT * .5, 270, 50);
+	if (nk_begin(this->ctx, "Quick Scan Button", scanButton, NK_WINDOW_NO_SCROLLBAR))
+	{
+		nk_layout_row_static(ctx, 65, 400, 1);
+		if (nk_button_label(ctx, "")) {
+			fprintf(stdout, "do quick scan pressed\n");
+			// scan in progress ... blah blah
+			nk_clear(this->ctx);
+		}
+		// draw txt 
+		struct nk_rect textArea = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
+		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, " Quick Scan! ", 13, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		// draw triangle
+		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 220, textArea.y, textArea.w - 220, textArea.h));
+	}
+	nk_end(this->ctx);
+
+	return true;
+
 }
 
 bool FE::viewSwap() {
@@ -258,7 +312,8 @@ bool FE::viewSwap() {
 		CompleteScanView();
 	}
 	else if (this->m_scanViews == 2) {
-		fprintf(stdout, "we is in quick scan view bruh\n");
+		//fprintf(stdout, "we is in quick scan view bruh\n");
+		QuickScansView();
 	}
 	else if (this->m_scanViews == 3) {
 		fprintf(stdout, "we is in advanced scan view bruh\n");

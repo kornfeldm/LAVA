@@ -2,25 +2,28 @@
   main.cpp
 C:\Users\tom\Documents\LAVA2\includes\nuklear_sfml_gl2.h(327,28): warning C4244: '=': conversion from 'const int' to 'float', possible loss of data
 C:\Users\tom\Documents\LAVA2\includes\nuklear_sfml_gl2.h(328,28): warning C4244: '=': conversion from 'const int' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(178,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(193,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(207,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(210,98): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(210,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(232,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(281,55): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(294,13): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(293,41): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(296,14): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(298,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(298,52): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(300,107): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(311,90): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(311,50): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(313,98): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(324,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(324,48): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(326,92): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(179,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(194,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(208,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(211,98): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(211,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(233,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(248,44): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(269,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(284,44): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(336,55): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(349,13): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(348,41): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(351,14): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(353,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(353,52): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(355,107): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(366,90): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(366,50): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(368,98): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(379,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(379,48): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(381,92): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
 C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(48,6): warning C4101: 'fd': unreferenced local variable
 C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(53,20): warning C4101: 'engine': unreferenced local variable
 C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(52,14): warning C4101: 'virname': unreferenced local variable
