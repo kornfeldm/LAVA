@@ -13,3 +13,9 @@
 **\*.obj
 **\*.db
 **\*.cvd
+**/*.db
+**/*.cvd
+*.db
+*.cvd
+**/*.tlog
+*.tlog
