@@ -493,22 +493,25 @@ inline bool FE::AdvancedScanView() {
 	}
 	nk_end(this->ctx);
 
-	///* checkbox date switch */
-	//if (nk_begin(this->ctx, "Overview", nk_rect(600, 600, 400, 600), NK_WINDOW_DYNAMIC))
-	//{
-	//	char buf[65] = { 0 };
-	//	static const float ratio[] = { 120, 150 };
-	//	static int text_len;
-	//	char* text;
-	//	nk_layout_row(ctx, NK_STATIC, 25, 2, ratio);
-	//	nk_label(ctx, "Default:", NK_TEXT_LEFT);
+	/* checkbox date switch */
+	if (nk_begin(this->ctx, "Overview", nk_rect(600, 600, 400, 600), NK_WINDOW_DYNAMIC))
+	{
+		static const float ratio[] = { 120, 150 };
+		static char field_buffer[64];
+		static char text[9][64];
+		static int text_len[9];
+		static char box_buffer[512];
+		static int field_len;
+		static int box_len;
+		nk_flags active;
 
-	//	nk_edit_string(ctx, NK_EDIT_SIMPLE, text, &text_len, 64, nk_filter_default);
-	//	nk_label(ctx, "Int:", NK_TEXT_LEFT);
-	//		
-
-	//}
-	//nk_end(this->ctx);
+		nk_layout_row(ctx, NK_STATIC, 100, 2, ratio);
+		//nk_label(ctx, "test:", NK_TEXT_LEFT);
+		nk_edit_string(ctx, NK_EDIT_SIMPLE, text[0], &text_len[0], 64, nk_filter_default);
+		if (nk_button_label(ctx, "Done"))
+			printf("%s\n", text[0]);
+	}
+	nk_end(this->ctx);
 	
 
 	return true;

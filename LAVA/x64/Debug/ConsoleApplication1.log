@@ -12,19 +12,20 @@ C:\Users\tom\Documents\LAVA2\LAVA\FE.h(425,44): warning C4244: 'argument': conve
 C:\Users\tom\Documents\LAVA2\LAVA\FE.h(446,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
 C:\Users\tom\Documents\LAVA2\LAVA\FE.h(461,44): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
 C:\Users\tom\Documents\LAVA2\LAVA\FE.h(482,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(549,55): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(562,13): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(561,41): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(564,14): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(566,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(566,52): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(568,107): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(579,90): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(579,50): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(581,98): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(592,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(592,48): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(594,92): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(506,12): warning C4101: 'active': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(552,55): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(565,13): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(564,41): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(567,14): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(569,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(569,52): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(571,107): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(582,90): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(582,50): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(584,98): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(595,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(595,48): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(597,92): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
 C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(50,6): warning C4101: 'fd': unreferenced local variable
 C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(55,20): warning C4101: 'engine': unreferenced local variable
 C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(54,14): warning C4101: 'virname': unreferenced local variable
