@@ -159,10 +159,6 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClInclude Include="FE.h" />
-    <ClCompile Include="lava_advancedScan.cpp" />
-    <ClInclude Include="lava_advancedScan.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="lava_advancedScan.h" />
     <ClInclude Include="lava_quarantine.h" />
   </ItemGroup>
