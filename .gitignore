@@ -19,3 +19,7 @@
 *.cvd
 **/*.tlog
 *.tlog
+LAVA/.vs/LAVA/v16/.suo
+LAVA/.vs/LAVA/v16/.suo
+*.db
+*.ipch

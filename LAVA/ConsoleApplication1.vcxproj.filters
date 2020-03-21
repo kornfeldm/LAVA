@@ -24,9 +24,7 @@
     <ClCompile Include="lava_advancedScan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="lava_advancedScan.h">
+    <ClInclude Include="lava_quarantine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
