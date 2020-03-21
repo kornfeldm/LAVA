@@ -8,13 +8,18 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <math.h>
 #include <limits.h>
 #include <time.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <SFML/OpenGL.hpp>
 #include <SFML/Window.hpp>
+#include <windows.h>
+#include <ShlObj.h>
+#include <sstream>
+#include <CommCtrl.h>
+#include <datetimeapi.h>
+#include <minwindef.h>
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO

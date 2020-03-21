@@ -2,31 +2,70 @@
   main.cpp
 C:\Users\tom\Documents\LAVA2\includes\nuklear_sfml_gl2.h(327,28): warning C4244: '=': conversion from 'const int' to 'float', possible loss of data
 C:\Users\tom\Documents\LAVA2\includes\nuklear_sfml_gl2.h(328,28): warning C4244: '=': conversion from 'const int' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(179,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(194,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(208,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(211,98): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(211,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(233,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(248,44): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(269,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(284,44): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(336,55): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(349,13): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(348,41): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(351,14): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(353,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(353,52): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(355,107): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(366,90): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(366,50): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(368,98): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(379,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(379,48): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\FE.h(381,92): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(48,6): warning C4101: 'fd': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(53,20): warning C4101: 'engine': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(52,14): warning C4101: 'virname': unreferenced local variable
-C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(51,14): warning C4101: 'mb': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(248,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(263,63): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(277,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(280,98): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(280,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(302,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(317,44): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(338,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(353,44): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(405,55): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(418,13): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(417,41): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(420,14): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(422,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(422,52): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(424,107): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(435,90): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(435,50): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(437,98): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(448,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(448,48): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(450,92): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(53,6): warning C4101: 'fd': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(58,20): warning C4101: 'engine': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(57,14): warning C4101: 'virname': unreferenced local variable
+C:\Users\tom\Documents\LAVA2\LAVA\main.cpp(56,14): warning C4101: 'mb': unreferenced local variable
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2355,23): warning C4244: 'argument': conversion from 'wchar_t' to 'const _Elem', possible loss of data
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2355,23): warning C4244:         with
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2355,23): warning C4244:         [
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2355,23): warning C4244:             _Elem=char
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2355,23): warning C4244:         ]
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2366): message : see reference to function template instantiation 'void std::basic_string<char,std::char_traits<char>,std::allocator<char>>::_Construct<wchar_t*>(_Iter,const _Iter,std::input_iterator_tag)' being compiled
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2366): message :         with
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2366): message :         [
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2366): message :             _Iter=wchar_t *
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2366): message :         ]
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2366): message : see reference to function template instantiation 'void std::basic_string<char,std::char_traits<char>,std::allocator<char>>::_Construct<wchar_t*>(_Iter,const _Iter,std::input_iterator_tag)' being compiled
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2366): message :         with
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2366): message :         [
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2366): message :             _Iter=wchar_t *
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2366): message :         ]
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2346): message : see reference to function template instantiation 'void std::basic_string<char,std::char_traits<char>,std::allocator<char>>::_Construct<wchar_t*>(const _Iter,const _Iter,std::forward_iterator_tag)' being compiled
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2346): message :         with
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2346): message :         [
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2346): message :             _Iter=wchar_t *
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2346): message :         ]
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2346): message : see reference to function template instantiation 'void std::basic_string<char,std::char_traits<char>,std::allocator<char>>::_Construct<wchar_t*>(const _Iter,const _Iter,std::forward_iterator_tag)' being compiled
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2346): message :         with
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2346): message :         [
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2346): message :             _Iter=wchar_t *
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(2346): message :         ]
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message : see reference to function template instantiation 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string<std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,void>(_Iter,_Iter,const _Alloc &)' being compiled
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message :         with
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message :         [
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message :             _Elem=wchar_t,
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message :             _Iter=std::_String_iterator<std::_String_val<std::_Simple_types<wchar_t>>>,
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message :             _Alloc=std::allocator<char>
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message :         ]
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message : see reference to function template instantiation 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string<std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,void>(_Iter,_Iter,const _Alloc &)' being compiled
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message :         with
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message :         [
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message :             _Elem=wchar_t,
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message :             _Iter=std::_String_iterator<std::_String_val<std::_Simple_types<wchar_t>>>,
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message :             _Alloc=std::allocator<char>
+C:\Users\tom\Documents\LAVA2\LAVA\FE.h(69): message :         ]
   ConsoleApplication1.vcxproj -> C:\Users\tom\Documents\LAVA2\LAVA\x64\Debug\LAVA.exe
   0 File(s) copied

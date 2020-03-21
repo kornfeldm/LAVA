@@ -2,24 +2,6 @@
 #ifndef FE_H
 #define FE_H
 
-//#include <iostream>
-//#include "openssl/opensslv.h"
-//#include "clamav.h"
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <stdint.h>
-//#include <stdarg.h>
-//#include <string.h>
-//#include <math.h>
-//#include <assert.h>
-//#include <math.h>
-//#include <limits.h>
-//#include <time.h>
-//#include <GL/glew.h>
-//#include <GLFW/glfw3.h>
-//#include <SFML/OpenGL.hpp>
-//#include <SFML/Window.hpp>
-//
 //#define NK_INCLUDE_FIXED_TYPES
 //#define NK_INCLUDE_STANDARD_IO
 //#define NK_INCLUDE_STANDARD_VARARGS
@@ -45,6 +27,93 @@
 struct nk_rect SubRectTextBelow(struct nk_rect *big, struct nk_rect *sub ) {
 	return nk_rect(sub->x, sub->h, sub->w, big->h-sub->h+sub->x);
 }
+
+/* browse windows paths shit, will this work, prob not */
+static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData) {
+	if (uMsg == BFFM_INITIALIZED) {
+		std::string tmp = (const char*)lpData;
+		std::cout << "path: " << tmp << std::endl;
+		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
+	}
+	return 0;
+}
+
+std::string BrowseFolder(std::string saved_path) {
+	TCHAR path[MAX_PATH];
+
+	//const char* path_param = saved_path.c_str(); //wont work for vs
+	std::wstring wsaved_path(saved_path.begin(), saved_path.end());
+	const wchar_t* path_param = wsaved_path.c_str();
+
+	BROWSEINFO bi = { 0 };
+	bi.lpszTitle = TEXT("Please browse for folder / files ... ");
+	bi.ulFlags = BIF_NEWDIALOGSTYLE | BIF_BROWSEINCLUDEFILES | BIF_NONEWFOLDERBUTTON | BIF_BROWSEINCLUDEURLS ;
+	bi.lpfn = BrowseCallbackProc;
+	bi.lParam = (LPARAM)path_param;
+
+	LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
+	if (pidl != 0) {
+		// get nameof folder n put n path bruv
+		SHGetPathFromIDList(pidl, path);
+		//free our mem brother
+		IMalloc* imalloc = 0;
+		if (SUCCEEDED(SHGetMalloc(&imalloc))) {
+			imalloc->Free(pidl);
+			imalloc->Release();
+		}
+		std::string ret = std::string();
+#ifndef UNICODE
+		ret = path;
+#else 
+		std::wstring wStr = path;
+		ret = std::string(wStr.begin(), wStr.end());
+#endif // !UNICODE
+
+		return ret;
+	}
+
+	return std::string(""); //we diddly darn nabbit messed up
+}
+
+///* DateTime Picker test */
+//// Global variable 
+////    g_hinst - handle to the application instance 
+//extern HINSTANCE g_hinst;
+////
+//// child-window identifier
+//int ID_HEADER;
+////
+//DLGPROC Dlgproc;
+//HWND WINAPI CreateDatePick(HWND hwndMain)
+//{
+//	HWND hwndDP = NULL;
+//	HWND hwndDlg = NULL;
+//
+//	INITCOMMONCONTROLSEX icex;
+//
+//	icex.dwSize = sizeof(icex);
+//	icex.dwICC = ICC_DATE_CLASSES;
+//
+//	InitCommonControlsEx(&icex);
+//
+//	hwndDlg = CreateDialog(g_hinst,
+//		MAKEINTRESOURCE(LPCTSTR("select a time")),
+//		hwndMain,
+//		Dlgproc);
+//
+//	if (hwndDlg)
+//		hwndDP = CreateWindowEx(0,
+//			DATETIMEPICK_CLASS,
+//			TEXT("DateTime"),
+//			WS_BORDER | WS_CHILD | WS_VISIBLE | DTS_SHOWNONE,
+//			20, 50, 220, 20,
+//			hwndDlg,
+//			NULL,
+//			g_hinst,
+//			NULL);
+//
+//	return (hwndDP);
+//}
 
 struct pics {
 	const char* squareLogo;
@@ -394,6 +463,10 @@ inline bool FE::DrawScansPage()
 }
 
 inline FE::FE(sf::Window *win) {
+	//// testing windows choose flder
+	//std::string path = BrowseFolder("");
+	//std::cout << path << std::endl;
+	
 	// set view to logo pAGe
 	this->view = 0;
 	this->m_scanViews = 0;
