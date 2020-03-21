@@ -335,10 +335,13 @@ nk_sfml_handle_event(sf::Event* evt)
             nk_input_motion(ctx, x + evt->touch.x, y + evt->touch.y);
         } else nk_input_motion(ctx, evt->touch.x, evt->touch.y);
         return 1;
-    } else if(evt->type == sf::Event::TextEntered) {
-        nk_input_unicode(ctx, evt->text.unicode);
-        return 1;
-    } else if(evt->type == sf::Event::MouseWheelScrolled) {
+    }else if (evt->type == sf::Event::TextEntered) {
+		if (evt->text.unicode != 8) {
+			// no backspace
+			nk_input_unicode(ctx, evt->text.unicode);
+		}
+		return 1;
+	} else if(evt->type == sf::Event::MouseWheelScrolled) {
         nk_input_scroll(ctx, nk_vec2(0,evt->mouseWheelScroll.delta));
         return 1;
     }
