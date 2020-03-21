@@ -18,6 +18,9 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FE.h">
     <ClCompile Include="lava_advancedScan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
