@@ -23,3 +23,4 @@ LAVA/.vs/LAVA/v16/.suo
 LAVA/.vs/LAVA/v16/.suo
 *.db
 *.ipch
+LAVA/x64/Debug/db/bytecode.cvd
