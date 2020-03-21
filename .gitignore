@@ -24,3 +24,10 @@ LAVA/.vs/LAVA/v16/.suo
 *.db
 *.ipch
 LAVA/x64/Debug/db/bytecode.cvd
+LAVA/x64/Debug/db/daily.cvd
+LAVA/x64/Debug/db/main.cvd
+LAVA/x64/Debug/LAVA.exe
+LAVA/x64/Debug/LAVA.pdb
+LAVA/x64/Debug/main.obj
+LAVA/x64/Debug/
+LAVA/.vs/LAVA/v16/Browse.VC.db
