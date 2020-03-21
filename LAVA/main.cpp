@@ -17,9 +17,6 @@
 #include <windows.h>
 #include <ShlObj.h>
 #include <sstream>
-#include <CommCtrl.h>
-#include <datetimeapi.h>
-#include <minwindef.h>
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO

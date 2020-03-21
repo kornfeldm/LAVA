@@ -28,7 +28,7 @@ struct nk_rect SubRectTextBelow(struct nk_rect *big, struct nk_rect *sub ) {
 	return nk_rect(sub->x, sub->h, sub->w, big->h-sub->h+sub->x);
 }
 
-/* browse windows paths shit, will this work, prob not */
+/* browse windows paths shit, need to allow multiple files */
 static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData) {
 	if (uMsg == BFFM_INITIALIZED) {
 		std::string tmp = (const char*)lpData;
@@ -37,7 +37,6 @@ static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPAR
 	}
 	return 0;
 }
-
 std::string BrowseFolder(std::string saved_path) {
 	TCHAR path[MAX_PATH];
 
@@ -73,6 +72,82 @@ std::string BrowseFolder(std::string saved_path) {
 	}
 
 	return std::string(""); //we diddly darn nabbit messed up
+}
+
+/* Trying to make visual popup for datetime. */
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+HINSTANCE hInst;
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow)
+{
+	// Register the window class.
+	const wchar_t CLASS_NAME[] = L"Sample Window Class";
+
+	WNDCLASS wc = { };
+
+	wc.lpfnWndProc = WindowProc;
+	wc.hInstance = hInstance;
+	wc.lpszClassName = CLASS_NAME;
+
+	RegisterClass(&wc);
+
+	// Create the window.
+
+	HWND hwnd = CreateWindowEx(
+		0,                              // Optional window styles.
+		CLASS_NAME,                     // Window class
+		L"Learn to Program Windows",    // Window text
+		WS_OVERLAPPEDWINDOW,            // Window style
+
+		// Size and position
+		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+
+		NULL,       // Parent window    
+		NULL,       // Menu
+		hInstance,  // Instance handle
+		NULL        // Additional application data
+	);
+
+	if (hwnd == NULL)
+	{
+		return 0;
+	}
+
+	ShowWindow(hwnd, nCmdShow);
+
+	// Run the message loop.
+
+	MSG msg = { };
+	while (GetMessage(&msg, NULL, 0, 0))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+
+	return 0;
+}
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch (uMsg)
+	{
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		return 0;
+
+	case WM_PAINT:
+	{
+		PAINTSTRUCT ps;
+		HDC hdc = BeginPaint(hwnd, &ps);
+
+
+
+		FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
+
+		EndPaint(hwnd, &ps);
+	}
+	return 0;
+
+	}
+	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 ///* DateTime Picker test */
@@ -114,6 +189,8 @@ std::string BrowseFolder(std::string saved_path) {
 //
 //	return (hwndDP);
 //}
+
+/* END OF DATETIME PICKER */
 
 struct pics {
 	const char* squareLogo;
@@ -173,6 +250,7 @@ public:
 	
 	/* MEMBER FUNCTIONS */
 	static struct nk_image icon_load(const char* filename, bool flip = false);
+	bool dateInput();
 	bool drawImage(struct nk_image *img);
 	bool drawImageSubRect(struct nk_image* img, struct nk_rect* r);
 	bool DrawMainPage();
@@ -182,6 +260,7 @@ public:
 	bool CompleteScanView();
 	bool viewSwap();
 	bool QuickScansView();
+	bool AdvancedScanView();
 };
 inline struct nk_image FE::icon_load(const char* filename, bool flip)
 {
@@ -210,6 +289,35 @@ inline bool FE::drawImage(struct nk_image *img)
 	canvas = nk_window_get_canvas(this->ctx);
 	total_space = nk_window_get_content_region(this->ctx);
 	nk_draw_image(canvas, total_space, img, IMG_COLOR);
+	return true;
+}
+
+inline bool FE::dateInput() {
+	/*
+	char buf[256] = {0};
+	// in window
+	nk_edit_string_zero_terminated (ctx, NK_EDIT_FIELD, buf, sizeof(buf) - 1, nk_filter_default);
+	if (nk_button_label (ctx, "Done"))
+		printf ("%s\n", buf);
+	*/
+	int d;
+	int m;
+	int y;
+	std::cin >> d; // read the day
+	if (std::cin.get() != '/') // make sure there is a slash between DD and MM
+	{
+		std::cout << "expected /\n";
+		return 1;
+	}
+	std::cin >> m; // read the month
+	if (std::cin.get() != '/') // make sure there is a slash between MM and YYYY
+	{
+		std::cout << "expected /\n";
+		return 1;
+	}
+	std::cin >> y; // read the year
+	std::cout << "input date: " << d << "/" << m << "/" << y << "\n";
+
 	return true;
 }
 
@@ -370,8 +478,43 @@ bool FE::QuickScansView() {
 	return true;
 
 }
+inline bool FE::AdvancedScanView() {
+	int filled_width = WINDOW_WIDTH * .08 * 2 + WINDOW_WIDTH * .075; // remaining width ofscreen after side menu
+	int delta = WINDOW_WIDTH - filled_width;
 
-bool FE::viewSwap() {
+	/* advanced scan header and text */
+	if (nk_begin(this->ctx, "Advanced Scan", nk_rect(300, WINDOW_HEIGHT * .06, 600, 300),
+		NK_WINDOW_TITLE | NK_WINDOW_NO_SCROLLBAR))
+	{
+		nk_layout_row_dynamic(this->ctx, 40, 1);
+		nk_label_wrap(this->ctx, "                                                        ");
+		nk_layout_row_dynamic(this->ctx, 120, 1);
+		nk_label_wrap(this->ctx, "This scan will allow you to choose where and when to scan!");
+	}
+	nk_end(this->ctx);
+
+	///* checkbox date switch */
+	//if (nk_begin(this->ctx, "Overview", nk_rect(600, 600, 400, 600), NK_WINDOW_DYNAMIC))
+	//{
+	//	char buf[65] = { 0 };
+	//	static const float ratio[] = { 120, 150 };
+	//	static int text_len;
+	//	char* text;
+	//	nk_layout_row(ctx, NK_STATIC, 25, 2, ratio);
+	//	nk_label(ctx, "Default:", NK_TEXT_LEFT);
+
+	//	nk_edit_string(ctx, NK_EDIT_SIMPLE, text, &text_len, 64, nk_filter_default);
+	//	nk_label(ctx, "Int:", NK_TEXT_LEFT);
+	//		
+
+	//}
+	//nk_end(this->ctx);
+	
+
+	return true;
+}
+
+inline bool FE::viewSwap() {
 	if (this->m_scanViews == 0) {
 		//fprintf(stdout, "we is in default scan view bruh\n");
 		NoScanView();
@@ -385,7 +528,8 @@ bool FE::viewSwap() {
 		QuickScansView();
 	}
 	else if (this->m_scanViews == 3) {
-		fprintf(stdout, "we is in advanced scan view bruh\n");
+		//fprintf(stdout, "we is in advanced scan view bruh\n");
+		AdvancedScanView();
 	}
 	else {
 		fprintf(stderr, "this shouldnt of happened, mr. freeman\n");
@@ -404,7 +548,7 @@ inline bool FE::DrawScansPage()
 		/* hidden button behind icon to press */
 		nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
 		if (nk_button_label(ctx, "")) {
-			fprintf(stdout, "back arrow\n");
+			//fprintf(stdout, "back arrow\n");
 			this->view = 0;
 			nk_clear(this->ctx);
 		}
@@ -461,12 +605,15 @@ inline bool FE::DrawScansPage()
 
 	return true;
 }
-
+DLGPROC Dlgproc;
 inline FE::FE(sf::Window *win) {
 	//// testing windows choose flder
 	//std::string path = BrowseFolder("");
 	//std::cout << path << std::endl;
 	
+	// testing inputdate
+	// this->dateInput();
+
 	// set view to logo pAGe
 	this->view = 0;
 	this->m_scanViews = 0;
