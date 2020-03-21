@@ -10,3 +10,6 @@
 **\.ipch
 **\.IPCH
 **\.icph
+**\*.obj
+**\*.db
+**\*.cvd
