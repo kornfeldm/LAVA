@@ -159,8 +159,7 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClInclude Include="FE.h" />
-    <ClInclude Include="lava_advancedScan.h" />
-    <ClInclude Include="lava_quarantine.h" />
+    <ClInclude Include="LavaScan.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
