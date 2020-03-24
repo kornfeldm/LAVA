@@ -27,7 +27,7 @@ int scanFile(std::string filePath, struct cl_engine* engine, struct cl_scan_opti
             printf("VIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!",filePath); //Infected file is in system folder
         }
         else {
-			quarantineFile(filePath); //Infected file is not in system folder
+            quarantineFile(filePath); //Infected file is not in system folder
         }
     }
     else {
