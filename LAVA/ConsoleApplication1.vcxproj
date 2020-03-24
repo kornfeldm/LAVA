@@ -162,10 +162,6 @@
     <ClInclude Include="lava_advancedScan.h" />
     <ClInclude Include="lava_quarantine.h" />
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="lava_advancedScan.h" />
-    <ClInclude Include="lava_quarantine.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
