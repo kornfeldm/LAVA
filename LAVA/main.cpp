@@ -25,6 +25,7 @@
 #include "dirent.h"
 #include "lava_quarantine.h"
 #include "lava_advancedScan.h"
+#include "LavaScan.h"
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -53,79 +54,17 @@
 
 int main()
 {
-    
 	std::cout << "Hello World!\n";
-
-	int fd, ret;
-    unsigned long int size = 0;
-    unsigned int sigs = 0;
-    long double mb;
-    const char* virname;
-    struct cl_engine* engine;
-
-    if ((ret = cl_init(CL_INIT_DEFAULT)) != CL_SUCCESS) { //Initializing clamav
-        printf("Can't initialize libclamav: %s\n", cl_strerror(ret));//returns the error name in case of error
-        return 2;
-    }
-    else {
-        printf("initialization successful\n");
-    }
-
-    if (!(engine = cl_engine_new())) { //Creating new engine instance
-        printf("Can't create new engine\n");
-        return 1;
-    }
-    else {
-        printf("ClamAV engine initialized\n");
-    }
-
-    printf("Inititalizing signature database...\n");
-    printf("Default database path: %s\n", cl_retdbdir());
 	
-    if ((ret = cl_load(cl_retdbdir(), engine, &sigs, CL_DB_STDOPT)) != CL_SUCCESS) { //Loads the database file from the default db folder
-        printf("Can't initialize signature database: %s\n", cl_strerror(ret)); //returns the error name in case of error
-        return 2;
-    }
-    else {
-        printf("Signature database initialization successful\n %u signatures loaded\n", sigs);
-    }
+	FE FrontEnd = FE();
 
-    if ((ret = cl_engine_compile(engine)) != CL_SUCCESS) { //Compiles the ClamAV engine
-        printf("cl_engine_compile() error: %s\n", cl_strerror(ret));//returns the error name in case of error
-        cl_engine_free(engine);
-        return 1;
-    }
-    else {
-        printf("ClamAV engine ready!");
-    }
-    //Declare the scan class to allow access to scan functions
-    LavaScan ls;
-    printf("\n\n Testing scanFile and scanDirectory functions:\n\n");
-    
-    //Testing scanFile function
-    struct cl_scan_options options;
-    options.general = CL_SCAN_GENERAL_ALLMATCHES;
-    //scanFile("C:/test/eicar.com.txt", engine, options);
-
-    //std::string AntibodyFileLocation = "C:\\test.LavaAnti";
-    ////Testing scanDirectory function
-    //bool clean = scanDirectory("C:\\Users\\tom\\Documents\\", engine, options, AntibodyFileLocation);
-    //if (clean) printf("Directory is not infected");
-    //else printf("Directory is not infected");
-
-    ////Testing quickScan function
-    //clean = quickScan(AntibodyFileLocation, engine, options);
-    //if (clean) printf("Directory is not infected");
-    //else printf("Directory is not infected");
-	
 	/* Platform */
 	sf::ContextSettings settings(24, 8, 4, 2, 2);
 	sf::Window win(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "LAVA", sf::Style::Close, settings);
 	win.setVerticalSyncEnabled(true);
 	win.setActive(true);
 	glViewport(0, 0, win.getSize().x, win.getSize().y);
-
-	FE FrontEnd = FE(&win);
+	FrontEnd.init(&win);
 
 	while (win.isOpen())
 	{

@@ -11,10 +11,6 @@
 // #include <fstream>
 // #include "clamav.h"
 
-class LavaScan{
-
-//Everything is public right now - we may to change some members to protected later
-public: 
 
     //int scanFile(std::string filePath, struct cl_engine* engine, struct cl_scan_options options);
     //bool scanDirectory(std::string dirPath, struct cl_engine* engine, struct cl_scan_options options);
@@ -129,5 +125,3 @@ public:
         iterateDirectory(dirPath, engine, options, clean);//call recursive helper funciton
         return clean; //returns false if infected and true if clean
     }
-
-};

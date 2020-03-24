@@ -205,12 +205,13 @@ struct pics {
 struct nk_command_buffer* canvas;
 struct nk_rect total_space;
 
-class FE
+class FE : public LavaScan
 {
 private:
 public:
 	/* CONSTRUCTORS */
-	FE(sf::Window *win);
+	bool init(sf::Window *win);
+	FE();
 
 	/* MEMBER VARS */
 	struct nk_context* ctx;
@@ -427,7 +428,8 @@ bool FE::CompleteScanView() {
 	{
 		nk_layout_row_static(ctx, 65, 400, 1);
 		if (nk_button_label(ctx, "")) {
-			fprintf(stdout, "do complete scan pressed\n");
+			//fprintf(stdout, "do complete scan pressed\n");
+			this->CompleteScan();
 			// scan in progress ... blah blah
 			nk_clear(this->ctx);
 		}
@@ -463,7 +465,8 @@ bool FE::QuickScansView() {
 	{
 		nk_layout_row_static(ctx, 65, 400, 1);
 		if (nk_button_label(ctx, "")) {
-			fprintf(stdout, "do quick scan pressed\n");
+			//fprintf(stdout, "do quick scan pressed\n");
+			this->QuickScan();
 			// scan in progress ... blah blah
 			nk_clear(this->ctx);
 		}
@@ -608,16 +611,8 @@ inline bool FE::DrawScansPage()
 
 	return true;
 }
-DLGPROC Dlgproc;
-inline FE::FE(sf::Window *win) {
-	//// testing windows choose flder
-	//std::string path = BrowseFolder("");
-	//std::cout << path << std::endl;
-	
-	// testing inputdate
-	// this->dateInput();
 
-	// set view to logo pAGe
+inline FE::FE() {
 	this->view = 0;
 	this->m_scanViews = 0;
 	/* INIT IMAGES */
@@ -629,14 +624,15 @@ inline FE::FE(sf::Window *win) {
 	this->pp.backArrow = "../Assets/back_arrow.png";
 	this->pp.chooseScan = "../Assets/chooseScan.png";
 	this->pp.triangleButton = "../Assets/triangle.png";
+}
 
+inline bool FE::init(sf::Window *win) {
 	glewExperimental = 1;
 	if (glewInit() != GLEW_OK) {
 		fprintf(stderr, "Failed to setup GLEW\n");
 		std::cout << glewGetErrorString(glewInit());
 		exit(1);
 	}
-
 	/* GUI */
 	//struct nk_context* ctx;
 	this->ctx = nk_sfml_init(win);
@@ -667,6 +663,8 @@ inline FE::FE(sf::Window *win) {
 	this->backArrow = this->icon_load(pp.backArrow);
 	this->chooseScan = this->icon_load(pp.chooseScan);
 	this->triangleLogo = this->icon_load(pp.triangleButton);
+
+	return true;
 }
 
 #endif
