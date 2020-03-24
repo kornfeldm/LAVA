@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <vector>
 #include "dirent.h"
+#include "lava_quarantine.h"
 #include "lava_advancedScan.h"
 
 #define NK_INCLUDE_FIXED_TYPES
