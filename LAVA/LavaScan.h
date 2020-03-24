@@ -6,6 +6,7 @@ class LavaScan
 {
 public:
 	// memburs
+	std::string AntibodyFileLocation = "C:\\test.LavaAnti";
 	int fd, ret;
 	unsigned long int size = 0;
 	unsigned int sigs = 0;
@@ -24,13 +25,15 @@ public:
 	void quarantineFile(std::string filepath);
 	bool removeQuarantinedFiles();
 	bool quarantineIsEmpty();
-	bool scanDirectory(std::string dirPath, struct cl_engine* engine, struct cl_scan_options options);
-	void iterateDirectory(std::string directory, struct cl_engine* engine,
-		struct cl_scan_options options, bool clean);
-	int scanFile(std::string filePath, struct cl_engine* engine, struct cl_scan_options options);
+	bool scanDirectory(std::string dirPath);
+	void iterateDirectory(std::string directory, bool clean);
+	int scanFile(std::string filePath);
+	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
+	std::vector<std::string> ReadAntibody(std::string antibodyfilelocation);
+
 };
 
-inline int LavaScan::scanFile(std::string filePath, struct cl_engine* engine, struct cl_scan_options options) {
+inline int LavaScan::scanFile(std::string filePath) {
 	const char* virname;
 	int ret = cl_scanfile(filePath.c_str(), &virname, NULL, engine, &options); //scanning file using clamAV
 	if (ret == CL_VIRUS) {
@@ -55,8 +58,7 @@ inline int LavaScan::scanFile(std::string filePath, struct cl_engine* engine, st
 	return ret; //returns scan output value: either CL_VIRUS, CL_CLEAN or CL_ERROR
 }
 
-inline void LavaScan::iterateDirectory(std::string directory, struct cl_engine* engine,
-	struct cl_scan_options options, bool clean)
+inline void LavaScan::iterateDirectory(std::string directory, bool clean)
 {
 	//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
 
@@ -94,7 +96,7 @@ inline void LavaScan::iterateDirectory(std::string directory, struct cl_engine* 
 				std::string newDirectory = directory + item->d_name + "\\";
 
 				//std::cout << newDirectory << "\n";
-				iterateDirectory(newDirectory, engine, options, clean);
+				iterateDirectory(newDirectory, clean);
 				//CHECK FOR USER CANCEL GOES HERE
 				//closedir(directory)
 				//return
@@ -107,7 +109,7 @@ inline void LavaScan::iterateDirectory(std::string directory, struct cl_engine* 
 				std::cout << filePath << "\n";
 				//scan the file using clamAV
 
-				if (scanFile(filePath, engine, options) == CL_VIRUS) {
+				if (scanFile(filePath) == CL_VIRUS) {
 					clean = false; //File in direcotry is infected
 				}
 				//CHECK FOR USER CANCEL GOES HERE
@@ -124,22 +126,113 @@ inline void LavaScan::iterateDirectory(std::string directory, struct cl_engine* 
 	closedir(dir);
 }
 
-inline bool LavaScan::scanDirectory(std::string dirPath, struct cl_engine* engine, struct cl_scan_options options) {
-	bool clean = true; //Setting directory as clean
-	struct dirent* item;
-	const char* location = dirPath.c_str();
-	DIR* dir = opendir(location);
+//Read each line in the specified file and output a string vector containing each directory
+inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilelocation)
+{
+	std::vector<std::string> directorylist;
+	std::ifstream antibody;
+	std::string listedirectory;
+	antibody.open(antibodyfilelocation);
+	if (antibody.is_open())
+	{
+		while (!antibody.eof())
+		{
+			getline(antibody, listedirectory);
+			directorylist.push_back(listedirectory);
+			std::cout << listedirectory << "\n";
+		}
+		antibody.close();
+		return directorylist;
+	}
+	else
+	{
+		//Error opening file
+	}
+	return directorylist;
+}
 
-	if (dir == NULL) { //checks if directory exists
-		printf("Directory does not exist!");
-		closedir(dir); //closes directory and leaves the function
-		return true;
+//Write new directories to the antibody file. Parameters are <vector containting strings of diretories>, path to antibody file
+void WriteAntibody(std::vector<std::string> directorylist, std::string antibodyfilelocation)
+{
+	std::ofstream antibody;
+	antibody.open(antibodyfilelocation);
+	if (antibody.is_open())
+	{
+		for (int i = 0; i < directorylist.size(); i++)
+		{
+			antibody << directorylist[i] << std::endl;
+		}
+		antibody.close();
+	}
+}
+
+//Check if a directory is in the antibody file. Add it if it isn't.
+//Ignore it if it's a subdirectory.
+//Replace any subdirectories
+inline void LavaScan::AddToAntibody(std::string dirPath, std::string antibodyfilelocation)
+{
+	std::vector<std::string> existing = ReadAntibody(antibodyfilelocation);
+	bool newDirectory = true;
+	int replace = 0;
+	for (int i = 0; i < existing.size(); i++)
+	{
+		if (strstr(existing[i].c_str(), dirPath.c_str()) != NULL)
+		{
+			newDirectory = false;
+		}
+		if (strstr(dirPath.c_str(), existing[i].c_str()) != NULL)
+		{
+			existing[i] = dirPath;
+		}
+	}
+	//Check for duplicates --This code should be tested more, it's just a temporary fix.
+	for (int i = 0; i < existing.size(); i++)
+	{
+		for (int j = 0; j < existing.size(); j++)
+		{
+			if (existing[i] == existing[j])
+			{
+				existing.erase(existing.begin() + i);
+			}
+		}
 	}
 
-	closedir(dir);
+	if (newDirectory == true)
+	{
+		std::vector<std::string> directoryToAdd;
+		directoryToAdd.push_back(dirPath);
+		WriteAntibody(directoryToAdd, antibodyfilelocation);
+	}
+	remove(antibodyfilelocation.c_str());
+	WriteAntibody(existing, antibodyfilelocation);
+}
 
-	iterateDirectory(dirPath, engine, options, clean);//call recursive helper funciton
-	return clean; //returns false if infected and true if clean
+inline bool LavaScan::scanDirectory(std::string dirPath) {
+	bool clean = true; //Setting directory as clean
+	int mode = 0; //Setting initial mode to 0
+	bool cancel = false; //A cancel variable in case the user wants to cancel the scan
+	iterateDirectory(dirPath, clean);//call recursive helper funciton
+	//if (cancel == true) printf("User canceled scan");
+	//return clean; //returns false if infected and true if clean
+	return true;
+}
+
+//The engine and options are just passed through to the directory scanner.
+//The first parameter is a path the the antibody file
+inline bool LavaScan::QuickScan()
+{
+	//Keeps track of if malware is detected and where
+	bool clean = true;
+	//Read from the file
+	std::vector<std::string> directorylist = ReadAntibody(this->AntibodyFileLocation);
+	//For each directory:
+	for (int i = 0; i < directorylist.size(); i++)
+	{
+		//Scan it
+		clean = scanDirectory(directorylist[i]);
+
+	}
+	return clean;
 }
 
 inline bool LavaScan::quarantineIsEmpty() { //checks whether quarantined file is empty
@@ -202,23 +295,23 @@ inline bool LavaScan::CompleteScan() {
 	// for now just scan c$
 	//   later get func to get drive letters
 	const char* dirs = "C:\\";
-	return this->scanDirectory(dirs, this->engine, this->options);
+	return this->scanDirectory(dirs);
 }
 
-inline bool LavaScan::QuickScan() {
-	// for now just scan docs and downloads 
-	//return this->scanDirectory(dirs, this->engine, this->options);
-	TCHAR my_profile[MAX_PATH];
-	SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, my_profile);
-	//std::wcout << "\nscanning " << my_profile << " and \n" << my_profile << "\\..\\Downloads\\\n";
-	char home[MAX_PATH];
-	wcstombs(home, my_profile, MAX_PATH);
-	// convert to string..
-	std::string s_home = std::string(home); std::string docs = s_home + "\\Documents"; std::string dl = s_home + "\\Downloads";
-	scanDirectory(docs, this->engine, this->options);
-	scanDirectory(dl, this->engine, this->options);
-	return true;
-}
+//inline bool LavaScan::QuickScan() {
+//	// for now just scan docs and downloads 
+//	//return this->scanDirectory(dirs, this->engine, this->options);
+//	TCHAR my_profile[MAX_PATH];
+//	SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, my_profile);
+//	//std::wcout << "\nscanning " << my_profile << " and \n" << my_profile << "\\..\\Downloads\\\n";
+//	char home[MAX_PATH];
+//	wcstombs(home, my_profile, MAX_PATH);
+//	// convert to string..
+//	std::string s_home = std::string(home); std::string docs = s_home + "\\Documents"; std::string dl = s_home + "\\Downloads";
+//	scanDirectory(docs, this->engine, this->options);
+//	scanDirectory(dl, this->engine, this->options);
+//	return true;
+//}
 
 inline LavaScan::LavaScan() {
 
