@@ -31,3 +31,6 @@ LAVA/x64/Debug/LAVA.pdb
 LAVA/x64/Debug/main.obj
 LAVA/x64/Debug/
 LAVA/.vs/LAVA/v16/Browse.VC.db
+LAVA/.vs/**
+LAVA/.vs/
+LAVA/.vs/*
