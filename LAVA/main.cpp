@@ -53,6 +53,7 @@
 
 int main()
 {
+    
 	std::cout << "Hello World!\n";
 
 	int fd, ret;
@@ -97,7 +98,8 @@ int main()
     else {
         printf("ClamAV engine ready!");
     }
-
+    //Declare the scan class to allow access to scan functions
+    LavaScan ls;
     printf("\n\n Testing scanFile and scanDirectory functions:\n\n");
     
     //Testing scanFile function

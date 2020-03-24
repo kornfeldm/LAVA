@@ -11,12 +11,13 @@
 // #include <fstream>
 // #include "clamav.h"
 
-class LavaScan
-{
+class LavaScan{
+
+//Everything is public right now - we may to change some members to protected later
+public: 
 
     //int scanFile(std::string filePath, struct cl_engine* engine, struct cl_scan_options options);
     //bool scanDirectory(std::string dirPath, struct cl_engine* engine, struct cl_scan_options options);
-
     int scanFile(std::string filePath, struct cl_engine* engine, struct cl_scan_options options) {
         const char* virname;
         int ret = cl_scanfile(filePath.c_str(), &virname, NULL, engine, &options); //scanning file using clamAV
