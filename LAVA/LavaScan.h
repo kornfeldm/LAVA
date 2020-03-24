@@ -1,7 +1,7 @@
 #pragma once
 #ifndef LAVASCAN_H
 #define LAVASCAN_H
-
+#pragma warning(disable : 4996) //_CRT_SECURE_NO_WARNINGS
 class LavaScan
 {
 public:
@@ -201,8 +201,23 @@ inline bool LavaScan::removeQuarantinedFiles() { //returns false if errors occur
 inline bool LavaScan::CompleteScan() {
 	// for now just scan c$
 	//   later get func to get drive letters
-	const char* dirs = "c$";
-	this->scanDirectory(dirs, this->engine, this->options);
+	const char* dirs = "C:\\";
+	return this->scanDirectory(dirs, this->engine, this->options);
+}
+
+inline bool LavaScan::QuickScan() {
+	// for now just scan docs and downloads 
+	//return this->scanDirectory(dirs, this->engine, this->options);
+	TCHAR my_profile[MAX_PATH];
+	SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, my_profile);
+	//std::wcout << "\nscanning " << my_profile << " and \n" << my_profile << "\\..\\Downloads\\\n";
+	char home[MAX_PATH];
+	wcstombs(home, my_profile, MAX_PATH);
+	// convert to string..
+	std::string s_home = std::string(home); std::string docs = s_home + "\\Documents"; std::string dl = s_home + "\\Downloads";
+	scanDirectory(docs, this->engine, this->options);
+	scanDirectory(dl, this->engine, this->options);
+	return true;
 }
 
 inline LavaScan::LavaScan() {

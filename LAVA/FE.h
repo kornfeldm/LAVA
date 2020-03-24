@@ -428,7 +428,8 @@ bool FE::CompleteScanView() {
 	{
 		nk_layout_row_static(ctx, 65, 400, 1);
 		if (nk_button_label(ctx, "")) {
-			fprintf(stdout, "do complete scan pressed\n");
+			//fprintf(stdout, "do complete scan pressed\n");
+			this->CompleteScan();
 			// scan in progress ... blah blah
 			nk_clear(this->ctx);
 		}
@@ -464,7 +465,8 @@ bool FE::QuickScansView() {
 	{
 		nk_layout_row_static(ctx, 65, 400, 1);
 		if (nk_button_label(ctx, "")) {
-			fprintf(stdout, "do quick scan pressed\n");
+			//fprintf(stdout, "do quick scan pressed\n");
+			this->QuickScan();
 			// scan in progress ... blah blah
 			nk_clear(this->ctx);
 		}
