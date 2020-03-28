@@ -21,7 +21,7 @@ public:
 	bool QuickScan();
 	bool AdvanceScanNow(std::set<std::string> s);
 
-	void eicarTest(std::string path="C:/test/eicar.com.txt");
+	void eicarTest(std::string path="C:\\test\\eicar.com.txt");
 	void printQuarantineContents();
 	void quarantineFile(std::string filepath);
 	bool removeQuarantinedFiles();
@@ -248,20 +248,21 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 {
 	// set ss is the set of shit we are gonna scan...simple foreach loop for now
 	for (auto path : ss) {
+		//std::cout << "\t" << path << ".\n";
 		struct stat s;
 		if (stat(path.c_str(), &s) == 0)
-		{
-			path = replace(path, "\\", "\\\\");
-			
+		{	
 			if (s.st_mode & S_IFDIR)
 			{
 				//it's a directory, use scandir
-				scanDirectory(path);
+				//std::cout << path << " is a directory.";
+				scanDirectory(std::string(path+"\\"));
 			}
 			else if (s.st_mode & S_IFREG)
 			{
 				//it's a file, use scanfile
-				scanFile(path);
+				//std::cout << path << " is a file.";
+				scanFile(path.c_str());
 			}
 			else
 			{

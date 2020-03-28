@@ -70,7 +70,6 @@ int main()
 	win.setActive(true);
 	glViewport(0, 0, win.getSize().x, win.getSize().y);
 	FrontEnd.init(&win);
-	FrontEnd.eicarTest();
 
 	while (win.isOpen())
 	{
