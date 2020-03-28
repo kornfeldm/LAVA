@@ -17,6 +17,7 @@
 #include <io.h>
 #include <limits.h>
 #include <math.h>
+#include <regex>
 #include <set>
 #include <sstream>
 #include <stdarg.h>
@@ -69,6 +70,7 @@ int main()
 	win.setActive(true);
 	glViewport(0, 0, win.getSize().x, win.getSize().y);
 	FrontEnd.init(&win);
+	FrontEnd.eicarTest();
 
 	while (win.isOpen())
 	{

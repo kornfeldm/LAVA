@@ -320,7 +320,7 @@ inline bool FE::DrawMainPage()
 		// hidden button to press behind icon
 		nk_layout_row_static(ctx, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3, 1);
 		if (nk_button_label(ctx, "")) {
-			fprintf(stdout, "scans pressed\n");
+			//fprintf(stdout, "scans pressed\n");
 			this->view = 1; // scans page
 			this->m_scanViews = 0; // choose a scan sub view
 			nk_clear(this->ctx);
@@ -501,18 +501,54 @@ inline bool FE::AdvancedScanView() {
 	nk_end(this->ctx);
 
 	/* add folders/files button */
-	struct nk_rect scanButton = nk_rect(delta * .85, WINDOW_HEIGHT * .85, 330, 50);
-	if (nk_begin(this->ctx, "add folders", scanButton, NK_WINDOW_NO_SCROLLBAR))
+	struct nk_rect AddFoF = nk_rect(WINDOW_WIDTH - delta+10, WINDOW_HEIGHT * .235+405, 330, 50);
+	if (nk_begin(this->ctx, "add folders", AddFoF, NK_WINDOW_NO_SCROLLBAR))
 	{
-		nk_layout_row_static(ctx, 65, 6000, 1);
+		nk_layout_row_static(ctx, 65, AddFoF.w, 1);
 		if (nk_button_label(ctx, "")) {
 			// openfolderdiag
 			MultiFolderSelect(GetActiveWindow(), TEXT("SELECT SOME FILES/FOLDERS"));
 			nk_clear(this->ctx);
 		}
 		// draw txt 
-		struct nk_rect textArea = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
-		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, " Add Files/Dirs ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		struct nk_rect textArea = nk_rect(AddFoF.x, AddFoF.y, AddFoF.w, AddFoF.h);
+		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, "  Add Files/Dirs ", 17, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		// draw triangle
+		//this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 240, textArea.y, textArea.w - 220, textArea.h));
+	}
+	nk_end(this->ctx);
+
+	/* adv scan now */
+	struct nk_rect scanButton = nk_rect(AddFoF.x+125, AddFoF.y+75, 300, 50);
+	if (nk_begin(this->ctx, "advscannow", scanButton, NK_WINDOW_NO_SCROLLBAR))
+	{
+		nk_layout_row_static(ctx, 65, scanButton.w, 1);
+		if (nk_button_label(ctx, "")) {
+			// run adv scan now
+			if (advancedScanPaths.size() > 0)
+				AdvanceScanNow(advancedScanPaths);
+			nk_clear(this->ctx);
+		}
+		// draw txt 
+		struct nk_rect textArea2 = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
+		nk_draw_text(nk_window_get_canvas(this->ctx), textArea2, "  Adv. Scan Now ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		// draw triangle
+		//this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 240, textArea.y, textArea.w - 220, textArea.h));
+	}
+	nk_end(this->ctx);
+
+	/* adv scan LATER */
+	struct nk_rect scanButtonLater = nk_rect(scanButton.x+scanButton.w+50, scanButton.y, scanButton.w, 50);
+	if (nk_begin(this->ctx, "advscannl8r", scanButtonLater, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_MOVABLE))
+	{
+		nk_layout_row_static(ctx, 65, scanButtonLater.w, 1);
+		if (nk_button_label(ctx, "")) {
+			// run adv scan l8r
+			nk_clear(this->ctx);
+		}
+		// draw txt 
+		struct nk_rect textArea3 = nk_rect(scanButtonLater.x, scanButtonLater.y, scanButtonLater.w, scanButtonLater.h);
+		nk_draw_text(nk_window_get_canvas(this->ctx), textArea3, "  Schedule Scan ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 		// draw triangle
 		//this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 240, textArea.y, textArea.w - 220, textArea.h));
 	}

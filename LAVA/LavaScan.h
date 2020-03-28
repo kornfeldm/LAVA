@@ -19,8 +19,9 @@ public:
 	/* scans */
 	bool CompleteScan();
 	bool QuickScan();
-	bool AdvanceScan();
+	bool AdvanceScanNow(std::set<std::string> s);
 
+	void eicarTest(std::string path="C:/test/eicar.com.txt");
 	void printQuarantineContents();
 	void quarantineFile(std::string filepath);
 	bool removeQuarantinedFiles();
@@ -235,10 +236,58 @@ inline bool LavaScan::QuickScan()
 	return clean;
 }
 
+std::string& replace(std::string& s, const std::string& from, const std::string& to)
+{
+	if (!from.empty())
+		for (size_t pos = 0; (pos = s.find(from, pos)) != std::string::npos; pos += to.size())
+			s.replace(pos, from.size(), to);
+	return s;
+}
+
+inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
+{
+	// set ss is the set of shit we are gonna scan...simple foreach loop for now
+	for (auto path : ss) {
+		struct stat s;
+		if (stat(path.c_str(), &s) == 0)
+		{
+			path = replace(path, "\\", "\\\\");
+			
+			if (s.st_mode & S_IFDIR)
+			{
+				//it's a directory, use scandir
+				scanDirectory(path);
+			}
+			else if (s.st_mode & S_IFREG)
+			{
+				//it's a file, use scanfile
+				scanFile(path);
+			}
+			else
+			{
+				//something else
+				std::cout<<"\n ok wtf is this\n";
+			}
+		}
+		else
+		{
+			//error
+			return false;
+		}
+	}
+	return true;
+}
+
 inline bool LavaScan::quarantineIsEmpty() { //checks whether quarantined file is empty
 	std::fstream q_file;
 	q_file.open("quarantine.lava", std::ios::in | std::ios::out);
 	return q_file.peek() == std::ifstream::traits_type::eof();
+}
+
+inline void LavaScan::eicarTest(std::string path)
+{
+	scanFile(path);
+	return;
 }
 
 inline void LavaScan::printQuarantineContents() { //prints the contents of the quarantine file
@@ -334,13 +383,13 @@ inline LavaScan::LavaScan() {
 	printf("Inititalizing signature database...\n");
 	printf("Default database path: %s\n", cl_retdbdir());
 
-	//if ((ret = cl_load(cl_retdbdir(), engine, &sigs, CL_DB_STDOPT)) != CL_SUCCESS) { //Loads the database file from the default db folder
-	//	printf("Can't initialize signature database: %s\n", cl_strerror(ret)); //returns the error name in case of error
-	//	exit(2);
-	//}
-	//else {
-	//	printf("Signature database initialization successful\n %usignatures loaded\n", sigs);
-	//}
+	if ((ret = cl_load(cl_retdbdir(), engine, &sigs, CL_DB_STDOPT)) != CL_SUCCESS) { //Loads the database file from the default db folder
+		printf("Can't initialize signature database: %s\n", cl_strerror(ret)); //returns the error name in case of error
+		exit(2);
+	}
+	else {
+		printf("Signature database initialization successful\n %u Signatures loaded\n", sigs);
+	}
 
 	if ((ret = cl_engine_compile(engine)) != CL_SUCCESS) { //Compiles the ClamAV engine
 		printf("cl_engine_compile() error: %s\n", cl_strerror(ret));//returns the error name in case of error
