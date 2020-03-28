@@ -334,13 +334,13 @@ inline LavaScan::LavaScan() {
 	printf("Inititalizing signature database...\n");
 	printf("Default database path: %s\n", cl_retdbdir());
 
-	if ((ret = cl_load(cl_retdbdir(), engine, &sigs, CL_DB_STDOPT)) != CL_SUCCESS) { //Loads the database file from the default db folder
-		printf("Can't initialize signature database: %s\n", cl_strerror(ret)); //returns the error name in case of error
-		exit(2);
-	}
-	else {
-		printf("Signature database initialization successful\n %u signatures loaded\n", sigs);
-	}
+	//if ((ret = cl_load(cl_retdbdir(), engine, &sigs, CL_DB_STDOPT)) != CL_SUCCESS) { //Loads the database file from the default db folder
+	//	printf("Can't initialize signature database: %s\n", cl_strerror(ret)); //returns the error name in case of error
+	//	exit(2);
+	//}
+	//else {
+	//	printf("Signature database initialization successful\n %usignatures loaded\n", sigs);
+	//}
 
 	if ((ret = cl_engine_compile(engine)) != CL_SUCCESS) { //Compiles the ClamAV engine
 		printf("cl_engine_compile() error: %s\n", cl_strerror(ret));//returns the error name in case of error
