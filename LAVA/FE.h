@@ -4,6 +4,7 @@
 struct nk_command_buffer* canvas;
 struct nk_rect total_space;
 std::set<std::string> advancedScanPaths;
+#define DEFAULT_FONT_SIZE 28
 //#define NK_INCLUDE_FIXED_TYPES
 //#define NK_INCLUDE_STANDARD_IO
 //#define NK_INCLUDE_STANDARD_VARARGS
@@ -175,7 +176,9 @@ public:
 	struct nk_command_buffer* canvas;
 	// font stuff
 	struct nk_font_atlas* atlas;
+	struct nk_font_atlas* atlas2;
 	struct nk_font* font;
+	struct nk_font* font2;
 	const char* font_path = "../Assets/font.ttf";
 	//struct nk_font_config* fontCFG;// can be null so commenting out for mem
 	struct nk_colorf bg;
@@ -230,6 +233,7 @@ public:
 	static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData);
 	UINT MultiFolderSelect(HWND hWnd, LPCTSTR szTitle);*/
 	void UIPrintSet(std::set<std::string> s);
+	bool ChangeFontSize(float s); //s is size, default is 28.
 };
 inline struct nk_image FE::icon_load(const char* filename, bool flip)
 {
@@ -343,7 +347,7 @@ inline bool FE::DrawMainPage()
 		// hidden button behind icon to press
 		nk_layout_row_static(ctx, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3, 1);
 		if (nk_button_label(ctx, "")) {
-			fprintf(stdout, "history pressed\n");
+			//fprintf(stdout, "history pressed\n");
 			this->view = 2;
 			nk_clear(this->ctx);
 		}
@@ -498,7 +502,7 @@ inline bool FE::AdvancedScanView() {
 	struct nk_list_view view; view.count = 2; 
 	if (nk_begin(this->ctx, "Selected Files/Folders...", nk_rect(WINDOW_WIDTH - delta + 20, WINDOW_HEIGHT * .235, delta-40, 400), NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_DYNAMIC ))
 	{
-		int h = advancedScanPaths.size() * 28 + 28;
+		int h = advancedScanPaths.size() * DEFAULT_FONT_SIZE + DEFAULT_FONT_SIZE;
 		if (h < 400) { h = 400; }
 		nk_layout_row_dynamic(ctx, h, 1);
 		if (nk_list_view_begin(ctx, &view, "test", NK_WINDOW_BORDER, 25, 2)) {
@@ -575,7 +579,50 @@ inline bool FE::AdvancedScanView() {
 
 inline bool FE::DrawHistoryPage()
 {
-	return false;
+	/* BACK ARROW ICON */
+	struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
+	struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
+	if (nk_begin(this->ctx, "barrow", backArrowAndText,
+		NK_WINDOW_NO_SCROLLBAR)) {
+
+		/* hidden button behind icon to press */
+		nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
+		if (nk_button_label(ctx, "")) {
+			//fprintf(stdout, "back arrow\n");
+			this->view = 0;
+			advancedScanPaths.clear();
+			nk_clear(this->ctx);
+		}
+		this->drawImageSubRect(&this->backArrow, &bar);
+		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+
+	/* lava logo */
+	if (nk_begin(this->ctx, "scan", nk_rect(WINDOW_WIDTH*.5-95-95,5,95,95),
+		NK_WINDOW_NO_SCROLLBAR)) {
+		this->drawImage(&this->squareImage);
+	}
+	nk_end(this->ctx);
+
+	/* LAVA HISTORY TEXT */
+	nk_style_set_font(this->ctx, &this->font2->handle);
+	struct nk_rect historyscantxt = nk_rect(WINDOW_WIDTH*.5-95+5,5,375,95);
+	if (nk_begin(this->ctx, "historytextlogo", historyscantxt, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_draw_text(nk_window_get_canvas(this->ctx), historyscantxt, " HISTORY", 8, &this->font2->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+	nk_style_set_font(this->ctx, &this->font->handle);
+
+	/* LAVA ACTUAL HISTORY SECTION */
+	struct nk_rect scanshistory = nk_rect(0,0,0,0);
+	if (nk_begin(this->ctx, "scanhistory", scanshistory, NK_WINDOW_NO_SCROLLBAR)) {
+		//nk_draw_text(nk_window_get_canvas(this->ctx), historyscantxt, " HISTORY", 8, &this->font2->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+
+
+	return true;
 }
 
 inline bool FE::DrawInProgressScan()
@@ -786,6 +833,20 @@ inline void FE::UIPrintSet(std::set<std::string> s)
 
 }
 
+inline bool FE::ChangeFontSize(float s = 28) {
+
+	{//struct nk_font_atlas* atlas;
+		nk_sfml_font_stash_begin(&this->atlas);
+		//this->font = nk_font_atlas_add_from_file(this->atlas, this->font_path, 18, NULL);
+		struct nk_font* droid = nk_font_atlas_add_from_file(atlas, "../Assets/font.ttf", s, 0);
+		nk_sfml_font_stash_end();
+		nk_style_set_font(this->ctx, &droid->handle);
+		//nk_init_default(this->ctx, &font->handle);
+	}
+
+	return true;
+}
+
 inline bool FE::init(sf::Window *win) {
 	glewExperimental = 1;
 	if (glewInit() != GLEW_OK) {
@@ -796,13 +857,19 @@ inline bool FE::init(sf::Window *win) {
 	/* GUI */
 	//struct nk_context* ctx;
 	this->ctx = nk_sfml_init(win);
-	/* set font shit--kinda confused by nuklear api on this one chiefton */
+	// ihstory header font
+	{
+		nk_sfml_font_stash_begin(&this->atlas2);
+		this->font2 = nk_font_atlas_add_from_file(this->atlas2, "../Assets/font.ttf", 95, 0);
+		nk_sfml_font_stash_end();
+	}
+
 	{//struct nk_font_atlas* atlas;
 		nk_sfml_font_stash_begin(&this->atlas);
 		//this->font = nk_font_atlas_add_from_file(this->atlas, this->font_path, 18, NULL);
-		struct nk_font* droid = nk_font_atlas_add_from_file(atlas, "../Assets/font.ttf", 28, 0);
+		this->font= nk_font_atlas_add_from_file(this->atlas, "../Assets/font.ttf", DEFAULT_FONT_SIZE, 0);
 		nk_sfml_font_stash_end();
-		nk_style_set_font(this->ctx, &droid->handle);
+		nk_style_set_font(this->ctx, &this->font->handle);
 		//nk_init_default(this->ctx, &font->handle);
 	}
 
