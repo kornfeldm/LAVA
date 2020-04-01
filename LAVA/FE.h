@@ -191,12 +191,16 @@ public:
 	struct nk_image backArrow;
 	struct nk_image chooseScan;
 	struct nk_image triangleLogo;
+	std::string currentScanGoing;
+	std::queue<int> scanTasks;
+	int maxfiles=0;
 	// view screen switch. view ScanViews scanview member for furthger info
 	unsigned int view;
 	/*
 		0 : logo screen
 		1 : scans screen
 		2 : history screen
+		3 : Scan in Progress!
 	*/
 	unsigned int m_scanViews;
 	/*
@@ -219,6 +223,8 @@ public:
 	bool viewSwap();
 	bool QuickScansView();
 	bool AdvancedScanView();
+	bool DrawHistoryPage();
+	bool DrawInProgressScan();
 	bool printset(std::set<std::string> s);
 	/*static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData);
@@ -292,16 +298,18 @@ inline bool FE::drawImageSubRect(struct nk_image* img, struct nk_rect *r)
 }
 
 inline bool FE::Display() {
-	if (this->view == 0) {
+	if (this->view == 0) { // logo page
 		this->DrawMainPage();
 		advancedScanPaths.clear();
 	}
-	else if (this->view == 1)
+	else if (this->view == 1) // scan page
 		this->DrawScansPage();
-
-	else {
+	else if (this->view == 2) // history page
+		this->DrawHistoryPage();
+	else if (this->view == 3) // in-prog scan page
+		this->DrawInProgressScan();
+	else
 		std::cout << "ERRRRRRORRRRR\n";
-	}
 	return true;
 }
 
@@ -393,8 +401,10 @@ bool FE::CompleteScanView() {
 		nk_layout_row_static(ctx, 65, 400, 1);
 		if (nk_button_label(ctx, "")) {
 			//fprintf(stdout, "do complete scan pressed\n");
-			this->CompleteScan();
-			// scan in progress ... blah blah
+			this->currentScanGoing = "Complete Scan";
+			this->view = 3;
+			//this->CompleteScan();
+			this->scanTasks.push(1);
 			nk_clear(this->ctx);
 		}
 	    // draw txt 
@@ -430,8 +440,10 @@ bool FE::QuickScansView() {
 		nk_layout_row_static(ctx, 65, 400, 1);
 		if (nk_button_label(ctx, "")) {
 			//fprintf(stdout, "do quick scan pressed\n");
-			this->QuickScan();
-			// scan in progress ... blah blah
+			this->currentScanGoing = "Quick Scan";
+			this->view = 3;
+			//this->QuickScan();
+			this->scanTasks.push(2);
 			nk_clear(this->ctx);
 		}
 		// draw txt 
@@ -525,8 +537,12 @@ inline bool FE::AdvancedScanView() {
 		nk_layout_row_static(ctx, 65, scanButton.w, 1);
 		if (nk_button_label(ctx, "")) {
 			// run adv scan now
-			if (advancedScanPaths.size() > 0)
-				AdvanceScanNow(advancedScanPaths);
+			if (advancedScanPaths.size() > 0) {
+				this->currentScanGoing = "Advanced Scan";
+				this->view = 3;
+				//this->AdvanceScanNow(advancedScanPaths);
+				this->scanTasks.push(3);
+			}
 			nk_clear(this->ctx);
 		}
 		// draw txt 
@@ -553,6 +569,92 @@ inline bool FE::AdvancedScanView() {
 		//this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 240, textArea.y, textArea.w - 220, textArea.h));
 	}
 	nk_end(this->ctx);
+
+	return true;
+}
+
+inline bool FE::DrawHistoryPage()
+{
+	return false;
+}
+
+inline bool FE::DrawInProgressScan()
+{
+	//std::cout << "\n\t cf : " << CurrentScanFile;
+	// grab the top task ,if exists
+	if (!this->scanTasks.empty()) {
+		this->maxfiles = 0;
+		std::thread t1([this]() {
+			int scan = this->scanTasks.front();
+			scanTasks.pop();
+			switch (scan) {
+			case 1: //complete
+				//this->maxfiles = this->FileCount("C:\\");
+				this->CompleteScan();
+				break;
+			case 2: //quick
+				//this->maxfiles = this->TotalSetFileCount(this->countQuarantineContents());
+				this->QuickScan();
+				break;
+			case 3: //adv
+				break;
+				//this->maxfiles = this->TotalSetFileCount(advancedScanPaths);
+				this->AdvanceScanNow(advancedScanPaths);
+			default:
+				break;
+			}
+		});
+		t1.detach();
+	}
+
+
+	/* LOGO */
+	struct nk_rect traplogo = nk_rect(WINDOW_WIDTH * .22, WINDOW_HEIGHT * .08, WINDOW_WIDTH * .56, WINDOW_HEIGHT * .28);
+	if (nk_begin(this->ctx, "lavalogo", traplogo,
+		NK_WINDOW_NO_SCROLLBAR)) {
+		this->drawImage(&this->trapImage);
+	}
+	nk_end(this->ctx);
+
+	/* SCAN TYPE TEXT */
+	if (nk_begin(this->ctx, "type", nk_rect(traplogo.x, traplogo.y+25+traplogo.h, 600, 50),
+		NK_WINDOW_NO_SCROLLBAR))
+	{
+		nk_layout_row_dynamic(this->ctx, 120, 1);
+		nk_label_wrap(this->ctx, std::string("Scan Type : "+this->currentScanGoing).c_str());
+	}
+	nk_end(this->ctx);
+
+	/* Current scanning items TEXT */
+	if (nk_begin(this->ctx, "currentscanfile", nk_rect(traplogo.x, traplogo.y + 25 + traplogo.h+75, 800, 150),
+		NK_WINDOW_DYNAMIC| NK_WINDOW_MOVABLE))
+	{
+		nk_layout_row_dynamic(this->ctx, 150, 1);
+		// const char* fn = CurrentScanFile.c_str();
+		auto f = std::string("file: ").append(CurrentScanFile);
+		const char* fn = f.c_str();
+		//std::cout << "file: " << fn;
+		nk_label_wrap(this->ctx, fn);
+	}
+	nk_end(this->ctx);
+
+	///* prog bbar */
+	///* Current scanning items TEXT */
+	//if (nk_begin(this->ctx, "progbar", nk_rect(traplogo.x, traplogo.y+275+traplogo.h, traplogo.w, 50),
+	//	NK_WINDOW_DYNAMIC | NK_WINDOW_MOVABLE))
+	//{
+	//	nk_size currentValue = this->CurrentScanCount;
+	//	nk_size maxValue = this->maxfiles;
+	//	nk_modify modifyable = NK_FIXED;
+	//	if (nk_progress(ctx, &currentValue, maxValue, modifyable))
+	//	{
+	//		nk_draw_progress(this->canvas, modifyable,
+	//			NULL, NULL,
+	//			NULL, currentValue, maxValue);
+	//		
+	//	}
+	//}
+	//nk_end(this->ctx);
 
 	return true;
 }
@@ -662,6 +764,7 @@ inline bool FE::DrawScansPage()
 }
 
 inline FE::FE() {
+	currentScanGoing = "";
 	this->view = 0;
 	this->m_scanViews = 0;
 	/* INIT IMAGES */
@@ -738,7 +841,7 @@ inline bool FE::init(sf::Window *win) {
 	this->backArrow = this->icon_load(pp.backArrow);
 	this->chooseScan = this->icon_load(pp.chooseScan);
 	this->triangleLogo = this->icon_load(pp.triangleButton);
-
+	this->trapImage = this->icon_load(pp.trapLogo);
 	return true;
 }
 

@@ -2,12 +2,13 @@
 #ifndef LAVASCAN_H
 #define LAVASCAN_H
 #pragma warning(disable : 4996) //_CRT_SECURE_NO_WARNINGS
+extern std::string CurrentScanFile = std::string("");
 class LavaScan
 {
 public:
 	// memburs
 	std::string AntibodyFileLocation = "C:\\test.LavaAnti";
-	int fd, ret;
+	int fd, ret, CurrentScanCount;
 	unsigned long int size = 0;
 	unsigned int sigs = 0;
 	long double mb;
@@ -31,17 +32,25 @@ public:
 	int scanFile(std::string filePath);
 	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
 	std::vector<std::string> ReadAntibody(std::string antibodyfilelocation);
+	int FileCount(std::string dirPath);
+	int TotalSetFileCount(std::set<std::string> p);
+	std::set<std::string> countQuarantineContents();
 
 };
 
 inline int LavaScan::scanFile(std::string filePath) {
+	// update scan count
+	CurrentScanCount++;
+	// update current scan dir for GUI
+	CurrentScanFile = filePath;
+	//std::cout << "\n\tfile:" << filePath;
 	const char* virname;
 	int ret = cl_scanfile(filePath.c_str(), &virname, NULL, engine, &options); //scanning file using clamAV
 	if (ret == CL_VIRUS) {
-		printf("--------------------------------------------------------------------------------------\n");
+		/*printf("--------------------------------------------------------------------------------------\n");
 		printf("Virus detected: %s\n", virname);
 		printf("--------------------------------------------------------------------------------------\n");
-		//QUARANTINE FILE IF NOT IN SYSTEM FOLDER
+		*///QUARANTINE FILE IF NOT IN SYSTEM FOLDER
 		if (filePath.substr(3, 7) == "Windows")
 		{
 			printf("VIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!", filePath); //Infected file is in system folder
@@ -51,7 +60,7 @@ inline int LavaScan::scanFile(std::string filePath) {
 		}
 	}
 	else {
-		printf("No virus detected.\n");
+		//printf("No virus detected.\n");
 		if (ret != CL_CLEAN) {
 			printf("Error: %s\n", cl_strerror(ret)); //In case of scan error
 		}
@@ -107,7 +116,8 @@ inline void LavaScan::iterateDirectory(std::string directory, bool clean)
 			if (item->d_type == DT_REG)
 			{
 				std::string filePath = directory + item->d_name; // generate filepath
-				std::cout << filePath << "\n";
+
+				//std::cout << filePath << "\n";
 				//scan the file using clamAV
 
 				if (scanFile(filePath) == CL_VIRUS) {
@@ -150,6 +160,49 @@ inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilel
 		//Error opening file
 	}
 	return directorylist;
+}
+
+namespace fs = std::filesystem;
+
+inline int LavaScan::FileCount( std::string dirPath )
+{
+	getch();
+	int count = 0;
+	for (auto& p : fs::recursive_directory_iterator(dirPath))
+		count++;
+	
+	return count;
+}
+
+inline int LavaScan::TotalSetFileCount(std::set<std::string> p) {
+	int count = 0;
+	for (auto path : p) {
+		//std::cout << "\t" << path << ".\n";
+		struct stat s;
+		if (stat(path.c_str(), &s) == 0)
+		{
+			if (s.st_mode & S_IFDIR)
+			{
+				count += FileCount(path);
+			}
+			else if (s.st_mode & S_IFREG)
+			{
+				count++;
+			}
+			else
+			{
+				//something else
+				std::cout << "\n ok wtf is this\n";
+			}
+		}
+		else
+		{
+			//error
+			return -4;
+		}
+	}
+
+	return count;
 }
 
 //Write new directories to the antibody file. Parameters are <vector containting strings of diretories>, path to antibody file
@@ -209,6 +262,7 @@ inline void LavaScan::AddToAntibody(std::string dirPath, std::string antibodyfil
 }
 
 inline bool LavaScan::scanDirectory(std::string dirPath) {
+	this->CurrentScanCount++; // 
 	bool clean = true; //Setting directory as clean
 	int mode = 0; //Setting initial mode to 0
 	bool cancel = false; //A cancel variable in case the user wants to cancel the scan
@@ -231,7 +285,6 @@ inline bool LavaScan::QuickScan()
 	{
 		//Scan it
 		clean = scanDirectory(directorylist[i]);
-
 	}
 	return clean;
 }
@@ -289,6 +342,19 @@ inline void LavaScan::eicarTest(std::string path)
 {
 	scanFile(path);
 	return;
+}
+
+inline std::set<std::string> LavaScan::countQuarantineContents() { //prints the contents of the quarantine file
+	std::set<std::string> s;
+	std::fstream quarantineFile;
+	quarantineFile.open("quarantine.lava", std::ios::in | std::ios::out);
+	std::string line;
+	while (getline(quarantineFile, line)) {
+		//std::cout << line << std::endl;
+		s.insert(line);
+	}
+	quarantineFile.close();
+	return s;
 }
 
 inline void LavaScan::printQuarantineContents() { //prints the contents of the quarantine file
@@ -364,7 +430,7 @@ inline bool LavaScan::CompleteScan() {
 //}
 
 inline LavaScan::LavaScan() {
-
+	CurrentScanCount = 0;
 	if ((ret = cl_init(CL_INIT_DEFAULT)) != CL_SUCCESS) { //Initializing clamav
 		printf("Can't initialize libclamav: %s\n", cl_strerror(ret));//returns the error name in case of error
 		exit(2);

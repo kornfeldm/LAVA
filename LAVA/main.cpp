@@ -13,10 +13,12 @@
 #include <dirent.h>
 #include <dlgs.h>
 #include <fcntl.h>
+#include <filesystem>
 #include <fstream>
 #include <io.h>
 #include <limits.h>
 #include <math.h>
+#include <queue>
 #include <regex>
 #include <set>
 #include <sstream>
@@ -28,6 +30,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
+#include <thread>
 #include <vector>
 #include <windows.h>
 #include "LavaScan.h"
