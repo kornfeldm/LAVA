@@ -27,14 +27,17 @@ public:
 	void quarantineFile(std::string filepath);
 	bool removeQuarantinedFiles();
 	bool quarantineIsEmpty();
-	bool scanDirectory(std::string dirPath);
-	void iterateDirectory(std::string directory, bool clean);
+	bool scanDirectory(std::string dirPath, int num_viruses_found);
+	void iterateDirectory(std::string directory, bool clean, int num_viruses_found);
 	int scanFile(std::string filePath);
 	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
 	std::vector<std::string> ReadAntibody(std::string antibodyfilelocation);
 	int FileCount(std::string dirPath);
 	int TotalSetFileCount(std::set<std::string> p);
 	std::set<std::string> countQuarantineContents();
+	void log_scan(std::string type, std::string start, std::string finish, int found, int removed);
+	void read_log();
+	std::string get_time();
 };
 
 inline int LavaScan::scanFile(std::string filePath) {
@@ -67,7 +70,7 @@ inline int LavaScan::scanFile(std::string filePath) {
 	return ret; //returns scan output value: either CL_VIRUS, CL_CLEAN or CL_ERROR
 }
 
-inline void LavaScan::iterateDirectory(std::string directory, bool clean)
+inline void LavaScan::iterateDirectory(std::string directory, bool clean, int num_viruses_found)
 {
 	//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
 
@@ -105,7 +108,7 @@ inline void LavaScan::iterateDirectory(std::string directory, bool clean)
 				std::string newDirectory = directory + item->d_name + "\\";
 
 				//std::cout << newDirectory << "\n";
-				iterateDirectory(newDirectory, clean);
+				iterateDirectory(newDirectory, clean, num_viruses_found);
 				//CHECK FOR USER CANCEL GOES HERE
 				//closedir(directory)
 				//return
@@ -121,6 +124,7 @@ inline void LavaScan::iterateDirectory(std::string directory, bool clean)
 
 				if (scanFile(filePath) == CL_VIRUS) {
 					clean = false; //File in direcotry is infected
+					num_viruses_found++;//increase the virus count
 				}
 				//CHECK FOR USER CANCEL GOES HERE
 				//closedir(directory)
@@ -260,12 +264,11 @@ inline void LavaScan::AddToAntibody(std::string dirPath, std::string antibodyfil
 	WriteAntibody(existing, antibodyfilelocation);
 }
 
-inline bool LavaScan::scanDirectory(std::string dirPath) {
+inline bool LavaScan::scanDirectory(std::string dirPath, int num_viruses_found) {
 	this->CurrentScanCount++; // 
 	bool clean = true; //Setting directory as clean
-	int mode = 0; //Setting initial mode to 0
 	bool cancel = false; //A cancel variable in case the user wants to cancel the scan
-	iterateDirectory(dirPath, clean);//call recursive helper funciton
+	iterateDirectory(dirPath, clean, num_viruses_found);//call recursive helper funciton
 	//if (cancel == true) printf("User canceled scan");
 	//return clean; //returns false if infected and true if clean
 	return true;
@@ -275,6 +278,8 @@ inline bool LavaScan::scanDirectory(std::string dirPath) {
 //The first parameter is a path the the antibody file
 inline bool LavaScan::QuickScan()
 {
+	int num_found = 0; //setting virus counter to 0
+	std::string start_time = get_time();//getting start time for scan
 	//Keeps track of if malware is detected and where
 	bool clean = true;
 	//Read from the file
@@ -283,8 +288,10 @@ inline bool LavaScan::QuickScan()
 	for (int i = 0; i < directorylist.size(); i++)
 	{
 		//Scan it
-		clean = scanDirectory(directorylist[i]);
+		clean = scanDirectory(directorylist[i], num_found);
 	}
+	std::string finish_time = get_time();//get end time for scan
+	log_scan("Quick",start_time, finish_time, num_found, num_found); //log scan
 	return clean;
 }
 
@@ -299,6 +306,8 @@ std::string& replace(std::string& s, const std::string& from, const std::string&
 inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 {
 	// set ss is the set of shit we are gonna scan...simple foreach loop for now
+	int num_found = 0;//set the virus count to 0
+	std::string start_time = get_time(); //get start time for scan
 	for (auto path : ss) {
 		//std::cout << "\t" << path << ".\n";
 		struct stat s;
@@ -308,13 +317,13 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 			{
 				//it's a directory, use scandir
 				//std::cout << path << " is a directory.";
-				scanDirectory(std::string(path+"\\"));
+				scanDirectory(std::string(path+"\\"), num_found);
 			}
 			else if (s.st_mode & S_IFREG)
 			{
 				//it's a file, use scanfile
 				//std::cout << path << " is a file.";
-				scanFile(path.c_str());
+				num_found += scanFile(path.c_str()); // if file is infected will be increased by 1, if not infected it won't increase
 			}
 			else
 			{
@@ -328,6 +337,8 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 			return false;
 		}
 	}
+	std::string finish_time = get_time(); //get end time
+	log_scan("Advanced",start_time, finish_time, num_found, num_found); //logging scan
 	return true;
 }
 
@@ -361,7 +372,7 @@ inline void LavaScan::printQuarantineContents() { //prints the contents of the q
 	quarantineFile.open("quarantine.lava", std::ios::in | std::ios::out);
 	std::string line;
 	while (getline(quarantineFile, line)) {
-		std::cout << line << std::endl;
+		std::cout << line << std::endl;//prints it out line by line
 	}
 	quarantineFile.close();
 }
@@ -407,10 +418,71 @@ inline bool LavaScan::removeQuarantinedFiles() { //returns false if errors occur
 }
 
 inline bool LavaScan::CompleteScan() {
+	std::string start_time = get_time();
+	bool clean = true;
+	int num_found = 0;
 	// for now just scan c$
 	//   later get func to get drive letters
 	const char* dirs = "C:\\";
-	return this->scanDirectory(dirs);
+	clean = this->scanDirectory(dirs,num_found);
+	std::string finish_time = get_time();
+	log_scan("Complete",start_time, finish_time, num_found, num_found);
+	return clean;
+}
+
+inline void LavaScan::log_scan(std::string type, std::string start, std::string finish, int found, int removed) {
+	std::fstream log_file;
+	log_file.open("scan_log.lava", std::ios::app);
+	log_file << type + "," + start + "," + finish + "," + std::to_string(found) + "," + std::to_string(removed) + "\n";
+	log_file.close();
+}
+
+inline std::string LavaScan::get_time() {
+	time_t rawtime;
+	struct tm timeinfo;
+	char buffer[40];
+
+	time(&rawtime);
+	localtime_s(&timeinfo, &rawtime);
+
+	strftime(buffer, 40, "%c", &timeinfo);
+	return (std::string)buffer;
+}
+
+inline void LavaScan::read_log() {
+	std::fstream log_file;
+	std::stack<std::string> log_order; // using stack to get chronological log order
+	log_file.open("scan_log.lava");
+	std::string line; //string to store line charaacters
+	while (getline(log_file, line)) {
+		log_order.push(line); //filling the stack oldest in first, last out
+	}
+	std::string scan_type, scan_strt, scan_fin, num_found, num_removed; // variable to store the virus info
+	while (!log_order.empty()) {
+		line = log_order.top(); //get value from log stack
+		log_order.pop();//remove value from top
+		int found = 0, prev_found = 0, comma_num = 0;
+		while (found != std::string::npos) {
+			prev_found = found;
+			found = line.find(",", found + 1, 1);
+			int size = found - prev_found;
+			switch (comma_num)
+			{
+			case 0:
+				scan_type = line.substr(prev_found, size); //extract the scan type
+			case 1:
+				scan_strt = line.substr(prev_found + 1, size - 1); //extract scan start time
+			case 2:
+				scan_fin = line.substr(prev_found + 1, size - 1); //exctract scan finish time
+			case 3:
+				num_found = line.substr(prev_found + 1, size - 1); //extract number of viruses found
+				num_removed = line.substr(found + 1); //extract number of viruses removed
+			}
+			comma_num++;
+		}
+		//values of line are extracted (USE THEM FOR GUI HERE)
+		std::cout << "Type of scan: " + scan_type + ", Start time: " + scan_strt + ", End time: " + scan_fin + ", Number of viruses found: " + num_found + ", Number of viruses removed: " + num_removed + "\n" << std::endl;
+	}
 }
 
 //inline bool LavaScan::QuickScan() {
@@ -470,7 +542,6 @@ inline LavaScan::LavaScan() {
 	//Testing scanFile function
 	
 	this->options.general = CL_SCAN_GENERAL_ALLMATCHES;
-	//scanFile("C:/test/eicar.com.txt", engine, options);
 
 	//std::string AntibodyFileLocation = "C:\\test.LavaAnti";
 	////Testing scanDirectory function

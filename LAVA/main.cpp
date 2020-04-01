@@ -29,6 +29,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <stack>
 #include <time.h>
 #include <thread>
 #include <vector>
