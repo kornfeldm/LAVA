@@ -1,7 +1,9 @@
 #pragma once
 #ifndef FE_H
 #define FE_H
-
+struct nk_command_buffer* canvas;
+struct nk_rect total_space;
+std::set<std::string> advancedScanPaths;
 //#define NK_INCLUDE_FIXED_TYPES
 //#define NK_INCLUDE_STANDARD_IO
 //#define NK_INCLUDE_STANDARD_VARARGS
@@ -28,169 +30,125 @@ struct nk_rect SubRectTextBelow(struct nk_rect *big, struct nk_rect *sub ) {
 	return nk_rect(sub->x, sub->h, sub->w, big->h-sub->h+sub->x);
 }
 
-/* browse windows paths shit, need to allow multiple files */
-static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData) {
-	if (uMsg == BFFM_INITIALIZED) {
-		std::string tmp = (const char*)lpData;
-		std::cout << "path: " << tmp << std::endl;
-		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
-	}
-	return 0;
-}
-std::string BrowseFolder(std::string saved_path) {
-	TCHAR path[MAX_PATH];
-
-	//const char* path_param = saved_path.c_str(); //wont work for vs
-	std::wstring wsaved_path(saved_path.begin(), saved_path.end());
-	const wchar_t* path_param = wsaved_path.c_str();
-
-	BROWSEINFO bi = { 0 };
-	bi.lpszTitle = TEXT("Please browse for folder / files ... ");
-	bi.ulFlags = BIF_NEWDIALOGSTYLE | BIF_BROWSEINCLUDEFILES | BIF_NONEWFOLDERBUTTON | BIF_BROWSEINCLUDEURLS ;
-	bi.lpfn = BrowseCallbackProc;
-	bi.lParam = (LPARAM)path_param;
-
-	LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
-	if (pidl != 0) {
-		// get nameof folder n put n path bruv
-		SHGetPathFromIDList(pidl, path);
-		//free our mem brother
-		IMalloc* imalloc = 0;
-		if (SUCCEEDED(SHGetMalloc(&imalloc))) {
-			imalloc->Free(pidl);
-			imalloc->Release();
-		}
-		std::string ret = std::string();
-#ifndef UNICODE
-		ret = path;
-#else 
-		std::wstring wStr = path;
-		ret = std::string(wStr.begin(), wStr.end());
-#endif // !UNICODE
-
-		return ret;
-	}
-
-	return std::string(""); //we diddly darn nabbit messed up
-}
-
-/* Trying to make visual popup for datetime. */
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-HINSTANCE hInst;
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow)
+/* opening file dialog stuff */
+std::string ToNarrow(const wchar_t* s, char dfault = '?',
+	const std::locale& loc = std::locale())
 {
-	// Register the window class.
-	const wchar_t CLASS_NAME[] = L"Sample Window Class";
+	std::ostringstream stm;
 
-	WNDCLASS wc = { };
-
-	wc.lpfnWndProc = WindowProc;
-	wc.hInstance = hInstance;
-	wc.lpszClassName = CLASS_NAME;
-
-	RegisterClass(&wc);
-
-	// Create the window.
-
-	HWND hwnd = CreateWindowEx(
-		0,                              // Optional window styles.
-		CLASS_NAME,                     // Window class
-		L"Learn to Program Windows",    // Window text
-		WS_OVERLAPPEDWINDOW,            // Window style
-
-		// Size and position
-		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
-
-		NULL,       // Parent window    
-		NULL,       // Menu
-		hInstance,  // Instance handle
-		NULL        // Additional application data
-	);
-
-	if (hwnd == NULL)
-	{
-		return 0;
+	while (*s != L'\0') {
+		stm << std::use_facet< std::ctype<wchar_t> >(loc).narrow(*s++, dfault);
 	}
-
-	ShowWindow(hwnd, nCmdShow);
-
-	// Run the message loop.
-
-	MSG msg = { };
-	while (GetMessage(&msg, NULL, 0, 0))
-	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
-
-	return 0;
+	return stm.str();
 }
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+
+// global struct. prob shouldnt do this but who will see this, lets be honest
+struct
+{
+	WNDPROC oldWndProc;
+	TCHAR   szLastSelection[MAX_PATH];
+	UINT    cFolders;
+} g_Multi;
+
+
+/*
+ * Subclassed window procedure for dialog created by SHBrowseForFolder.
+ */
+static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	if (uMsg == WM_COMMAND && HIWORD(wParam) == BN_CLICKED)
+	{
+		TCHAR szText[50];
+
+		if (GetWindowText((HWND)lParam, szText, 50) &&
+			0 == lstrcmp(szText, TEXT("Add File/Dir")))
+		{
+			if (0 != lstrcmp(g_Multi.szLastSelection, TEXT("")))
+			{
+				g_Multi.cFolders++;
+
+				/* User has clicked the "Add Folder" button.
+				 * Add the contents of szLastSelection to your list. */
+				//printf("%s\n", g_Multi.szLastSelection);
+				advancedScanPaths.insert(ToNarrow(g_Multi.szLastSelection));
+			}
+			else
+			{
+				/* A non-file system folder is selected. eg. Network Neighbourhood. */
+				printf("Please select a valid file folder and try again.\n");
+			}
+
+			/* Eat the BN_CLICKED message so the dialog is not closed. */
+			return 0;
+		}
+	}
+
+	return CallWindowProc(g_Multi.oldWndProc, hwnd, uMsg, wParam, lParam);
+}
+
+
+/*
+ * Callback function for SHBrowseForFolder.
+ */
+static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
 {
 	switch (uMsg)
 	{
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		return 0;
-
-	case WM_PAINT:
+	case BFFM_INITIALIZED:
 	{
-		PAINTSTRUCT ps;
-		HDC hdc = BeginPaint(hwnd, &ps);
-
-
-
-		FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
-
-		EndPaint(hwnd, &ps);
+		/* Change the text for the OK button and subclass the dialog. */
+		LPCTSTR startFolder = reinterpret_cast<LPCTSTR>(lpData);
+		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, reinterpret_cast<LPARAM>(startFolder));
+		SendMessage(hwnd, BFFM_SETOKTEXT, 0, (LPARAM)L"Add File/Dir");
+		g_Multi.oldWndProc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)SubclassProc);
+		break;
 	}
+
+	case BFFM_SELCHANGED:
+	{
+		/* Record the selection, so we can record it if the user clicks "Add Folder". */
+		if (!SHGetPathFromIDList((LPCITEMIDLIST)lParam, g_Multi.szLastSelection))
+			g_Multi.szLastSelection[0] = TEXT('\0');
+		break;
+	}
+	}
+
 	return 0;
-
-	}
-	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-///* DateTime Picker test */
-//// Global variable 
-////    g_hinst - handle to the application instance 
-//extern HINSTANCE g_hinst;
-////
-//// child-window identifier
-//int ID_HEADER;
-////
-//DLGPROC Dlgproc;
-//HWND WINAPI CreateDatePick(HWND hwndMain)
-//{
-//	HWND hwndDP = NULL;
-//	HWND hwndDlg = NULL;
-//
-//	INITCOMMONCONTROLSEX icex;
-//
-//	icex.dwSize = sizeof(icex);
-//	icex.dwICC = ICC_DATE_CLASSES;
-//
-//	InitCommonControlsEx(&icex);
-//
-//	hwndDlg = CreateDialog(g_hinst,
-//		MAKEINTRESOURCE(LPCTSTR("select a time")),
-//		hwndMain,
-//		Dlgproc);
-//
-//	if (hwndDlg)
-//		hwndDP = CreateWindowEx(0,
-//			DATETIMEPICK_CLASS,
-//			TEXT("DateTime"),
-//			WS_BORDER | WS_CHILD | WS_VISIBLE | DTS_SHOWNONE,
-//			20, 50, 220, 20,
-//			hwndDlg,
-//			NULL,
-//			g_hinst,
-//			NULL);
-//
-//	return (hwndDP);
-//}
 
-/* END OF DATETIME PICKER */
+/*
+ * Displays a directory selection dialog that allows the user to select
+ * multiple folders. CoInitialize must be called before calling this function.
+ * hWnd may be NULL. Returns the number of folders that were selected.
+ * This function is not thread safe. It must not be called from more than
+ * one thread at a time.
+ */
+UINT MultiFolderSelect(HWND hWnd, LPCTSTR szTitle, CString folder=L"C:\\")
+{
+	LPITEMIDLIST pidl = NULL;
+	BROWSEINFO   bi = { 0 };
+	TCHAR        buf[MAX_PATH];
+
+	bi.hwndOwner = hWnd;
+	bi.pszDisplayName = buf;
+	bi.pidlRoot = 0;
+	bi.lpszTitle = szTitle;
+	bi.ulFlags = BIF_BROWSEFORPRINTER | BIF_BROWSEINCLUDEFILES | BIF_BROWSEINCLUDEURLS | 
+		BIF_NEWDIALOGSTYLE | BIF_SHAREABLE | 
+		BIF_NONEWFOLDERBUTTON | BIF_USENEWUI;
+	bi.lParam = reinterpret_cast<LPARAM>(static_cast<LPCTSTR>(folder));
+	bi.lpfn = BrowseCallbackProc;
+	//bi.lParam = (LPARAM)L"C:\\";
+
+	g_Multi.cFolders = 0;
+	g_Multi.szLastSelection[0] = TEXT('\0');
+
+	if ((pidl = SHBrowseForFolder(&bi)) != NULL)
+		CoTaskMemFree(pidl);
+
+	return g_Multi.cFolders;
+}
 
 struct pics {
 	const char* squareLogo;
@@ -202,9 +160,8 @@ struct pics {
 	const char* chooseScan;
 	const char* triangleButton;
 };
-struct nk_command_buffer* canvas;
-struct nk_rect total_space;
 
+/* FE CLASS */
 class FE : public LavaScan
 {
 private:
@@ -234,12 +191,16 @@ public:
 	struct nk_image backArrow;
 	struct nk_image chooseScan;
 	struct nk_image triangleLogo;
+	std::string currentScanGoing;
+	std::queue<int> scanTasks;
+	int maxfiles=0;
 	// view screen switch. view ScanViews scanview member for furthger info
 	unsigned int view;
 	/*
 		0 : logo screen
 		1 : scans screen
 		2 : history screen
+		3 : Scan in Progress!
 	*/
 	unsigned int m_scanViews;
 	/*
@@ -262,6 +223,13 @@ public:
 	bool viewSwap();
 	bool QuickScansView();
 	bool AdvancedScanView();
+	bool DrawHistoryPage();
+	bool DrawInProgressScan();
+	bool printset(std::set<std::string> s);
+	/*static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData);
+	UINT MultiFolderSelect(HWND hWnd, LPCTSTR szTitle);*/
+	void UIPrintSet(std::set<std::string> s);
 };
 inline struct nk_image FE::icon_load(const char* filename, bool flip)
 {
@@ -330,14 +298,18 @@ inline bool FE::drawImageSubRect(struct nk_image* img, struct nk_rect *r)
 }
 
 inline bool FE::Display() {
-	if (this->view == 0)
+	if (this->view == 0) { // logo page
 		this->DrawMainPage();
-	else if (this->view == 1)
-		this->DrawScansPage();
-
-	else {
-		std::cout << "ERRRRRRORRRRR\n";
+		advancedScanPaths.clear();
 	}
+	else if (this->view == 1) // scan page
+		this->DrawScansPage();
+	else if (this->view == 2) // history page
+		this->DrawHistoryPage();
+	else if (this->view == 3) // in-prog scan page
+		this->DrawInProgressScan();
+	else
+		std::cout << "ERRRRRRORRRRR\n";
 	return true;
 }
 
@@ -356,7 +328,7 @@ inline bool FE::DrawMainPage()
 		// hidden button to press behind icon
 		nk_layout_row_static(ctx, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3, 1);
 		if (nk_button_label(ctx, "")) {
-			fprintf(stdout, "scans pressed\n");
+			//fprintf(stdout, "scans pressed\n");
 			this->view = 1; // scans page
 			this->m_scanViews = 0; // choose a scan sub view
 			nk_clear(this->ctx);
@@ -429,8 +401,10 @@ bool FE::CompleteScanView() {
 		nk_layout_row_static(ctx, 65, 400, 1);
 		if (nk_button_label(ctx, "")) {
 			//fprintf(stdout, "do complete scan pressed\n");
-			this->CompleteScan();
-			// scan in progress ... blah blah
+			this->currentScanGoing = "Complete Scan";
+			this->view = 3;
+			//this->CompleteScan();
+			this->scanTasks.push(1);
 			nk_clear(this->ctx);
 		}
 	    // draw txt 
@@ -466,8 +440,10 @@ bool FE::QuickScansView() {
 		nk_layout_row_static(ctx, 65, 400, 1);
 		if (nk_button_label(ctx, "")) {
 			//fprintf(stdout, "do quick scan pressed\n");
-			this->QuickScan();
-			// scan in progress ... blah blah
+			this->currentScanGoing = "Quick Scan";
+			this->view = 3;
+			//this->QuickScan();
+			this->scanTasks.push(2);
 			nk_clear(this->ctx);
 		}
 		// draw txt 
@@ -489,34 +465,207 @@ inline bool FE::AdvancedScanView() {
 	if (nk_begin(this->ctx, "Advanced Scan", nk_rect(300, WINDOW_HEIGHT * .06, 600, 300),
 		NK_WINDOW_TITLE | NK_WINDOW_NO_SCROLLBAR))
 	{
-		nk_layout_row_dynamic(this->ctx, 40, 1);
-		nk_label_wrap(this->ctx, "                                                        ");
 		nk_layout_row_dynamic(this->ctx, 120, 1);
 		nk_label_wrap(this->ctx, "This scan will allow you to choose where and when to scan!");
 	}
 	nk_end(this->ctx);
 
-	/* checkbox date switch */
-	if (nk_begin(this->ctx, "Overview", nk_rect(600, 600, 400, 600), NK_WINDOW_DYNAMIC))
-	{
-		static const float ratio[] = { 120, 150 };
-		static char field_buffer[64];
-		static char text[9][64];
-		static int text_len[9];
-		static char box_buffer[512];
-		static int field_len;
-		static int box_len;
-		nk_flags active;
+	///* checkbox date switch */
+	//if (nk_begin(this->ctx, "Overview", nk_rect(600, 600, 400, 600), NK_WINDOW_DYNAMIC))
+	//{
+	//	static const float ratio[] = { 120, 150 };
+	//	static char field_buffer[64];
+	//	static char text[9][64];
+	//	static int text_len[9];
+	//	static char box_buffer[512];
+	//	static int field_len;
+	//	static int box_len;
+	//	nk_flags active;
 
-		nk_layout_row(ctx, NK_STATIC, 100, 2, ratio);
-		//nk_label(ctx, "test:", NK_TEXT_LEFT);
-		nk_edit_string(ctx, NK_EDIT_SIMPLE, text[0], &text_len[0], 64, nk_filter_ascii);
-		if (nk_button_label(ctx, "Done"))
-			printf("%s\n", text[0]);
+	//	//text box and enter
+	//	nk_layout_row(ctx, NK_STATIC, 100, 2, ratio);
+	//	//nk_label(ctx, "test:", NK_TEXT_LEFT);
+	//	nk_edit_string(ctx, NK_EDIT_SIMPLE, text[0], &text_len[0], 64, nk_filter_ascii);
+	//	if (nk_button_label(ctx, "Done")) {
+	//		printf("%s\n", text[0]);
+	//		this->printset(advancedScanPaths);
+	//	}
+	//		
+	//}
+	//nk_end(this->ctx);
+	
+	/* displaying shit */
+	struct nk_list_view view; view.count = 2; 
+	if (nk_begin(this->ctx, "Selected Files/Folders...", nk_rect(WINDOW_WIDTH - delta + 20, WINDOW_HEIGHT * .235, delta-40, 400), NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_DYNAMIC ))
+	{
+		int h = advancedScanPaths.size() * 28 + 28;
+		if (h < 400) { h = 400; }
+		nk_layout_row_dynamic(ctx, h, 1);
+		if (nk_list_view_begin(ctx, &view, "test", NK_WINDOW_BORDER, 25, 2)) {
+			nk_layout_row_dynamic(ctx, 25, 1);
+			UIPrintSet(advancedScanPaths);
+			//printset(advancedScanPaths);
+			/*nk_label(this->ctx, list[0], NK_TEXT_ALIGN_LEFT);
+			nk_label(this->ctx, list[1], NK_TEXT_ALIGN_LEFT);*/
+			nk_list_view_end(&view);
+		}
 	}
 	nk_end(this->ctx);
-	
 
+	/* add folders/files button */
+	struct nk_rect AddFoF = nk_rect(WINDOW_WIDTH - delta+10, WINDOW_HEIGHT * .235+405, 330, 50);
+	if (nk_begin(this->ctx, "add folders", AddFoF, NK_WINDOW_NO_SCROLLBAR))
+	{
+		nk_layout_row_static(ctx, 65, AddFoF.w, 1);
+		if (nk_button_label(ctx, "")) {
+			// openfolderdiag
+			MultiFolderSelect(GetActiveWindow(), TEXT("SELECT SOME FILES/FOLDERS"));
+			nk_clear(this->ctx);
+		}
+		// draw txt 
+		struct nk_rect textArea = nk_rect(AddFoF.x, AddFoF.y, AddFoF.w, AddFoF.h);
+		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, "  Add Files/Dirs ", 17, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		// draw triangle
+		//this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 240, textArea.y, textArea.w - 220, textArea.h));
+	}
+	nk_end(this->ctx);
+
+	/* adv scan now */
+	struct nk_rect scanButton = nk_rect(AddFoF.x+125, AddFoF.y+75, 300, 50);
+	if (nk_begin(this->ctx, "advscannow", scanButton, NK_WINDOW_NO_SCROLLBAR))
+	{
+		nk_layout_row_static(ctx, 65, scanButton.w, 1);
+		if (nk_button_label(ctx, "")) {
+			// run adv scan now
+			if (advancedScanPaths.size() > 0) {
+				this->currentScanGoing = "Advanced Scan";
+				this->view = 3;
+				//this->AdvanceScanNow(advancedScanPaths);
+				this->scanTasks.push(3);
+			}
+			nk_clear(this->ctx);
+		}
+		// draw txt 
+		struct nk_rect textArea2 = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
+		nk_draw_text(nk_window_get_canvas(this->ctx), textArea2, "  Adv. Scan Now ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		// draw triangle
+		//this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 240, textArea.y, textArea.w - 220, textArea.h));
+	}
+	nk_end(this->ctx);
+
+	/* adv scan LATER */
+	struct nk_rect scanButtonLater = nk_rect(scanButton.x+scanButton.w+50, scanButton.y, scanButton.w, 50);
+	if (nk_begin(this->ctx, "advscannl8r", scanButtonLater, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_MOVABLE))
+	{
+		nk_layout_row_static(ctx, 65, scanButtonLater.w, 1);
+		if (nk_button_label(ctx, "")) {
+			// run adv scan l8r
+			nk_clear(this->ctx);
+		}
+		// draw txt 
+		struct nk_rect textArea3 = nk_rect(scanButtonLater.x, scanButtonLater.y, scanButtonLater.w, scanButtonLater.h);
+		nk_draw_text(nk_window_get_canvas(this->ctx), textArea3, "  Schedule Scan ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		// draw triangle
+		//this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 240, textArea.y, textArea.w - 220, textArea.h));
+	}
+	nk_end(this->ctx);
+
+	return true;
+}
+
+inline bool FE::DrawHistoryPage()
+{
+	return false;
+}
+
+inline bool FE::DrawInProgressScan()
+{
+	//std::cout << "\n\t cf : " << CurrentScanFile;
+	// grab the top task ,if exists
+	if (!this->scanTasks.empty()) {
+		this->maxfiles = 0;
+		std::thread t1([this]() {
+			int scan = this->scanTasks.front();
+			scanTasks.pop();
+			switch (scan) {
+			case 1: //complete
+				//this->maxfiles = this->FileCount("C:\\");
+				this->CompleteScan();
+				break;
+			case 2: //quick
+				//this->maxfiles = this->TotalSetFileCount(this->countQuarantineContents());
+				this->QuickScan();
+				break;
+			case 3: //adv
+				break;
+				//this->maxfiles = this->TotalSetFileCount(advancedScanPaths);
+				this->AdvanceScanNow(advancedScanPaths);
+			default:
+				break;
+			}
+		});
+		t1.detach();
+	}
+
+
+	/* LOGO */
+	struct nk_rect traplogo = nk_rect(WINDOW_WIDTH * .22, WINDOW_HEIGHT * .08, WINDOW_WIDTH * .56, WINDOW_HEIGHT * .28);
+	if (nk_begin(this->ctx, "lavalogo", traplogo,
+		NK_WINDOW_NO_SCROLLBAR)) {
+		this->drawImage(&this->trapImage);
+	}
+	nk_end(this->ctx);
+
+	/* SCAN TYPE TEXT */
+	if (nk_begin(this->ctx, "type", nk_rect(traplogo.x, traplogo.y+25+traplogo.h, 600, 50),
+		NK_WINDOW_NO_SCROLLBAR))
+	{
+		nk_layout_row_dynamic(this->ctx, 120, 1);
+		nk_label_wrap(this->ctx, std::string("Scan Type : "+this->currentScanGoing).c_str());
+	}
+	nk_end(this->ctx);
+
+	/* Current scanning items TEXT */
+	if (nk_begin(this->ctx, "currentscanfile", nk_rect(traplogo.x, traplogo.y + 25 + traplogo.h+75, 800, 150),
+		NK_WINDOW_DYNAMIC| NK_WINDOW_MOVABLE))
+	{
+		nk_layout_row_dynamic(this->ctx, 150, 1);
+		// const char* fn = CurrentScanFile.c_str();
+		auto f = std::string("file: ").append(CurrentScanFile);
+		const char* fn = f.c_str();
+		//std::cout << "file: " << fn;
+		nk_label_wrap(this->ctx, fn);
+	}
+	nk_end(this->ctx);
+
+	///* prog bbar */
+	///* Current scanning items TEXT */
+	//if (nk_begin(this->ctx, "progbar", nk_rect(traplogo.x, traplogo.y+275+traplogo.h, traplogo.w, 50),
+	//	NK_WINDOW_DYNAMIC | NK_WINDOW_MOVABLE))
+	//{
+	//	nk_size currentValue = this->CurrentScanCount;
+	//	nk_size maxValue = this->maxfiles;
+	//	nk_modify modifyable = NK_FIXED;
+	//	if (nk_progress(ctx, &currentValue, maxValue, modifyable))
+	//	{
+	//		nk_draw_progress(this->canvas, modifyable,
+	//			NULL, NULL,
+	//			NULL, currentValue, maxValue);
+	//		
+	//	}
+	//}
+	//nk_end(this->ctx);
+
+	return true;
+}
+
+inline bool FE::printset(std::set<std::string> s)
+{
+	std::cout << "\ncontents: \n";
+	for (std::string const& str : s)
+	{
+		std::cout << "\t" << str << "\n";
+	}
 	return true;
 }
 
@@ -535,6 +684,7 @@ inline bool FE::viewSwap() {
 	}
 	else if (this->m_scanViews == 3) {
 		//fprintf(stdout, "we is in advanced scan view bruh\n");
+		//advancedScanPaths.clear();
 		AdvancedScanView();
 	}
 	else {
@@ -556,6 +706,7 @@ inline bool FE::DrawScansPage()
 		if (nk_button_label(ctx, "")) {
 			//fprintf(stdout, "back arrow\n");
 			this->view = 0;
+			advancedScanPaths.clear();
 			nk_clear(this->ctx);
 		}
 		this->drawImageSubRect(&this->backArrow, &bar);
@@ -573,7 +724,7 @@ inline bool FE::DrawScansPage()
 	if (nk_begin(this->ctx, "CompleteScan", completeScanTextRect, NK_WINDOW_NO_SCROLLBAR)) {
 		nk_layout_row_static(this->ctx, completeScanTextRect.y + completeScanTextRect.h, completeScanTextRect.x + completeScanTextRect.w, 2);
 		if (nk_button_label(this->ctx, "")) {
-			fprintf(stdout, "Complete Scan\n");
+			//fprintf(stdout, "Complete Scan\n");
 			this->m_scanViews = 1;
 			nk_clear(this->ctx);
 		}
@@ -586,7 +737,7 @@ inline bool FE::DrawScansPage()
 	if (nk_begin(this->ctx, "QuickScan", quickScanTextRect, NK_WINDOW_NO_SCROLLBAR)) {
 		nk_layout_row_static(this->ctx, quickScanTextRect.y + quickScanTextRect.h, quickScanTextRect.x + quickScanTextRect.w, 2);
 		if (nk_button_label(this->ctx, "")) {
-			fprintf(stdout, "Quick Scan\n");
+			//fprintf(stdout, "Quick Scan\n");
 			this->m_scanViews = 2;
 			nk_clear(this->ctx);
 		}
@@ -599,7 +750,7 @@ inline bool FE::DrawScansPage()
 	if (nk_begin(this->ctx, "AdvancedScan", advScanTextRect, NK_WINDOW_NO_SCROLLBAR)) {
 		nk_layout_row_static(this->ctx, advScanTextRect.y + advScanTextRect.h, advScanTextRect.x + advScanTextRect.w, 2);
 		if (nk_button_label(this->ctx, "")) {
-			fprintf(stdout, "Advanced Scan\n");
+			//fprintf(stdout, "Advanced Scan\n");
 			this->m_scanViews = 3;
 			nk_clear(this->ctx);
 		}
@@ -613,6 +764,7 @@ inline bool FE::DrawScansPage()
 }
 
 inline FE::FE() {
+	currentScanGoing = "";
 	this->view = 0;
 	this->m_scanViews = 0;
 	/* INIT IMAGES */
@@ -624,6 +776,14 @@ inline FE::FE() {
 	this->pp.backArrow = "../Assets/back_arrow.png";
 	this->pp.chooseScan = "../Assets/chooseScan.png";
 	this->pp.triangleButton = "../Assets/triangle.png";
+}
+
+inline void FE::UIPrintSet(std::set<std::string> s)
+{
+	for (auto f : s) {
+		nk_label(this->ctx, f.c_str(), NK_TEXT_ALIGN_LEFT);
+	}
+
 }
 
 inline bool FE::init(sf::Window *win) {
@@ -640,7 +800,7 @@ inline bool FE::init(sf::Window *win) {
 	{//struct nk_font_atlas* atlas;
 		nk_sfml_font_stash_begin(&this->atlas);
 		//this->font = nk_font_atlas_add_from_file(this->atlas, this->font_path, 18, NULL);
-		struct nk_font* droid = nk_font_atlas_add_from_file(atlas, "../Assets/font.ttf", 36, 0);
+		struct nk_font* droid = nk_font_atlas_add_from_file(atlas, "../Assets/font.ttf", 28, 0);
 		nk_sfml_font_stash_end();
 		nk_style_set_font(this->ctx, &droid->handle);
 		//nk_init_default(this->ctx, &font->handle);
@@ -663,7 +823,7 @@ inline bool FE::init(sf::Window *win) {
 	this->backArrow = this->icon_load(pp.backArrow);
 	this->chooseScan = this->icon_load(pp.chooseScan);
 	this->triangleLogo = this->icon_load(pp.triangleButton);
-
+	this->trapImage = this->icon_load(pp.trapLogo);
 	return true;
 }
 
