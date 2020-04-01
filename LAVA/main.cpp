@@ -9,8 +9,43 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+<<<<<<< Updated upstream
 #include "openssl/opensslv.h"
 #include "clamav.h"
+=======
+#include <vector>
+#include "dirent.h"
+#include "lava_quarantine.h"
+#include "lava_advancedScan.h"
+#include "LavaScan.h"
+#include "lava_log.h"
+#include <stack>
+
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_STANDARD_IO
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
+#define NK_INCLUDE_FONT_BAKING
+#define NK_INCLUDE_DEFAULT_FONT
+#define NK_IMPLEMENTATION
+#define NK_SFML_GL2_IMPLEMENTATION
+
+#include "nuklear.h"
+#include "nuklear_sfml_gl2.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#define WINDOW_WIDTH 1200
+#define WINDOW_HEIGHT 800
+#define IMG_COLOR nk_rgba(255, 255, 255, 255)
+
+#include "FE.h"
+
+//struct nk_command_buffer* canvas;
+//struct nk_rect total_space;
+>>>>>>> Stashed changes
 
 int main()
 {

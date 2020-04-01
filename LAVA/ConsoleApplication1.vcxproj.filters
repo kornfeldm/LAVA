@@ -15,8 +15,14 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+<<<<<<< Updated upstream
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+=======
+    <ClInclude Include="FE.h" />
+    <ClInclude Include="LavaScan.h" />
+    <ClInclude Include="lava_log.h" />
+>>>>>>> Stashed changes
   </ItemGroup>
 </Project>

@@ -158,6 +158,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+<<<<<<< Updated upstream
+=======
+    <ClInclude Include="FE.h" />
+    <ClInclude Include="LavaScan.h" />
+    <ClInclude Include="lava_log.h" />
+>>>>>>> Stashed changes
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
