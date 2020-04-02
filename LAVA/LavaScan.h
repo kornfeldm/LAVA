@@ -15,6 +15,7 @@ public:
 	const char* virname;
 	struct cl_engine* engine;
 	struct cl_scan_options options;
+	bool isScanDone;
 	// constructor
 	LavaScan(); // default
 	/* scans */
@@ -36,7 +37,7 @@ public:
 	int TotalSetFileCount(std::set<std::string> p);
 	std::set<std::string> countQuarantineContents();
 	void log_scan(std::string type, std::string start, std::string finish, int found, int removed);
-	void read_log();
+	std::vector<std::vector<std::string>> read_log();
 	std::string get_time();
 };
 
@@ -50,9 +51,10 @@ inline int LavaScan::scanFile(std::string filePath) {
 	int ret = cl_scanfile(filePath.c_str(), &virname, NULL, engine, &options); //scanning file using clamAV
 	if (ret == CL_VIRUS) {
 		/*printf("--------------------------------------------------------------------------------------\n");
-		printf("Virus detected: %s\n", virname);
-		printf("--------------------------------------------------------------------------------------\n");
-		*///QUARANTINE FILE IF NOT IN SYSTEM FOLDER
+		printf("virus detected: %s\n", virname);
+		getch();
+		printf("--------------------------------------------------------------------------------------\n");*/
+		//QUARANTINE FILE IF NOT IN SYSTEM FOLDER
 		if (filePath.substr(3, 7) == "Windows")
 		{
 			printf("VIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!", filePath); //Infected file is in system folder
@@ -293,6 +295,7 @@ inline bool LavaScan::QuickScan()
 	std::string finish_time = get_time();//get end time for scan
 	log_scan("Quick",start_time, finish_time, num_found, num_found); //log scan
 	return clean;
+	isScanDone = true;
 }
 
 std::string& replace(std::string& s, const std::string& from, const std::string& to)
@@ -339,6 +342,7 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 	}
 	std::string finish_time = get_time(); //get end time
 	log_scan("Advanced",start_time, finish_time, num_found, num_found); //logging scan
+	isScanDone = true;
 	return true;
 }
 
@@ -427,6 +431,7 @@ inline bool LavaScan::CompleteScan() {
 	clean = this->scanDirectory(dirs,num_found);
 	std::string finish_time = get_time();
 	log_scan("Complete",start_time, finish_time, num_found, num_found);
+	isScanDone = true;
 	return clean;
 }
 
@@ -449,7 +454,9 @@ inline std::string LavaScan::get_time() {
 	return (std::string)buffer;
 }
 
-inline void LavaScan::read_log() {
+inline std::vector<std::vector<std::string>> LavaScan::read_log() {
+	std::vector<std::vector<std::string>> ret;
+
 	std::fstream log_file;
 	std::stack<std::string> log_order; // using stack to get chronological log order
 	log_file.open("scan_log.lava");
@@ -481,8 +488,16 @@ inline void LavaScan::read_log() {
 			comma_num++;
 		}
 		//values of line are extracted (USE THEM FOR GUI HERE)
-		std::cout << "Type of scan: " + scan_type + ", Start time: " + scan_strt + ", End time: " + scan_fin + ", Number of viruses found: " + num_found + ", Number of viruses removed: " + num_removed + "\n" << std::endl;
+		//std::cout << "Type of scan: " + scan_type + ", Start time: " + scan_strt + ", End time: " + scan_fin + ", Number of viruses found: " + num_found + ", Number of viruses removed: " + num_removed + "\n" << std::endl;
+		if (scan_type != "") {
+			// only add to ret if there is content
+			std::vector<std::string> temp; temp.push_back(scan_type); temp.push_back(scan_strt);
+			temp.push_back(scan_fin); temp.push_back(num_found); temp.push_back(num_removed);
+			ret.push_back(temp);
+			temp.clear();
+		}
 	}
+	return ret;
 }
 
 //inline bool LavaScan::QuickScan() {
@@ -502,6 +517,7 @@ inline void LavaScan::read_log() {
 
 inline LavaScan::LavaScan() {
 	CurrentScanCount = 0;
+	isScanDone = false;
 	if ((ret = cl_init(CL_INIT_DEFAULT)) != CL_SUCCESS) { //Initializing clamav
 		printf("Can't initialize libclamav: %s\n", cl_strerror(ret));//returns the error name in case of error
 		exit(2);
@@ -538,7 +554,7 @@ inline LavaScan::LavaScan() {
 		printf("ClamAV engine ready!");
 	}
 
-	printf("\n\n Testing scanFile and scanDirectory functions:\n\n");
+	//printf("\n\n Testing scanFile and scanDirectory functions:\n\n");
 	//Testing scanFile function
 	
 	this->options.general = CL_SCAN_GENERAL_ALLMATCHES;

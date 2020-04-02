@@ -175,10 +175,12 @@ public:
 	struct nk_context* ctx;
 	struct nk_command_buffer* canvas;
 	// font stuff
-	struct nk_font_atlas* atlas;
-	struct nk_font_atlas* atlas2;
+	struct nk_font_atlas* atlas; //reg
+	struct nk_font_atlas* atlas2; //large
+	struct nk_font_atlas* atlas3; //small
 	struct nk_font* font;
 	struct nk_font* font2;
+	struct nk_font* font3;
 	const char* font_path = "../Assets/font.ttf";
 	//struct nk_font_config* fontCFG;// can be null so commenting out for mem
 	struct nk_colorf bg;
@@ -196,6 +198,7 @@ public:
 	struct nk_image triangleLogo;
 	std::string currentScanGoing;
 	std::queue<int> scanTasks;
+	std::vector<std::vector<std::string>> scanHistorySet;
 	int maxfiles=0;
 	// view screen switch. view ScanViews scanview member for furthger info
 	unsigned int view;
@@ -499,7 +502,7 @@ inline bool FE::AdvancedScanView() {
 	//nk_end(this->ctx);
 	
 	/* displaying shit */
-	struct nk_list_view view; view.count = 2; 
+	struct nk_list_view view; //view.count = 2; 
 	if (nk_begin(this->ctx, "Selected Files/Folders...", nk_rect(WINDOW_WIDTH - delta + 20, WINDOW_HEIGHT * .235, delta-40, 400), NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_DYNAMIC ))
 	{
 		int h = advancedScanPaths.size() * DEFAULT_FONT_SIZE + DEFAULT_FONT_SIZE;
@@ -579,6 +582,15 @@ inline bool FE::AdvancedScanView() {
 
 inline bool FE::DrawHistoryPage()
 {
+	// test cout what we got
+	/*std::vector<std::vector<std::string>> test = read_log();
+	for (auto ss : test) {
+		for (auto s : ss)
+			std::cout << " " << s;
+		std::cout << std::endl;
+	}
+	getch();*/
+
 	/* BACK ARROW ICON */
 	struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
 	struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
@@ -615,13 +627,31 @@ inline bool FE::DrawHistoryPage()
 	nk_style_set_font(this->ctx, &this->font->handle);
 
 	/* LAVA ACTUAL HISTORY SECTION */
-	struct nk_rect scanshistory = nk_rect(0,0,0,0);
-	if (nk_begin(this->ctx, "scanhistory", scanshistory, NK_WINDOW_NO_SCROLLBAR)) {
-		//nk_draw_text(nk_window_get_canvas(this->ctx), historyscantxt, " HISTORY", 8, &this->font2->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	struct nk_rect scanshistory = nk_rect(25,bar.h+50,WINDOW_WIDTH-25,WINDOW_HEIGHT-bar.h-25);
+	struct nk_list_view view; //view.count = 2; 	
+	if (nk_begin(this->ctx, "Selected Files/Folders...", scanshistory,
+		NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_DYNAMIC))
+	{
+		nk_layout_row_static(ctx, 50, 50, 5);
+		nk_label(ctx, "Scan Type", NK_TEXT_CENTERED);
+		nk_label(ctx, "Scan Start", NK_TEXT_RIGHT);
+		nk_label(ctx, "Scan End", NK_TEXT_RIGHT);
+		nk_label(ctx, "Viruses Found", NK_TEXT_RIGHT);
+		nk_label(ctx, "Viruses Removed", NK_TEXT_RIGHT);
+		// set font smaller
+		//nk_style_set_font(this->ctx, &this->font3->handle);
+		//if (nk_combo_begin_label(ctx, items[selected_item], nk_vec2(nk_widget_width(ctx), 200))) {
+		//	nk_layout_row_dynamic(ctx, 25, 1);
+		//	for (i = 0; i < 3; ++i)
+		//		if (nk_combo_item_label(ctx, items[i], NK_TEXT_LEFT))
+		//			selected_item = i;
+		//	nk_combo_end(ctx);	
+		//}
 	}
 	nk_end(this->ctx);
+	nk_style_set_font(this->ctx, &this->font->handle);
 
-
+	
 	return true;
 }
 
@@ -644,9 +674,9 @@ inline bool FE::DrawInProgressScan()
 				this->QuickScan();
 				break;
 			case 3: //adv
-				break;
 				//this->maxfiles = this->TotalSetFileCount(advancedScanPaths);
 				this->AdvanceScanNow(advancedScanPaths);
+				break;
 			default:
 				break;
 			}
@@ -680,7 +710,7 @@ inline bool FE::DrawInProgressScan()
 		// const char* fn = CurrentScanFile.c_str();
 		auto f = std::string("file: ").append(CurrentScanFile);
 		const char* fn = f.c_str();
-		//std::cout << "file: " << fn;
+		// std::cout << "file: " << fn;
 		nk_label_wrap(this->ctx, fn);
 	}
 	nk_end(this->ctx);
@@ -823,6 +853,7 @@ inline FE::FE() {
 	this->pp.backArrow = "../Assets/back_arrow.png";
 	this->pp.chooseScan = "../Assets/chooseScan.png";
 	this->pp.triangleButton = "../Assets/triangle.png";
+	this->scanHistorySet = read_log();
 }
 
 inline void FE::UIPrintSet(std::set<std::string> s)
@@ -863,7 +894,12 @@ inline bool FE::init(sf::Window *win) {
 		this->font2 = nk_font_atlas_add_from_file(this->atlas2, "../Assets/font.ttf", 95, 0);
 		nk_sfml_font_stash_end();
 	}
-
+	// smaller text
+	{
+		nk_sfml_font_stash_begin(&this->atlas3);
+		this->font3 = nk_font_atlas_add_from_file(this->atlas3, "../Assets/font.ttf", 18, 0);
+		nk_sfml_font_stash_end();
+	}
 	{//struct nk_font_atlas* atlas;
 		nk_sfml_font_stash_begin(&this->atlas);
 		//this->font = nk_font_atlas_add_from_file(this->atlas, this->font_path, 18, NULL);
