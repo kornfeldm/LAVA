@@ -35,6 +35,7 @@
 #include <vector>
 #include <windows.h>
 #include "LavaScan.h"
+#include <fileapi.h>
 // nuklear includes
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO

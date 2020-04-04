@@ -16,6 +16,7 @@ public:
 	struct cl_engine* engine;
 	struct cl_scan_options options;
 	bool isScanDone;
+	struct q_entry;
 	// constructor
 	LavaScan(); // default
 	/* scans */
@@ -24,10 +25,12 @@ public:
 	bool AdvanceScan();
 	bool AdvanceScanNow(std::set<std::string> s);
 	void eicarTest(std::string path="C:\\test\\eicar.com.txt");
-	void printQuarantineContents();
-	void quarantineFile(std::string filepath);
-	bool removeQuarantinedFiles();
+	std::set<LavaScan::q_entry> read_quarantine_contents();
+	void quarantine_file(std::string filepath, std::string virus_name);
+	bool remove_quarantined_files(std::set<std::string> to_remove);
 	bool quarantineIsEmpty();
+	void move_file(std::string file_path, std::string location_directory, std::string final_extension);
+	void make_quarantine_directory();
 	bool scanDirectory(std::string dirPath, int num_viruses_found);
 	void iterateDirectory(std::string directory, bool clean, int num_viruses_found);
 	int scanFile(std::string filePath);
@@ -60,7 +63,7 @@ inline int LavaScan::scanFile(std::string filePath) {
 			printf("VIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!", filePath); //Infected file is in system folder
 		}
 		else {
-			quarantineFile(filePath); //Infected file is not in system folder
+			quarantine_file(filePath, virname); //Infected file is not in system folder
 		}
 	}
 	else {
@@ -371,54 +374,145 @@ inline std::set<std::string> LavaScan::countQuarantineContents() { //prints the 
 	return s;
 }
 
-inline void LavaScan::printQuarantineContents() { //prints the contents of the quarantine file
+inline struct LavaScan::q_entry {
+	std::string old_file_name;
+	std::string new_file_name;
+	std::string origin_directory;
+	std::string virus_name;
+	bool operator <(const q_entry& q) const
+	{
+		return (origin_directory + new_file_name) < (q.origin_directory + q.new_file_name);
+	}
+};
+
+inline std::set<LavaScan::q_entry> LavaScan::read_quarantine_contents() { //prints the contents of the quarantine file
 	std::fstream quarantineFile;
 	quarantineFile.open("quarantine.lava", std::ios::in | std::ios::out);
+	std::set<struct q_entry> entries;
 	std::string line;
 	while (getline(quarantineFile, line)) {
-		std::cout << line << std::endl;//prints it out line by line
+		struct q_entry q;
+		int found = 0, prev_found = 0, comma_num = 0;
+		while (found != std::string::npos) { //extracting quarantined file info from quarantine entry
+			prev_found = found;
+			found = line.find(",", found + 1, 1);
+			int size = found - prev_found;
+			switch (comma_num)
+			{
+			case 0:
+				q.old_file_name = line.substr(prev_found, size); //extract scan start time
+			case 1:
+				q.new_file_name = line.substr(prev_found + 1, size - 1); //exctract scan finish time
+			case 2:
+				q.origin_directory = line.substr(prev_found + 1, size - 1); //extract number of viruses found
+				q.virus_name = line.substr(found + 1); //extract number of viruses removed
+			}
+			comma_num++;
+		}
+		entries.insert(q);
 	}
 	quarantineFile.close();
+	return entries;
 }
 
-inline void LavaScan::quarantineFile(std::string filepath) { //quarantine file given filepath
+inline void LavaScan::quarantine_file(std::string filepath, std::string virus_name) { //quarantine file given filepath
 	std::fstream quarantineFile;
 	quarantineFile.open("quarantine.lava", std::ios::app);
-	quarantineFile << filepath << std::endl;
+	int pos = filepath.find_last_of("/\\"); // finding position of last "\"
+	std::string file_name = filepath.substr(pos + 1); //original file name with extension
+	std::string quarantine_file_name = file_name.substr(0, file_name.find(".")) + ".lava"; //new name of the file in quarantine
+	std::string file_directory = filepath.substr(0, pos + 1); //original file directory path
+	quarantineFile << file_name + "," + quarantine_file_name + "," + file_directory + "," + virus_name << std::endl; //adding it to the quarantine info file (quarantine.lava)
 	quarantineFile.close();
+	move_file(filepath, ".\\LAVA_Quarantine\\", ".lava"); //moving file to quarantine folder
 }
 
-inline bool LavaScan::removeQuarantinedFiles() { //returns false if errors occurred
-	std::cout << "Do you want to remove the files in quarantine? [y/n]:" << std::endl;
+inline void LavaScan::move_file(std::string file_path, std::string location_directory, std::string final_extension) {
+	int pos = file_path.find_last_of("/\\"); // finding position of last "\"
+	std::string file_name = file_path.substr(pos + 1); //original file name with extension
+	std::ifstream from(file_path, std::ios::in | std::ios::binary);
+	//changing the file extension to the desired final_extension
+	std::ofstream to(location_directory + file_name.substr(0, file_name.find(".")) + final_extension, std::ios::out | std::ios::binary);
+	to << from.rdbuf();
+	from.close();
+	to.close();
+	std::remove(file_path.c_str()); //removing the original file
+}
+
+inline bool LavaScan::remove_quarantined_files(std::set<std::string> to_remove) { //returns false if errors occurred
 	bool success = true;
-	std::string answer;
-	std::cin >> answer;
-	if (answer[0] == 'y') {
-		std::fstream quarantineFile;
-		std::fstream temp;
-		temp.open("temp.lava", std::fstream::out); //creating a temporary file to store the undeleted files
-		quarantineFile.open("quarantine.lava", std::ios::in | std::ios::out); //opening the quarantine file
-		temp << "";
-		std::string line;
-		while (getline(quarantineFile, line)) {
-			if (remove(line.c_str()) != 0) {
+	std::fstream quarantineFile;
+	std::fstream temp;
+	temp.open("temp.lava", std::fstream::out); //creating a temporary file to store the undeleted files
+	quarantineFile.open("quarantine.lava", std::ios::in | std::ios::out); //opening the quarantine file
+	temp << "";
+	std::string line;
+	while (getline(quarantineFile, line)) {
+		int found = 0, prev_found = 0, comma_num = 0;
+		std::string file_name, file_quarantine_name, file_origin, virus_name;
+		while (found != std::string::npos) { //extracting quarantined file info from quarantine entry
+			prev_found = found;
+			found = line.find(",", found + 1, 1);
+			int size = found - prev_found;
+			switch (comma_num)
+			{
+			case 0:
+				file_name = line.substr(prev_found, size); //extract scan start time
+			case 1:
+				file_quarantine_name = line.substr(prev_found + 1, size - 1); //exctract scan finish time
+			case 2:
+				file_origin = line.substr(prev_found + 1, size - 1); //extract number of viruses found
+				virus_name = line.substr(found + 1); //extract number of viruses removed
+			}
+			comma_num++;
+		}
+		if (to_remove.find(file_name) == to_remove.end()) {
+			//moving file back to its original location
+			//move_file(".\\LAVA_Quarantine\\" + file_quarantine_name, file_origin, file_name.substr(file_name.find(".")));
+			temp << line << std::endl; //keeping it in quarantine
+		}
+		else {
+			if (std::remove((".\\LAVA_Quarantine\\" + file_quarantine_name).c_str()) != 0)
+			{
+				//Unable to remove file, keep it in the quarantine folder
+				//error message
 				temp << line << std::endl;
-				std::cout << "error deleting file " << line << std::endl;
 				success = false;
 			}
 			else {
-				std::cout << "successfully deleted file %s" << line << std::endl;
+				//removal successful
 			}
 		}
-		temp.close();
-		quarantineFile.close();
-		remove("quarantine.lava");
-		rename("temp.lava", "quarantine.lava");
 	}
-	else {
-		std::cout << "Files not deleted, but still in quarantine" << std::endl;
-	}
+	temp.close();
+	quarantineFile.close();
+	std::remove("quarantine.lava");
+	std::rename("temp.lava", "quarantine.lava");
 	return success;
+}
+
+inline void LavaScan::make_quarantine_directory() {
+	struct stat buf;
+	stat(".\\LAVA_Quarantine", &buf);
+	//check if the quarantine directory exists
+	if (!(buf.st_mode & S_IFDIR)) {
+		//case if it doesn't exist
+		printf("Quarantine directory not found.\n Attempting to make the Quarantine Directory...\n");
+		if (int ret=CreateDirectoryA(".\\LAVA_Quarantine", NULL)==0) {
+			if (ret == ERROR_ALREADY_EXISTS) {
+				//direcotry already exists
+				printf("Quarantine Direcotory Ready\n");
+			}
+			else if(ret== ERROR_PATH_NOT_FOUND){
+				//idk how this could happen
+			}
+			else {
+				//some other error
+				std::cout << "Error making the quarantine directory, error: " + GetLastError() << std::endl;
+			}
+		}
+		else printf("Quarantine Directory Ready\n");
+	}
 }
 
 inline bool LavaScan::CompleteScan() {
@@ -551,13 +645,27 @@ inline LavaScan::LavaScan() {
 		exit(1);
 	}
 	else {
-		printf("ClamAV engine ready!");
+		printf("ClamAV engine ready!\n");
 	}
 
 	//printf("\n\n Testing scanFile and scanDirectory functions:\n\n");
 	//Testing scanFile function
 	
 	this->options.general = CL_SCAN_GENERAL_ALLMATCHES;
+
+	//create the quarantine direcory if it doesn't exist
+	make_quarantine_directory();
+
+	//Testing Quarantine Functions
+	//quarantine_file("C:\\Users\\dylan\\Downloads\\not_a_virus.txt", "too cool");
+	//quarantine_file("C:\\Users\\dylan\\Downloads\\a_virus.txt", "trojan");
+	//std::set<std::string> to_remove;
+	//to_remove.insert("a_virus.txt");
+	//remove_quarantined_files(to_remove);
+	//std::set<struct q_entry> entries = read_quarantine_contents();
+	//for (struct q_entry q :entries) {
+		//std::cout << "File name: " + q.old_file_name + ", new name: " + q.new_file_name + ", origin directory: " + q.origin_directory + ", virus name: " + q.virus_name << std::endl;
+	//}
 
 	//std::string AntibodyFileLocation = "C:\\test.LavaAnti";
 	////Testing scanDirectory function
