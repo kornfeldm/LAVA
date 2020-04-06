@@ -210,7 +210,9 @@ public:
 		0 : logo screen
 		1 : scans screen
 		2 : history screen
-		3 : Scan in Progress!
+		3 : Scan in Pro gress!
+		4 : schedule advance scan
+		5 : quarentine // how tf can i spell this holy fucking shit
 	*/
 	unsigned int m_scanViews;
 	/*
@@ -241,6 +243,8 @@ public:
 	UINT MultiFolderSelect(HWND hWnd, LPCTSTR szTitle);*/
 	void UIPrintSet(std::set<std::string> s);
 	bool ChangeFontSize(float s); //s is size, default is 28.
+	bool QuarantineView();
+	bool ScheduleAdvScanView();
 };
 inline struct nk_image FE::icon_load(const char* filename, bool flip)
 {
@@ -530,7 +534,11 @@ inline bool FE::AdvancedScanView() {
 		nk_layout_row_static(ctx, 65, AddFoF.w, 1);
 		if (nk_button_label(ctx, "")) {
 			// openfolderdiag
-			MultiFolderSelect(GetActiveWindow(), TEXT("SELECT SOME FILES/FOLDERS"));
+			// POGGERS THIS WORKED
+			std::thread t1([this]() {
+				MultiFolderSelect(GetActiveWindow(), TEXT("SELECT SOME FILES/FOLDERS"));
+			});
+			t1.detach();
 			nk_clear(this->ctx);
 		}
 		// draw txt 
@@ -737,6 +745,17 @@ inline bool FE::DrawInProgressScan()
 	//}
 	//nk_end(this->ctx);
 
+	if (this->isScanDone) { // if current scan done display our done button!
+		int b_w = 100; //width of button for done
+		if (nk_begin(this->ctx, "donebutton", nk_rect(WINDOW_WIDTH*.5-b_w/2, WINDOW_HEIGHT*.85, b_w, 50),
+			NK_WINDOW_DYNAMIC | NK_WINDOW_MOVABLE))
+		{
+			nk_layout_row_dynamic(this->ctx, 150, 1);
+			nk_label_wrap(this->ctx, " DONE!");
+		}
+		nk_end(this->ctx);
+	}
+
 	return true;
 }
 
@@ -882,6 +901,16 @@ inline bool FE::ChangeFontSize(float s = 28) {
 		//nk_init_default(this->ctx, &font->handle);
 	}
 
+	return true;
+}
+
+inline bool FE::QuarantineView()
+{
+	return true;
+}
+
+inline bool FE::ScheduleAdvScanView()
+{
 	return true;
 }
 
