@@ -162,6 +162,7 @@ struct pics {
 	const char* triangleButton;
 	const char* addButton;
 	const char* calendar;
+	const char* trash;
 };
 
 /* FE CLASS */
@@ -200,6 +201,7 @@ public:
 	struct nk_image triangleLogo;
 	struct nk_image addLogo;
 	struct nk_image calendarLogo;
+	struct nk_image trashIcon;
 	std::string currentScanGoing;
 	std::queue<int> scanTasks;
 	std::vector<std::vector<std::string>> scanHistorySet;
@@ -373,8 +375,8 @@ bool FE::NoScanView() {
 	int filled_width = WINDOW_WIDTH * .08 * 2 + WINDOW_WIDTH * .075; // remaining width ofscreen after side menu
 	int delta = WINDOW_WIDTH - filled_width;
 	/* CHOOSE A SCAN */
-	struct nk_rect center = nk_rect(filled_width + delta * .2, WINDOW_HEIGHT * .10, delta * .6, WINDOW_HEIGHT * .6);
-	struct nk_rect centerAndText = nk_rect(center.x+center.w*.2, center.h+150, center.w, 150); //36 for font size!
+	struct nk_rect center = nk_rect(filled_width + delta * .2, WINDOW_HEIGHT * .075, delta * .6, WINDOW_HEIGHT * .7);
+	struct nk_rect centerAndText = nk_rect(center.x+center.w*.2+50, center.h+35, center.w, 150); //36 for font size!
 	if (nk_begin(this->ctx, "ChooseScan", center, NK_WINDOW_NO_SCROLLBAR)) {
 		this->drawImageSubRect(&this->chooseScan, &center);
 	}
@@ -747,20 +749,34 @@ inline bool FE::DrawInProgressScan()
 
 	if (this->isScanDone) { // if current scan done display our done button!
 		
-		int b_w = 100; //width of button for done
-		struct nk_rect r = nk_rect(WINDOW_WIDTH * .5 - b_w / 2, WINDOW_HEIGHT * .85, b_w, 36);
-		if (nk_begin(this->ctx, "donebutton", nk_rect(WINDOW_WIDTH*.5-b_w/2, WINDOW_HEIGHT*.85, b_w, 36),
+		/* trash icon */
+		/*struct nk_rect traplogo = nk_rect(WINDOW_WIDTH * .4, WINDOW_HEIGHT - WINDOW_WIDTH * .1 - 20, WINDOW_WIDTH * .1, WINDOW_WIDTH * .1);
+		if (nk_begin(this->ctx, "quarentinelogo", traplogo,
+			NK_WINDOW_NO_SCROLLBAR)) {
+			this->drawImage(&this->trashIcon);
+		}
+		nk_end(this->ctx);*/
+
+		int b_w = 680; //width of button for done
+		struct nk_rect r = nk_rect(WINDOW_WIDTH * .5 - b_w / 2, WINDOW_HEIGHT - 110, b_w, 100);
+		if (nk_begin(this->ctx, "donebutton", r,
 			NK_WINDOW_NO_SCROLLBAR))
 		{
-			nk_layout_row_static(this->ctx, 36, b_w, 2);
-			if (nk_button_label(this->ctx, "")) {
-				fprintf(stdout, "testestestest\n");
-				nk_clear(this->ctx);
+			nk_layout_row_static(ctx, r.h, r.w, 1);
+			if (nk_button_label(ctx, "")) {
+				// run adv scan now
+				if (advancedScanPaths.size() > 0) {
+					fprintf(stdout, "testestestest\n");
+					nk_clear(this->ctx);
+				}
 			}
-			nk_draw_text(nk_window_get_canvas(this->ctx), r, " DONE!", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+			// draw txt 
+			struct nk_rect textArea2 = nk_rect(r.x+110, WINDOW_HEIGHT - 75, r.w, 36);
+			nk_draw_text(nk_window_get_canvas(this->ctx), textArea2, " Click Here to Remove any Viruses Found!", 40, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+			// draw trash shit
+			this->drawImageSubRect(&this->trashIcon, &nk_rect(r.x, r.y, 100, 100));
 		}
 		nk_end(this->ctx);
-
 	}
 
 	return true;
@@ -886,6 +902,7 @@ inline FE::FE() {
 	this->pp.triangleButton = "../Assets/triangle.png";
 	this->pp.addButton = "../Assets/add.png";
 	this->pp.calendar = "../Assets/calendar.png";
+	this->pp.trash = "../Assets/trash.png";
 	this->scanHistorySet = read_log();
 }
 
@@ -972,6 +989,7 @@ inline bool FE::init(sf::Window *win) {
 	this->addLogo = this->icon_load(pp.addButton);
 	this->trapImage = this->icon_load(pp.trapLogo);
 	this->calendarLogo = this->icon_load(pp.calendar);
+	this->trashIcon = this->icon_load(pp.trash);
 	return true;
 }
 
