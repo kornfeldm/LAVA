@@ -161,6 +161,7 @@ struct pics {
 	const char* chooseScan;
 	const char* triangleButton;
 	const char* addButton;
+	const char* calendar;
 };
 
 /* FE CLASS */
@@ -198,6 +199,7 @@ public:
 	struct nk_image chooseScan;
 	struct nk_image triangleLogo;
 	struct nk_image addLogo;
+	struct nk_image calendarLogo;
 	std::string currentScanGoing;
 	std::queue<int> scanTasks;
 	std::vector<std::vector<std::string>> scanHistorySet;
@@ -404,7 +406,7 @@ bool FE::CompleteScanView() {
 	nk_end(this->ctx);
 
 	/* SCAN NOW BUTTON AND TEXT */
-	struct nk_rect scanButton = nk_rect(delta * .5, WINDOW_HEIGHT * .5, 350, 50);
+	struct nk_rect scanButton = nk_rect(delta * .5, WINDOW_HEIGHT * .5, 250, 36);
 	if (nk_begin(this->ctx, "Complete Scan Button", scanButton, NK_WINDOW_NO_SCROLLBAR))
 	{
 		nk_layout_row_static(ctx, 65, 400, 1);
@@ -420,7 +422,7 @@ bool FE::CompleteScanView() {
 		struct nk_rect textArea = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
 		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, " Complete Scan! ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 		// draw triangle
-		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x+300, textArea.y, textArea.w-300, textArea.h));
+		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + textArea.w - textArea.h-5, textArea.y, textArea.h, textArea.h));
 	}
 	nk_end(this->ctx);
 
@@ -443,7 +445,7 @@ bool FE::QuickScansView() {
 	nk_end(this->ctx);
 
 	/* SCAN NOW BUTTON AND TEXT */
-	struct nk_rect scanButton = nk_rect(delta * .5, WINDOW_HEIGHT * .5, 270, 50);
+	struct nk_rect scanButton = nk_rect(delta * .5, WINDOW_HEIGHT * .5, 200, 36);
 	if (nk_begin(this->ctx, "Quick Scan Button", scanButton, NK_WINDOW_NO_SCROLLBAR))
 	{
 		nk_layout_row_static(ctx, 65, 400, 1);
@@ -459,7 +461,7 @@ bool FE::QuickScansView() {
 		struct nk_rect textArea = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
 		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, " Quick Scan! ", 13, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 		// draw triangle
-		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 220, textArea.y, textArea.w - 220, textArea.h));
+		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + textArea.w - textArea.h -5,  textArea.y, textArea.h, textArea.h));
 	}
 	nk_end(this->ctx);
 
@@ -563,7 +565,7 @@ inline bool FE::AdvancedScanView() {
 	nk_end(this->ctx);
 
 	/* adv scan LATER */
-	struct nk_rect scanButtonLater = nk_rect(scanButton.x+scanButton.w+50, scanButton.y, scanButton.w, 50);
+	struct nk_rect scanButtonLater = nk_rect(scanButton.x+scanButton.w+50, scanButton.y, 16 * 12 + 60, 36);
 	if (nk_begin(this->ctx, "advscannl8r", scanButtonLater, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_MOVABLE))
 	{
 		nk_layout_row_static(ctx, 65, scanButtonLater.w, 1);
@@ -574,8 +576,8 @@ inline bool FE::AdvancedScanView() {
 		// draw txt 
 		struct nk_rect textArea3 = nk_rect(scanButtonLater.x, scanButtonLater.y, scanButtonLater.w, scanButtonLater.h);
 		nk_draw_text(nk_window_get_canvas(this->ctx), textArea3, "  Schedule Scan ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-		// draw triangle
-		//this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 240, textArea.y, textArea.w - 220, textArea.h));
+		// draw calendar
+		this->drawImageSubRect(&this->calendarLogo, &nk_rect(scanButtonLater.x + scanButtonLater.w - 40, scanButtonLater.y, scanButtonLater.h, scanButtonLater.h));
 	}
 	nk_end(this->ctx);
 
@@ -857,6 +859,7 @@ inline FE::FE() {
 	this->pp.chooseScan = "../Assets/choosescan2.png";
 	this->pp.triangleButton = "../Assets/triangle.png";
 	this->pp.addButton = "../Assets/add.png";
+	this->pp.calendar = "../Assets/calendar.png";
 	this->scanHistorySet = read_log();
 }
 
@@ -932,6 +935,7 @@ inline bool FE::init(sf::Window *win) {
 	this->triangleLogo = this->icon_load(pp.triangleButton);
 	this->addLogo = this->icon_load(pp.addButton);
 	this->trapImage = this->icon_load(pp.trapLogo);
+	this->calendarLogo = this->icon_load(pp.calendar);
 	return true;
 }
 
