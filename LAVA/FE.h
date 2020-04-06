@@ -746,14 +746,21 @@ inline bool FE::DrawInProgressScan()
 	//nk_end(this->ctx);
 
 	if (this->isScanDone) { // if current scan done display our done button!
+		
 		int b_w = 100; //width of button for done
-		if (nk_begin(this->ctx, "donebutton", nk_rect(WINDOW_WIDTH*.5-b_w/2, WINDOW_HEIGHT*.85, b_w, 50),
-			NK_WINDOW_DYNAMIC | NK_WINDOW_MOVABLE))
+		struct nk_rect r = nk_rect(WINDOW_WIDTH * .5 - b_w / 2, WINDOW_HEIGHT * .85, b_w, 36);
+		if (nk_begin(this->ctx, "donebutton", nk_rect(WINDOW_WIDTH*.5-b_w/2, WINDOW_HEIGHT*.85, b_w, 36),
+			NK_WINDOW_NO_SCROLLBAR))
 		{
-			nk_layout_row_dynamic(this->ctx, 150, 1);
-			nk_label_wrap(this->ctx, " DONE!");
+			nk_layout_row_static(this->ctx, 36, b_w, 2);
+			if (nk_button_label(this->ctx, "")) {
+				fprintf(stdout, "testestestest\n");
+				nk_clear(this->ctx);
+			}
+			nk_draw_text(nk_window_get_canvas(this->ctx), r, " DONE!", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 		}
 		nk_end(this->ctx);
+
 	}
 
 	return true;
