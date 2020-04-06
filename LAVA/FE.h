@@ -181,9 +181,11 @@ public:
 	struct nk_font_atlas* atlas; //reg
 	struct nk_font_atlas* atlas2; //large
 	struct nk_font_atlas* atlas3; //small
+	struct nk_font_atlas* atlas4; //medium large, size 84
 	struct nk_font* font;
 	struct nk_font* font2;
 	struct nk_font* font3;
+	struct nk_font* font4;
 	const char* font_path = "../Assets/font.ttf";
 	//struct nk_font_config* fontCFG;// can be null so commenting out for mem
 	struct nk_colorf bg;
@@ -333,11 +335,31 @@ inline bool FE::Display() {
 inline bool FE::DrawMainPage()
 {
 	/* LOGO */
-	if (nk_begin(this->ctx, "lavalogo", nk_rect(25, 25, WINDOW_HEIGHT * .33, WINDOW_HEIGHT * .33),
+	struct nk_rect r_logo = nk_rect(25, 25, WINDOW_HEIGHT * .33, WINDOW_HEIGHT * .33);
+	if (nk_begin(this->ctx, "lavalogo",r_logo,
 		NK_WINDOW_NO_SCROLLBAR)) {
 		this->drawImage(&this->squareImage);
 	}
 	nk_end(this->ctx);
+	/* LAVA TEXT TEXT */
+	nk_style_set_font(this->ctx, &this->font4->handle);
+	struct nk_rect LAVATEXT = nk_rect(r_logo.x+ r_logo.w+10, r_logo.y, 600, 84);
+	struct nk_rect LAVATEXT2 = nk_rect(r_logo.x + r_logo.w + 10, r_logo.y+90, 600, 84);
+	struct nk_rect LAVATEXT3 = nk_rect(r_logo.x + r_logo.w + 10, r_logo.y+180, 600, 84);
+	if (nk_begin(this->ctx, "lavatext", LAVATEXT, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_draw_text(nk_window_get_canvas(this->ctx), LAVATEXT, " Light-weight", 13, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+	if (nk_begin(this->ctx, "lavatext2", LAVATEXT2, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_draw_text(nk_window_get_canvas(this->ctx), LAVATEXT2, " AntiVirus", 10, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+	if (nk_begin(this->ctx, "lavatext3", LAVATEXT3, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_draw_text(nk_window_get_canvas(this->ctx), LAVATEXT3, " Application", 12, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+	nk_style_set_font(this->ctx, &this->font->handle);
+
 
 	/* SCAN ICON */
 	if (nk_begin(this->ctx, "scan", nk_rect(WINDOW_WIDTH * .2, WINDOW_HEIGHT * .49, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3),
@@ -351,6 +373,12 @@ inline bool FE::DrawMainPage()
 			nk_clear(this->ctx);
 		}
 		this->drawImage(&this->scanImage);
+	}
+	nk_end(this->ctx);
+	/* SCAN TEXT */
+	struct nk_rect SCANTEXT = nk_rect(WINDOW_WIDTH * .2-20, WINDOW_HEIGHT * .49+ WINDOW_HEIGHT * .3+15, 400, 84);
+	if (nk_begin(this->ctx, "SCANTEXT", SCANTEXT, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_draw_text(nk_window_get_canvas(this->ctx), SCANTEXT, " Scans", 6, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
 
@@ -367,7 +395,13 @@ inline bool FE::DrawMainPage()
 		this->drawImage(&this->historyImage);
 	}
 	nk_end(this->ctx);
-	
+	/* HISTORY TEXT */
+	struct nk_rect HISTTEXT = nk_rect(WINDOW_WIDTH * .6-50, WINDOW_HEIGHT * .49+ WINDOW_HEIGHT * .3+15, 400, 84);
+	if (nk_begin(this->ctx, "HISTTEXT", HISTTEXT, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_draw_text(nk_window_get_canvas(this->ctx), HISTTEXT, " History", 8, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+
 	return true;
 }
 
@@ -958,6 +992,11 @@ inline bool FE::init(sf::Window *win) {
 	{
 		nk_sfml_font_stash_begin(&this->atlas3);
 		this->font3 = nk_font_atlas_add_from_file(this->atlas3, "../Assets/font.ttf", 18, 0);
+		nk_sfml_font_stash_end();
+	}
+	{//logo text size 88;
+		nk_sfml_font_stash_begin(&this->atlas4);
+		this->font4 = nk_font_atlas_add_from_file(this->atlas4, "../Assets/font.ttf", 84, 0);
 		nk_sfml_font_stash_end();
 	}
 	{//struct nk_font_atlas* atlas;
