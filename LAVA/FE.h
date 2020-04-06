@@ -160,6 +160,7 @@ struct pics {
 	const char* backArrow;
 	const char* chooseScan;
 	const char* triangleButton;
+	const char* addButton;
 };
 
 /* FE CLASS */
@@ -196,6 +197,7 @@ public:
 	struct nk_image backArrow;
 	struct nk_image chooseScan;
 	struct nk_image triangleLogo;
+	struct nk_image addLogo;
 	std::string currentScanGoing;
 	std::queue<int> scanTasks;
 	std::vector<std::vector<std::string>> scanHistorySet;
@@ -365,8 +367,8 @@ bool FE::NoScanView() {
 	int filled_width = WINDOW_WIDTH * .08 * 2 + WINDOW_WIDTH * .075; // remaining width ofscreen after side menu
 	int delta = WINDOW_WIDTH - filled_width;
 	/* CHOOSE A SCAN */
-	struct nk_rect center = nk_rect(filled_width + delta * .2, WINDOW_HEIGHT * .20-36-50, delta * .6-50, WINDOW_HEIGHT * .6 -36+50);
-	struct nk_rect centerAndText = nk_rect(center.x, center.h+90, center.w+50, 80 + 80+30); //36 for font size!
+	struct nk_rect center = nk_rect(filled_width + delta * .2, WINDOW_HEIGHT * .10, delta * .6, WINDOW_HEIGHT * .6);
+	struct nk_rect centerAndText = nk_rect(center.x+center.w*.2, center.h+150, center.w, 150); //36 for font size!
 	if (nk_begin(this->ctx, "ChooseScan", center, NK_WINDOW_NO_SCROLLBAR)) {
 		this->drawImageSubRect(&this->chooseScan, &center);
 	}
@@ -520,7 +522,7 @@ inline bool FE::AdvancedScanView() {
 	nk_end(this->ctx);
 
 	/* add folders/files button */
-	struct nk_rect AddFoF = nk_rect(WINDOW_WIDTH - delta+10, WINDOW_HEIGHT * .235+405, 330, 50);
+	struct nk_rect AddFoF = nk_rect(WINDOW_WIDTH - delta+10, WINDOW_HEIGHT * .235+405, 17*12+41, 36);
 	if (nk_begin(this->ctx, "add folders", AddFoF, NK_WINDOW_NO_SCROLLBAR))
 	{
 		nk_layout_row_static(ctx, 65, AddFoF.w, 1);
@@ -532,8 +534,8 @@ inline bool FE::AdvancedScanView() {
 		// draw txt 
 		struct nk_rect textArea = nk_rect(AddFoF.x, AddFoF.y, AddFoF.w, AddFoF.h);
 		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, "  Add Files/Dirs ", 17, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-		// draw triangle
-		//this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 240, textArea.y, textArea.w - 220, textArea.h));
+		// draw add
+		this->drawImageSubRect(&this->addLogo, &nk_rect(AddFoF.x + AddFoF.w - 39, AddFoF.y, AddFoF.h, AddFoF.h));
 	}
 	nk_end(this->ctx);
 
@@ -555,8 +557,8 @@ inline bool FE::AdvancedScanView() {
 		// draw txt 
 		struct nk_rect textArea2 = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
 		nk_draw_text(nk_window_get_canvas(this->ctx), textArea2, "  Adv. Scan Now ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-		// draw triangle
-		//this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 240, textArea.y, textArea.w - 220, textArea.h));
+		// draw add button
+		//this->drawImageSubRect(&this->addLogo, &nk_rect(scanButton.x + 150, scanButton.y, scanButton.h, scanButton.h));
 	}
 	nk_end(this->ctx);
 
@@ -851,8 +853,10 @@ inline FE::FE() {
 	this->pp.squareLogo = "../Assets/squareLogo.png";
 	this->pp.history = "../Assets/historylarger.png";
 	this->pp.backArrow = "../Assets/back_arrow.png";
-	this->pp.chooseScan = "../Assets/chooseScan.png";
+	//this->pp.chooseScan = "../Assets/chooseScan.png";
+	this->pp.chooseScan = "../Assets/choosescan2.png";
 	this->pp.triangleButton = "../Assets/triangle.png";
+	this->pp.addButton = "../Assets/add.png";
 	this->scanHistorySet = read_log();
 }
 
@@ -926,6 +930,7 @@ inline bool FE::init(sf::Window *win) {
 	this->backArrow = this->icon_load(pp.backArrow);
 	this->chooseScan = this->icon_load(pp.chooseScan);
 	this->triangleLogo = this->icon_load(pp.triangleButton);
+	this->addLogo = this->icon_load(pp.addButton);
 	this->trapImage = this->icon_load(pp.trapLogo);
 	return true;
 }
