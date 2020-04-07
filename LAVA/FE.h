@@ -182,10 +182,12 @@ public:
 	struct nk_font_atlas* atlas2; //large
 	struct nk_font_atlas* atlas3; //small
 	struct nk_font_atlas* atlas4; //medium large, size 84
+	struct nk_font_atlas* atlas5; // small medium...less than reg..22
 	struct nk_font* font;
 	struct nk_font* font2;
 	struct nk_font* font3;
 	struct nk_font* font4;
+	struct nk_font* font5;
 	const char* font_path = "../Assets/font.ttf";
 	//struct nk_font_config* fontCFG;// can be null so commenting out for mem
 	struct nk_colorf bg;
@@ -674,27 +676,87 @@ inline bool FE::DrawHistoryPage()
 	nk_end(this->ctx);
 	nk_style_set_font(this->ctx, &this->font->handle);
 
+	//nk_stroke_line(this->canvas, 10, historyscantxt.h + 15, historyscantxt.w + 15, historyscantxt.h + 15, 2, nk_rgb(255, 255, 255));
+
 	/* LAVA ACTUAL HISTORY SECTION */
-	struct nk_rect scanshistory = nk_rect(25,bar.h+50,WINDOW_WIDTH-25,WINDOW_HEIGHT-bar.h-25);
+	// make first col a seperate entity and skinnier...might fit rest of text this wway.
+	//struct nk_rect view0 = nk_rect(5, bar.h + 50, 200, WINDOW_HEIGHT - bar.h - 55);
+	//struct nk_rect scanshistory = nk_rect(view0.w,bar.h+50,WINDOW_WIDTH-5-view0.w,WINDOW_HEIGHT-bar.h-55);
+	struct nk_rect biggieCheese = nk_rect(5, bar.h + 50, WINDOW_WIDTH - 10, WINDOW_HEIGHT - bar.h - 55); // total area...i give up on this for now im too tired
 	struct nk_list_view view; //view.count = 2; 	
-	if (nk_begin(this->ctx, "Selected Files/Folders...", scanshistory,
-		NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_DYNAMIC))
+
+	if (nk_begin(this->ctx, "testlmao", biggieCheese,
+		NK_WINDOW_SCROLL_AUTO_HIDE ))
 	{
-		nk_layout_row_static(ctx, 50, 50, 5);
-		nk_label(ctx, "Scan Type", NK_TEXT_CENTERED);
-		nk_label(ctx, "Scan Start", NK_TEXT_RIGHT);
-		nk_label(ctx, "Scan End", NK_TEXT_RIGHT);
-		nk_label(ctx, "Viruses Found", NK_TEXT_RIGHT);
-		nk_label(ctx, "Viruses Removed", NK_TEXT_RIGHT);
-		// set font smaller
-		//nk_style_set_font(this->ctx, &this->font3->handle);
-		//if (nk_combo_begin_label(ctx, items[selected_item], nk_vec2(nk_widget_width(ctx), 200))) {
-		//	nk_layout_row_dynamic(ctx, 25, 1);
-		//	for (i = 0; i < 3; ++i)
-		//		if (nk_combo_item_label(ctx, items[i], NK_TEXT_LEFT))
-		//			selected_item = i;
-		//	nk_combo_end(ctx);	
-		//}
+		/* HORIZANTAL LINE */
+		//nk_stroke_line(this->canvas, 20, biggieCheese.y + 50, WINDOW_WIDTH - 20, biggieCheese.y + 50, 20, nk_rgb(255, 255, 255));
+
+		nk_style_set_font(this->ctx, &this->font5->handle);
+		nk_layout_row_dynamic(ctx, WINDOW_HEIGHT - 10, 5); // wrapping row
+		if (nk_group_begin(ctx, "column1", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 1
+			nk_layout_row_dynamic(ctx, 36, 1); // nested row
+			nk_label(ctx, "Scan Type", NK_TEXT_CENTERED);
+
+			nk_style_set_font(this->ctx, &this->font3->handle);
+			for (int i = 0; i < this->PreviousScans.size(); i++) {
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label(ctx, this->PreviousScans[i][0].c_str(), NK_TEXT_CENTERED);
+			}
+			nk_style_set_font(this->ctx, &this->font5->handle);
+			nk_group_end(ctx);
+		}
+
+		if (nk_group_begin(ctx, "column2", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 2
+			nk_layout_row_dynamic(ctx, 36, 1);
+			nk_label(ctx, "Scan Start", NK_TEXT_CENTERED);
+
+			nk_style_set_font(this->ctx, &this->font3->handle);
+			for (int i = 0; i < this->PreviousScans.size(); i++) {
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label(ctx, this->PreviousScans[i][1].c_str(), NK_TEXT_CENTERED);
+			}
+			nk_style_set_font(this->ctx, &this->font5->handle);
+			nk_group_end(ctx);
+		}
+
+		if (nk_group_begin(ctx, "column3", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 3
+			nk_layout_row_dynamic(ctx, 36, 1); // nested row
+			nk_label(ctx, "Scan End", NK_TEXT_CENTERED);
+
+			nk_style_set_font(this->ctx, &this->font3->handle);
+			for (int i = 0; i < this->PreviousScans.size(); i++) {
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label(ctx, this->PreviousScans[i][2].c_str(), NK_TEXT_CENTERED);
+			}
+			nk_style_set_font(this->ctx, &this->font5->handle);
+			nk_group_end(ctx);
+		}
+
+		if (nk_group_begin(ctx, "column4", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 4
+			nk_layout_row_dynamic(ctx, 36, 1);
+			nk_label(ctx, "Viruses Found", NK_TEXT_CENTERED);
+
+			nk_style_set_font(this->ctx, &this->font3->handle);
+			for (int i = 0; i < this->PreviousScans.size(); i++) {
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label(ctx, this->PreviousScans[i][3].c_str(), NK_TEXT_CENTERED);
+			}
+			nk_style_set_font(this->ctx, &this->font5->handle);
+			nk_group_end(ctx);
+		}
+
+		if (nk_group_begin(ctx, "column5", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 5
+			nk_layout_row_dynamic(ctx, 36, 1); // nested row
+			nk_label(ctx, "Viruses Removed", NK_TEXT_CENTERED);
+
+			nk_style_set_font(this->ctx, &this->font3->handle);
+			for (int i = 0; i < this->PreviousScans.size(); i++) {
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label(ctx, this->PreviousScans[i][4].c_str(), NK_TEXT_CENTERED);
+			}
+			nk_style_set_font(this->ctx, &this->font5->handle);
+			nk_group_end(ctx);
+		}
 	}
 	nk_end(this->ctx);
 	nk_style_set_font(this->ctx, &this->font->handle);
@@ -997,6 +1059,11 @@ inline bool FE::init(sf::Window *win) {
 	{//logo text size 88;
 		nk_sfml_font_stash_begin(&this->atlas4);
 		this->font4 = nk_font_atlas_add_from_file(this->atlas4, "../Assets/font.ttf", 84, 0);
+		nk_sfml_font_stash_end();
+	}
+	{//logo text size 88;
+		nk_sfml_font_stash_begin(&this->atlas5);
+		this->font5 = nk_font_atlas_add_from_file(this->atlas5, "../Assets/font.ttf", 22, 0);
 		nk_sfml_font_stash_end();
 	}
 	{//struct nk_font_atlas* atlas;
