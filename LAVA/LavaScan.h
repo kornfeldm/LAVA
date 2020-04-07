@@ -3,6 +3,75 @@
 #define LAVASCAN_H
 #pragma warning(disable : 4996) //_CRT_SECURE_NO_WARNINGS
 extern std::string CurrentScanFile = std::string("");
+
+class ProgressMonitor {
+protected:
+	//Internal variables
+	float levelFiveFolderCount = 0;
+	float levelFiveFoldersCompleted = 0;
+	float progessPercentage = 0;
+
+public:
+	//Return the variables for use outside of the class
+	float GetPercentage(){
+		return progessPercentage;
+	}
+	float GetTotal() {
+		return levelFiveFolderCount;
+	}
+	float GetCompleted() {
+		return levelFiveFoldersCompleted;
+	}
+	//Call this every time a level five folder is scanned during a scan
+	void FinishedDirectory(){
+		levelFiveFoldersCompleted++;
+		if (levelFiveFolderCount != 0){
+			progessPercentage = levelFiveFoldersCompleted / levelFiveFolderCount;
+		} else {
+			progessPercentage = 0;
+		}
+		return;
+	}
+	
+	//Call this for each directory added to a scan
+	//Adds the amount of level five directories within a given directory to the total count
+	void CountDirectories(std::string directory, int depth = 4, int level = 0) {
+		//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
+		//This is a modified version of iterateDirectory
+		if (directory.substr(directory.length() - 2) == ".\\")
+		{
+			return;
+		}
+		struct dirent* item;
+		const char* location = directory.c_str();
+		DIR* dir = opendir(location);
+		if (dir != NULL) {
+			item = readdir(dir);
+			while (item != NULL) {
+				if (item->d_type == DT_DIR)
+				{
+					//If we're not at the fifth level yet, go a level deeper
+					if (level < 4)
+					{
+						std::string newDirectory = directory + item->d_name + "\\";
+						CountDirectories(newDirectory, depth, level++);
+					}
+					//If we are then add the amount of folders to the total count
+					if (level == 4)
+					{
+						levelFiveFolderCount++;
+					}
+				}
+				item = readdir(dir);
+			}
+		}
+		closedir(dir);
+		return;
+	}
+	
+};
+
+
 class LavaScan
 {
 public:
