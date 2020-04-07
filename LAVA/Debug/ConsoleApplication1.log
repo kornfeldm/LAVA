@@ -1,4 +1,0 @@
-﻿ConsoleApplication1.obj : error LNK2019: unresolved external symbol _cl_init referenced in function _main
-ConsoleApplication1.obj : error LNK2019: unresolved external symbol _cl_strerror referenced in function _main
-..\clam64stuff\libclamav.lib : warning LNK4272: library machine type 'x64' conflicts with target machine type 'x86'
-C:\Users\tom\Downloads\clam64\ConsoleApplication1\Debug\ConsoleApplication1.exe : fatal error LNK1120: 2 unresolved externals
