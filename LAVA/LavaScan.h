@@ -17,6 +17,7 @@ public:
 	struct cl_scan_options options;
 	bool isScanDone;
 	struct q_entry;
+	std::vector<std::vector<std::string>> PreviousScans;
 	// constructor
 	LavaScan(); // default
 	/* scans */
@@ -42,6 +43,7 @@ public:
 	void log_scan(std::string type, std::string start, std::string finish, int found, int removed);
 	std::vector<std::vector<std::string>> read_log();
 	std::string get_time();
+	void UpdatePreviousScans();
 };
 
 inline int LavaScan::scanFile(std::string filePath) {
@@ -609,6 +611,10 @@ inline std::vector<std::vector<std::string>> LavaScan::read_log() {
 //	return true;
 //}
 
+inline void LavaScan::UpdatePreviousScans() {
+	this->PreviousScans = this->read_log();
+}
+
 inline LavaScan::LavaScan() {
 	CurrentScanCount = 0;
 	isScanDone = false;
@@ -677,6 +683,10 @@ inline LavaScan::LavaScan() {
 	/*clean = quickScan(AntibodyFileLocation, engine, options);
 	if (clean) printf("Directory is not infected");
 	else printf("Directory is not infected");*/
+
+	// have a seperate thread load shit into PreviousScans...race condition if many scans on a pc maybe...we will see
+	std::thread t1 = std::thread([this] {this->UpdatePreviousScans(); });
+	t1.detach();
 }
 
 #endif

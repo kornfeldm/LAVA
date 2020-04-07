@@ -160,6 +160,9 @@ struct pics {
 	const char* backArrow;
 	const char* chooseScan;
 	const char* triangleButton;
+	const char* addButton;
+	const char* calendar;
+	const char* trash;
 };
 
 /* FE CLASS */
@@ -178,9 +181,13 @@ public:
 	struct nk_font_atlas* atlas; //reg
 	struct nk_font_atlas* atlas2; //large
 	struct nk_font_atlas* atlas3; //small
+	struct nk_font_atlas* atlas4; //medium large, size 84
+	struct nk_font_atlas* atlas5; // small medium...less than reg..22
 	struct nk_font* font;
 	struct nk_font* font2;
 	struct nk_font* font3;
+	struct nk_font* font4;
+	struct nk_font* font5;
 	const char* font_path = "../Assets/font.ttf";
 	//struct nk_font_config* fontCFG;// can be null so commenting out for mem
 	struct nk_colorf bg;
@@ -196,6 +203,9 @@ public:
 	struct nk_image backArrow;
 	struct nk_image chooseScan;
 	struct nk_image triangleLogo;
+	struct nk_image addLogo;
+	struct nk_image calendarLogo;
+	struct nk_image trashIcon;
 	std::string currentScanGoing;
 	std::queue<int> scanTasks;
 	std::vector<std::vector<std::string>> scanHistorySet;
@@ -206,7 +216,9 @@ public:
 		0 : logo screen
 		1 : scans screen
 		2 : history screen
-		3 : Scan in Progress!
+		3 : Scan in Pro gress!
+		4 : schedule advance scan
+		5 : quarentine // how tf can i spell this holy fucking shit
 	*/
 	unsigned int m_scanViews;
 	/*
@@ -237,6 +249,8 @@ public:
 	UINT MultiFolderSelect(HWND hWnd, LPCTSTR szTitle);*/
 	void UIPrintSet(std::set<std::string> s);
 	bool ChangeFontSize(float s); //s is size, default is 28.
+	bool QuarantineView();
+	bool ScheduleAdvScanView();
 };
 inline struct nk_image FE::icon_load(const char* filename, bool flip)
 {
@@ -315,6 +329,10 @@ inline bool FE::Display() {
 		this->DrawHistoryPage();
 	else if (this->view == 3) // in-prog scan page
 		this->DrawInProgressScan();
+	else if (this->view == 4) //adv scan sched pg
+		this->ScheduleAdvScanView();
+	else if (this->view == 5) //quarentine view
+		this->QuarantineView();
 	else
 		std::cout << "ERRRRRRORRRRR\n";
 	return true;
@@ -323,11 +341,31 @@ inline bool FE::Display() {
 inline bool FE::DrawMainPage()
 {
 	/* LOGO */
-	if (nk_begin(this->ctx, "lavalogo", nk_rect(25, 25, WINDOW_HEIGHT * .33, WINDOW_HEIGHT * .33),
+	struct nk_rect r_logo = nk_rect(25, 25, WINDOW_HEIGHT * .33, WINDOW_HEIGHT * .33);
+	if (nk_begin(this->ctx, "lavalogo",r_logo,
 		NK_WINDOW_NO_SCROLLBAR)) {
 		this->drawImage(&this->squareImage);
 	}
 	nk_end(this->ctx);
+	/* LAVA TEXT TEXT */
+	nk_style_set_font(this->ctx, &this->font4->handle);
+	struct nk_rect LAVATEXT = nk_rect(r_logo.x+ r_logo.w+10, r_logo.y, 600, 84);
+	struct nk_rect LAVATEXT2 = nk_rect(r_logo.x + r_logo.w + 10, r_logo.y+90, 600, 84);
+	struct nk_rect LAVATEXT3 = nk_rect(r_logo.x + r_logo.w + 10, r_logo.y+180, 600, 84);
+	if (nk_begin(this->ctx, "lavatext", LAVATEXT, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_draw_text(nk_window_get_canvas(this->ctx), LAVATEXT, " Light-weight", 13, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+	if (nk_begin(this->ctx, "lavatext2", LAVATEXT2, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_draw_text(nk_window_get_canvas(this->ctx), LAVATEXT2, " AntiVirus", 10, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+	if (nk_begin(this->ctx, "lavatext3", LAVATEXT3, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_draw_text(nk_window_get_canvas(this->ctx), LAVATEXT3, " Application", 12, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+	nk_style_set_font(this->ctx, &this->font->handle);
+
 
 	/* LAVA TEXT ********************************************************/
 	if (nk_begin(this->ctx, "Lightweight Anti-Virus Application", nk_rect(400, WINDOW_HEIGHT * .04, 470, 300),
@@ -350,6 +388,12 @@ inline bool FE::DrawMainPage()
 		this->drawImage(&this->scanImage);
 	}
 	nk_end(this->ctx);
+	/* SCAN TEXT */
+	struct nk_rect SCANTEXT = nk_rect(WINDOW_WIDTH * .2-20, WINDOW_HEIGHT * .49+ WINDOW_HEIGHT * .3+15, 400, 84);
+	if (nk_begin(this->ctx, "SCANTEXT", SCANTEXT, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_draw_text(nk_window_get_canvas(this->ctx), SCANTEXT, " Scans", 6, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
 
 	/* history ICON */
 	if (nk_begin(this->ctx, "history", nk_rect(WINDOW_WIDTH * .6, WINDOW_HEIGHT * .49, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3),
@@ -364,7 +408,13 @@ inline bool FE::DrawMainPage()
 		this->drawImage(&this->historyImage);
 	}
 	nk_end(this->ctx);
-	
+	/* HISTORY TEXT */
+	struct nk_rect HISTTEXT = nk_rect(WINDOW_WIDTH * .6-50, WINDOW_HEIGHT * .49+ WINDOW_HEIGHT * .3+15, 400, 84);
+	if (nk_begin(this->ctx, "HISTTEXT", HISTTEXT, NK_WINDOW_NO_SCROLLBAR)) {
+		nk_draw_text(nk_window_get_canvas(this->ctx), HISTTEXT, " History", 8, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+
 	return true;
 }
 
@@ -372,8 +422,8 @@ bool FE::NoScanView() {
 	int filled_width = WINDOW_WIDTH * .08 * 2 + WINDOW_WIDTH * .075; // remaining width ofscreen after side menu
 	int delta = WINDOW_WIDTH - filled_width;
 	/* CHOOSE A SCAN */
-	struct nk_rect center = nk_rect(filled_width + delta * .2, WINDOW_HEIGHT * .20-36-50, delta * .6-50, WINDOW_HEIGHT * .6 -36+50);
-	struct nk_rect centerAndText = nk_rect(center.x, center.h+90, center.w+50, 80 + 80+30); //36 for font size!
+	struct nk_rect center = nk_rect(filled_width + delta * .2, WINDOW_HEIGHT * .075, delta * .6, WINDOW_HEIGHT * .7);
+	struct nk_rect centerAndText = nk_rect(center.x+center.w*.2+50, center.h+35, center.w, 150); //36 for font size!
 	if (nk_begin(this->ctx, "ChooseScan", center, NK_WINDOW_NO_SCROLLBAR)) {
 		this->drawImageSubRect(&this->chooseScan, &center);
 	}
@@ -409,7 +459,7 @@ bool FE::CompleteScanView() {
 	nk_end(this->ctx);
 
 	/* SCAN NOW BUTTON AND TEXT */
-	struct nk_rect scanButton = nk_rect(delta * .5, WINDOW_HEIGHT * .5, 350, 50);
+	struct nk_rect scanButton = nk_rect(delta * .5, WINDOW_HEIGHT * .5, 250, 36);
 	if (nk_begin(this->ctx, "Complete Scan Button", scanButton, NK_WINDOW_NO_SCROLLBAR))
 	{
 		nk_layout_row_static(ctx, 65, 400, 1);
@@ -425,7 +475,7 @@ bool FE::CompleteScanView() {
 		struct nk_rect textArea = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
 		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, " Complete Scan! ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 		// draw triangle
-		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x+300, textArea.y, textArea.w-300, textArea.h));
+		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + textArea.w - textArea.h-5, textArea.y, textArea.h, textArea.h));
 	}
 	nk_end(this->ctx);
 
@@ -448,7 +498,7 @@ bool FE::QuickScansView() {
 	nk_end(this->ctx);
 
 	/* SCAN NOW BUTTON AND TEXT */
-	struct nk_rect scanButton = nk_rect(delta * .5, WINDOW_HEIGHT * .5, 270, 50);
+	struct nk_rect scanButton = nk_rect(delta * .5, WINDOW_HEIGHT * .5, 200, 36);
 	if (nk_begin(this->ctx, "Quick Scan Button", scanButton, NK_WINDOW_NO_SCROLLBAR))
 	{
 		nk_layout_row_static(ctx, 65, 400, 1);
@@ -464,7 +514,7 @@ bool FE::QuickScansView() {
 		struct nk_rect textArea = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
 		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, " Quick Scan! ", 13, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 		// draw triangle
-		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 220, textArea.y, textArea.w - 220, textArea.h));
+		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + textArea.w - textArea.h -5,  textArea.y, textArea.h, textArea.h));
 	}
 	nk_end(this->ctx);
 
@@ -528,20 +578,24 @@ inline bool FE::AdvancedScanView() {
 	nk_end(this->ctx);
 
 	/* add folders/files button */
-	struct nk_rect AddFoF = nk_rect(WINDOW_WIDTH - delta+10, WINDOW_HEIGHT * .235+405, 330, 50);
+	struct nk_rect AddFoF = nk_rect(WINDOW_WIDTH - delta+10, WINDOW_HEIGHT * .235+405, 17*12+41, 36);
 	if (nk_begin(this->ctx, "add folders", AddFoF, NK_WINDOW_NO_SCROLLBAR))
 	{
 		nk_layout_row_static(ctx, 65, AddFoF.w, 1);
 		if (nk_button_label(ctx, "")) {
 			// openfolderdiag
-			MultiFolderSelect(GetActiveWindow(), TEXT("SELECT SOME FILES/FOLDERS"));
+			// POGGERS THIS WORKED
+			std::thread t1([this]() {
+				MultiFolderSelect(GetActiveWindow(), TEXT("SELECT SOME FILES/FOLDERS"));
+			});
+			t1.detach();
 			nk_clear(this->ctx);
 		}
 		// draw txt 
 		struct nk_rect textArea = nk_rect(AddFoF.x, AddFoF.y, AddFoF.w, AddFoF.h);
 		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, "  Add Files/Dirs ", 17, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-		// draw triangle
-		//this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 240, textArea.y, textArea.w - 220, textArea.h));
+		// draw add
+		this->drawImageSubRect(&this->addLogo, &nk_rect(AddFoF.x + AddFoF.w - 39, AddFoF.y, AddFoF.h, AddFoF.h));
 	}
 	nk_end(this->ctx);
 
@@ -569,19 +623,23 @@ inline bool FE::AdvancedScanView() {
 	nk_end(this->ctx);
 
 	/* adv scan LATER */
-	struct nk_rect scanButtonLater = nk_rect(scanButton.x+scanButton.w+50, scanButton.y, scanButton.w, 50);
+	struct nk_rect scanButtonLater = nk_rect(scanButton.x+scanButton.w+50, scanButton.y, 16 * 12 + 60, 36);
 	if (nk_begin(this->ctx, "advscannl8r", scanButtonLater, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_MOVABLE))
 	{
 		nk_layout_row_static(ctx, 65, scanButtonLater.w, 1);
 		if (nk_button_label(ctx, "")) {
-			// run adv scan l8r
+			if (advancedScanPaths.size() > 0) {
+				// run adv scan l8r
+				this->currentScanGoing = "Scheduled Scan";
+				this->view = 4;
+			}
 			nk_clear(this->ctx);
 		}
 		// draw txt 
 		struct nk_rect textArea3 = nk_rect(scanButtonLater.x, scanButtonLater.y, scanButtonLater.w, scanButtonLater.h);
 		nk_draw_text(nk_window_get_canvas(this->ctx), textArea3, "  Schedule Scan ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-		// draw triangle
-		//this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 240, textArea.y, textArea.w - 220, textArea.h));
+		// draw calendar
+		this->drawImageSubRect(&this->calendarLogo, &nk_rect(scanButtonLater.x + scanButtonLater.w - 40, scanButtonLater.y, scanButtonLater.h, scanButtonLater.h));
 	}
 	nk_end(this->ctx);
 
@@ -634,27 +692,87 @@ inline bool FE::DrawHistoryPage()
 	nk_end(this->ctx);
 	nk_style_set_font(this->ctx, &this->font->handle);
 
+	//nk_stroke_line(this->canvas, 10, historyscantxt.h + 15, historyscantxt.w + 15, historyscantxt.h + 15, 2, nk_rgb(255, 255, 255));
+
 	/* LAVA ACTUAL HISTORY SECTION */
-	struct nk_rect scanshistory = nk_rect(25,bar.h+50,WINDOW_WIDTH-25,WINDOW_HEIGHT-bar.h-25);
+	// make first col a seperate entity and skinnier...might fit rest of text this wway.
+	//struct nk_rect view0 = nk_rect(5, bar.h + 50, 200, WINDOW_HEIGHT - bar.h - 55);
+	//struct nk_rect scanshistory = nk_rect(view0.w,bar.h+50,WINDOW_WIDTH-5-view0.w,WINDOW_HEIGHT-bar.h-55);
+	struct nk_rect biggieCheese = nk_rect(5, bar.h + 50, WINDOW_WIDTH - 10, WINDOW_HEIGHT - bar.h - 55); // total area...i give up on this for now im too tired
 	struct nk_list_view view; //view.count = 2; 	
-	if (nk_begin(this->ctx, "Selected Files/Folders...", scanshistory,
-		NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_DYNAMIC))
+
+	if (nk_begin(this->ctx, "testlmao", biggieCheese,
+		NK_WINDOW_SCROLL_AUTO_HIDE ))
 	{
-		nk_layout_row_static(ctx, 50, 50, 5);
-		nk_label(ctx, "Scan Type", NK_TEXT_CENTERED);
-		nk_label(ctx, "Scan Start", NK_TEXT_RIGHT);
-		nk_label(ctx, "Scan End", NK_TEXT_RIGHT);
-		nk_label(ctx, "Viruses Found", NK_TEXT_RIGHT);
-		nk_label(ctx, "Viruses Removed", NK_TEXT_RIGHT);
-		// set font smaller
-		//nk_style_set_font(this->ctx, &this->font3->handle);
-		//if (nk_combo_begin_label(ctx, items[selected_item], nk_vec2(nk_widget_width(ctx), 200))) {
-		//	nk_layout_row_dynamic(ctx, 25, 1);
-		//	for (i = 0; i < 3; ++i)
-		//		if (nk_combo_item_label(ctx, items[i], NK_TEXT_LEFT))
-		//			selected_item = i;
-		//	nk_combo_end(ctx);	
-		//}
+		/* HORIZANTAL LINE */
+		//nk_stroke_line(this->canvas, 20, biggieCheese.y + 50, WINDOW_WIDTH - 20, biggieCheese.y + 50, 20, nk_rgb(255, 255, 255));
+
+		nk_style_set_font(this->ctx, &this->font5->handle);
+		nk_layout_row_dynamic(ctx, WINDOW_HEIGHT - 10, 5); // wrapping row
+		if (nk_group_begin(ctx, "column1", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 1
+			nk_layout_row_dynamic(ctx, 36, 1); // nested row
+			nk_label(ctx, "Scan Type", NK_TEXT_CENTERED);
+
+			nk_style_set_font(this->ctx, &this->font3->handle);
+			for (int i = 0; i < this->PreviousScans.size(); i++) {
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label(ctx, this->PreviousScans[i][0].c_str(), NK_TEXT_CENTERED);
+			}
+			nk_style_set_font(this->ctx, &this->font5->handle);
+			nk_group_end(ctx);
+		}
+
+		if (nk_group_begin(ctx, "column2", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 2
+			nk_layout_row_dynamic(ctx, 36, 1);
+			nk_label(ctx, "Scan Start", NK_TEXT_CENTERED);
+
+			nk_style_set_font(this->ctx, &this->font3->handle);
+			for (int i = 0; i < this->PreviousScans.size(); i++) {
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label(ctx, this->PreviousScans[i][1].c_str(), NK_TEXT_CENTERED);
+			}
+			nk_style_set_font(this->ctx, &this->font5->handle);
+			nk_group_end(ctx);
+		}
+
+		if (nk_group_begin(ctx, "column3", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 3
+			nk_layout_row_dynamic(ctx, 36, 1); // nested row
+			nk_label(ctx, "Scan End", NK_TEXT_CENTERED);
+
+			nk_style_set_font(this->ctx, &this->font3->handle);
+			for (int i = 0; i < this->PreviousScans.size(); i++) {
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label(ctx, this->PreviousScans[i][2].c_str(), NK_TEXT_CENTERED);
+			}
+			nk_style_set_font(this->ctx, &this->font5->handle);
+			nk_group_end(ctx);
+		}
+
+		if (nk_group_begin(ctx, "column4", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 4
+			nk_layout_row_dynamic(ctx, 36, 1);
+			nk_label(ctx, "Viruses Found", NK_TEXT_CENTERED);
+
+			nk_style_set_font(this->ctx, &this->font3->handle);
+			for (int i = 0; i < this->PreviousScans.size(); i++) {
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label(ctx, this->PreviousScans[i][3].c_str(), NK_TEXT_CENTERED);
+			}
+			nk_style_set_font(this->ctx, &this->font5->handle);
+			nk_group_end(ctx);
+		}
+
+		if (nk_group_begin(ctx, "column5", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 5
+			nk_layout_row_dynamic(ctx, 36, 1); // nested row
+			nk_label(ctx, "Viruses Removed", NK_TEXT_CENTERED);
+
+			nk_style_set_font(this->ctx, &this->font3->handle);
+			for (int i = 0; i < this->PreviousScans.size(); i++) {
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label(ctx, this->PreviousScans[i][4].c_str(), NK_TEXT_CENTERED);
+			}
+			nk_style_set_font(this->ctx, &this->font5->handle);
+			nk_group_end(ctx);
+		}
 	}
 	nk_end(this->ctx);
 	nk_style_set_font(this->ctx, &this->font->handle);
@@ -740,6 +858,39 @@ inline bool FE::DrawInProgressScan()
 	//	}
 	//}
 	//nk_end(this->ctx);
+
+	if (this->isScanDone) { // if current scan done display our done button!
+		
+		/* trash icon */
+		/*struct nk_rect traplogo = nk_rect(WINDOW_WIDTH * .4, WINDOW_HEIGHT - WINDOW_WIDTH * .1 - 20, WINDOW_WIDTH * .1, WINDOW_WIDTH * .1);
+		if (nk_begin(this->ctx, "quarentinelogo", traplogo,
+			NK_WINDOW_NO_SCROLLBAR)) {
+			this->drawImage(&this->trashIcon);
+		}
+		nk_end(this->ctx);*/
+
+		int b_w = 680; //width of button for done
+		struct nk_rect r = nk_rect(WINDOW_WIDTH * .5 - b_w / 2, WINDOW_HEIGHT - 110, b_w, 100);
+		if (nk_begin(this->ctx, "donebutton", r,
+			NK_WINDOW_NO_SCROLLBAR))
+		{
+			nk_layout_row_static(ctx, r.h, r.w, 1);
+			if (nk_button_label(ctx, "")) {
+				// run adv scan now
+				if (advancedScanPaths.size() > 0) {
+					//fprintf(stdout, "testestestest\n");
+					this->view = 5;
+					nk_clear(this->ctx);
+				}
+			}
+			// draw txt 
+			struct nk_rect textArea2 = nk_rect(r.x+110, WINDOW_HEIGHT - 75, r.w, 36);
+			nk_draw_text(nk_window_get_canvas(this->ctx), textArea2, " Click Here to Remove any Viruses Found!", 40, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+			// draw trash shit
+			this->drawImageSubRect(&this->trashIcon, &nk_rect(r.x, r.y, 100, 100));
+		}
+		nk_end(this->ctx);
+	}
 
 	return true;
 }
@@ -859,8 +1010,12 @@ inline FE::FE() {
 	this->pp.squareLogo = "../Assets/squareLogo.png";
 	this->pp.history = "../Assets/historylarger.png";
 	this->pp.backArrow = "../Assets/back_arrow.png";
-	this->pp.chooseScan = "../Assets/chooseScan.png";
+	//this->pp.chooseScan = "../Assets/chooseScan.png";
+	this->pp.chooseScan = "../Assets/choosescan2.png";
 	this->pp.triangleButton = "../Assets/triangle.png";
+	this->pp.addButton = "../Assets/add.png";
+	this->pp.calendar = "../Assets/calendar.png";
+	this->pp.trash = "../Assets/trash.png";
 	this->scanHistorySet = read_log();
 }
 
@@ -886,6 +1041,89 @@ inline bool FE::ChangeFontSize(float s = 28) {
 	return true;
 }
 
+inline bool FE::QuarantineView()
+{
+	// 1. get list of viruses found
+	// 2. checkbox list
+	// 3. delete selected. on done btn
+
+	return true;
+}
+
+inline bool FE::ScheduleAdvScanView()
+{
+	/* BACK ARROW ICON */
+	struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
+	struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
+	if (nk_begin(this->ctx, "barrow", backArrowAndText,
+		NK_WINDOW_NO_SCROLLBAR)) {
+
+		/* hidden button behind icon to press */
+		nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
+		if (nk_button_label(ctx, "")) {
+			//fprintf(stdout, "back arrow\n");
+			this->view = 1;
+			//advancedScanPaths.clear();
+			nk_clear(this->ctx);
+		}
+		this->drawImageSubRect(&this->backArrow, &bar);
+		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+
+	unsigned static short int trigger_type= 3; // init state, make user choose what they want :) but start at one time
+	/*
+	0 : daily
+	1 : weekly
+	2 : monthly
+	3 : one time bro
+	*/
+
+	static const char* items[] = { "Daily","Weekly","Monthly", "One Time" };
+
+	/* schedule logo */
+	struct nk_rect schedlogo = nk_rect(225,25,115,115);
+	if (nk_begin(this->ctx, "schedlogo", schedlogo,
+		NK_WINDOW_NO_SCROLLBAR)) {
+		this->drawImage(&this->calendarLogo);
+	}
+	nk_end(this->ctx);
+
+	/* sched text */
+	if (nk_begin(this->ctx, "schedtext", nk_rect(225+schedlogo.w+7, 25+10, 720, 95),
+		NK_WINDOW_NO_SCROLLBAR)) {
+		nk_style_set_font(this->ctx, &this->font2->handle);
+		nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(225 + schedlogo.w + 7, 25 + 10, 720, 95), " Scan Scheduler", 15, 
+			&this->font2->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		nk_style_set_font(this->ctx, &this->font->handle);
+	}
+	nk_end(this->ctx);
+
+	/* try selectable */
+	if (nk_begin(this->ctx, "triggertype", nk_rect(25, 140, 300, 200),
+		NK_WINDOW_NO_SCROLLBAR)) {
+
+		// default combo box
+		nk_layout_row_static(ctx, 30, 160, 1);
+		trigger_type = nk_combo(ctx, items, 4, trigger_type, 30, nk_vec2(160, 200));
+		/*nk_layout_row_static(ctx, 50, 300, 1);
+		int i = 0;
+		if (nk_combo_begin_label(ctx, items[trigger_type], nk_vec2(200, 200))) {
+			nk_layout_row_dynamic(ctx, 25, 1);
+			for (i = 0; i < 4; ++i)
+				if (nk_combo_item_label(ctx, items[i], NK_TEXT_LEFT))
+					trigger_type = i;
+			nk_combo_end(ctx);
+		}*/
+		//std::cout << "\n\ttype chosen: " << items[trigger_type] << "\n";
+	}
+	nk_end(this->ctx);
+
+	//BACK AND NEXT BTNS HERE
+
+	return true;
+}
+
 inline bool FE::init(sf::Window *win) {
 	glewExperimental = 1;
 	if (glewInit() != GLEW_OK) {
@@ -906,6 +1144,16 @@ inline bool FE::init(sf::Window *win) {
 	{
 		nk_sfml_font_stash_begin(&this->atlas3);
 		this->font3 = nk_font_atlas_add_from_file(this->atlas3, "../Assets/font.ttf", 18, 0);
+		nk_sfml_font_stash_end();
+	}
+	{//logo text size 88;
+		nk_sfml_font_stash_begin(&this->atlas4);
+		this->font4 = nk_font_atlas_add_from_file(this->atlas4, "../Assets/font.ttf", 84, 0);
+		nk_sfml_font_stash_end();
+	}
+	{//logo text size 88;
+		nk_sfml_font_stash_begin(&this->atlas5);
+		this->font5 = nk_font_atlas_add_from_file(this->atlas5, "../Assets/font.ttf", 22, 0);
 		nk_sfml_font_stash_end();
 	}
 	{//struct nk_font_atlas* atlas;
@@ -934,7 +1182,10 @@ inline bool FE::init(sf::Window *win) {
 	this->backArrow = this->icon_load(pp.backArrow);
 	this->chooseScan = this->icon_load(pp.chooseScan);
 	this->triangleLogo = this->icon_load(pp.triangleButton);
+	this->addLogo = this->icon_load(pp.addButton);
 	this->trapImage = this->icon_load(pp.trapLogo);
+	this->calendarLogo = this->icon_load(pp.calendar);
+	this->trashIcon = this->icon_load(pp.trash);
 	return true;
 }
 
