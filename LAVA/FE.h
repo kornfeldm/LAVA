@@ -353,11 +353,11 @@ inline bool FE::DrawMainPage()
 	struct nk_rect LAVATEXT2 = nk_rect(r_logo.x + r_logo.w + 10, r_logo.y+90, 600, 84);
 	struct nk_rect LAVATEXT3 = nk_rect(r_logo.x + r_logo.w + 10, r_logo.y+180, 600, 84);
 	if (nk_begin(this->ctx, "lavatext", LAVATEXT, NK_WINDOW_NO_SCROLLBAR)) {
-		nk_draw_text(nk_window_get_canvas(this->ctx), LAVATEXT, " Light-weight", 13, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		nk_draw_text(nk_window_get_canvas(this->ctx), LAVATEXT, " Lightweight", 12, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
 	if (nk_begin(this->ctx, "lavatext2", LAVATEXT2, NK_WINDOW_NO_SCROLLBAR)) {
-		nk_draw_text(nk_window_get_canvas(this->ctx), LAVATEXT2, " AntiVirus", 10, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		nk_draw_text(nk_window_get_canvas(this->ctx), LAVATEXT2, " Anti-Virus", 11, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
 	if (nk_begin(this->ctx, "lavatext3", LAVATEXT3, NK_WINDOW_NO_SCROLLBAR)) {
@@ -367,12 +367,12 @@ inline bool FE::DrawMainPage()
 	nk_style_set_font(this->ctx, &this->font->handle);
 
 
-	/* LAVA TEXT ********************************************************/
-	if (nk_begin(this->ctx, "Lightweight Anti-Virus Application", nk_rect(400, WINDOW_HEIGHT * .04, 470, 300),
-		NK_WINDOW_TITLE | NK_WINDOW_NO_SCROLLBAR))
-	{
-	}
-	nk_end(this->ctx);
+	///* LAVA TEXT ********************************************************/
+	//if (nk_begin(this->ctx, "Lightweight Anti-Virus Application", nk_rect(400, WINDOW_HEIGHT * .04, 470, 300),
+	//	NK_WINDOW_TITLE | NK_WINDOW_NO_SCROLLBAR))
+	//{
+	//}
+	//nk_end(this->ctx);
 
 	/* SCAN ICON */
 	if (nk_begin(this->ctx, "scan", nk_rect(WINDOW_WIDTH * .2, WINDOW_HEIGHT * .49, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3),
