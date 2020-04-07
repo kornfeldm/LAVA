@@ -329,6 +329,13 @@ inline bool FE::DrawMainPage()
 	}
 	nk_end(this->ctx);
 
+	/* LAVA TEXT ********************************************************/
+	if (nk_begin(this->ctx, "Lightweight Anti-Virus Application", nk_rect(400, WINDOW_HEIGHT * .04, 470, 300),
+		NK_WINDOW_TITLE | NK_WINDOW_NO_SCROLLBAR))
+	{
+	}
+	nk_end(this->ctx);
+
 	/* SCAN ICON */
 	if (nk_begin(this->ctx, "scan", nk_rect(WINDOW_WIDTH * .2, WINDOW_HEIGHT * .49, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3),
 		NK_WINDOW_NO_SCROLLBAR)) {
@@ -464,6 +471,7 @@ bool FE::QuickScansView() {
 	return true;
 
 }
+
 inline bool FE::AdvancedScanView() {
 	int filled_width = WINDOW_WIDTH * .08 * 2 + WINDOW_WIDTH * .075; // remaining width ofscreen after side menu
 	int delta = WINDOW_WIDTH - filled_width;
@@ -556,7 +564,7 @@ inline bool FE::AdvancedScanView() {
 		struct nk_rect textArea2 = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
 		nk_draw_text(nk_window_get_canvas(this->ctx), textArea2, "  Adv. Scan Now ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 		// draw triangle
-		//this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + 240, textArea.y, textArea.w - 220, textArea.h));
+		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea2.x + 245, textArea2.y, textArea2.w - 252, textArea2.h));
 	}
 	nk_end(this->ctx);
 
