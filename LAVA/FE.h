@@ -329,6 +329,10 @@ inline bool FE::Display() {
 		this->DrawHistoryPage();
 	else if (this->view == 3) // in-prog scan page
 		this->DrawInProgressScan();
+	else if (this->view == 4) //adv scan sched pg
+		this->ScheduleAdvScanView();
+	else if (this->view == 5) //quarentine view
+		this->QuarantineView();
 	else
 		std::cout << "ERRRRRRORRRRR\n";
 	return true;
@@ -616,7 +620,11 @@ inline bool FE::AdvancedScanView() {
 	{
 		nk_layout_row_static(ctx, 65, scanButtonLater.w, 1);
 		if (nk_button_label(ctx, "")) {
-			// run adv scan l8r
+			if (advancedScanPaths.size() > 0) {
+				// run adv scan l8r
+				this->currentScanGoing = "Scheduled Scan";
+				this->view = 4;
+			}
 			nk_clear(this->ctx);
 		}
 		// draw txt 
@@ -862,7 +870,8 @@ inline bool FE::DrawInProgressScan()
 			if (nk_button_label(ctx, "")) {
 				// run adv scan now
 				if (advancedScanPaths.size() > 0) {
-					fprintf(stdout, "testestestest\n");
+					//fprintf(stdout, "testestestest\n");
+					this->view = 5;
 					nk_clear(this->ctx);
 				}
 			}
@@ -1026,11 +1035,84 @@ inline bool FE::ChangeFontSize(float s = 28) {
 
 inline bool FE::QuarantineView()
 {
+	// 1. get list of viruses found
+	// 2. checkbox list
+	// 3. delete selected. on done btn
+
 	return true;
 }
 
 inline bool FE::ScheduleAdvScanView()
 {
+	/* BACK ARROW ICON */
+	struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
+	struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
+	if (nk_begin(this->ctx, "barrow", backArrowAndText,
+		NK_WINDOW_NO_SCROLLBAR)) {
+
+		/* hidden button behind icon to press */
+		nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
+		if (nk_button_label(ctx, "")) {
+			//fprintf(stdout, "back arrow\n");
+			this->view = 1;
+			//advancedScanPaths.clear();
+			nk_clear(this->ctx);
+		}
+		this->drawImageSubRect(&this->backArrow, &bar);
+		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+
+	unsigned static short int trigger_type= 3; // init state, make user choose what they want :) but start at one time
+	/*
+	0 : daily
+	1 : weekly
+	2 : monthly
+	3 : one time bro
+	*/
+
+	static const char* items[] = { "Daily","Weekly","Monthly", "One Time" };
+
+	/* schedule logo */
+	struct nk_rect schedlogo = nk_rect(225,25,115,115);
+	if (nk_begin(this->ctx, "schedlogo", schedlogo,
+		NK_WINDOW_NO_SCROLLBAR)) {
+		this->drawImage(&this->calendarLogo);
+	}
+	nk_end(this->ctx);
+
+	/* sched text */
+	if (nk_begin(this->ctx, "schedtext", nk_rect(225+schedlogo.w+7, 25+10, 720, 95),
+		NK_WINDOW_NO_SCROLLBAR)) {
+		nk_style_set_font(this->ctx, &this->font2->handle);
+		nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(225 + schedlogo.w + 7, 25 + 10, 720, 95), " Scan Scheduler", 15, 
+			&this->font2->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		nk_style_set_font(this->ctx, &this->font->handle);
+	}
+	nk_end(this->ctx);
+
+	/* try selectable */
+	if (nk_begin(this->ctx, "triggertype", nk_rect(25, 140, 300, 200),
+		NK_WINDOW_NO_SCROLLBAR)) {
+
+		// default combo box
+		nk_layout_row_static(ctx, 30, 160, 1);
+		trigger_type = nk_combo(ctx, items, 4, trigger_type, 30, nk_vec2(160, 200));
+		/*nk_layout_row_static(ctx, 50, 300, 1);
+		int i = 0;
+		if (nk_combo_begin_label(ctx, items[trigger_type], nk_vec2(200, 200))) {
+			nk_layout_row_dynamic(ctx, 25, 1);
+			for (i = 0; i < 4; ++i)
+				if (nk_combo_item_label(ctx, items[i], NK_TEXT_LEFT))
+					trigger_type = i;
+			nk_combo_end(ctx);
+		}*/
+		//std::cout << "\n\ttype chosen: " << items[trigger_type] << "\n";
+	}
+	nk_end(this->ctx);
+
+	//BACK AND NEXT BTNS HERE
+
 	return true;
 }
 
