@@ -648,6 +648,8 @@ inline bool FE::AdvancedScanView() {
 
 inline bool FE::DrawHistoryPage()
 {
+	std::thread t1 = std::thread([this] {this->UpdatePreviousScans(); });
+	t1.detach();
 	// test cout what we got
 	/*std::vector<std::vector<std::string>> test = read_log();
 	for (auto ss : test) {
@@ -1046,6 +1048,25 @@ inline bool FE::QuarantineView()
 	// 1. get list of viruses found
 	// 2. checkbox list
 	// 3. delete selected. on done btn
+	
+	/* BACK ARROW ICON */
+	struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
+	struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
+	if (nk_begin(this->ctx, "barrow", backArrowAndText,
+		NK_WINDOW_NO_SCROLLBAR)) {
+
+		/* hidden button behind icon to press */
+		nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
+		if (nk_button_label(ctx, "")) {
+			//fprintf(stdout, "back arrow\n");
+			this->view = 0;
+			advancedScanPaths.clear();
+			nk_clear(this->ctx);
+		}
+		this->drawImageSubRect(&this->backArrow, &bar);
+		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
 
 	return true;
 }

@@ -87,6 +87,7 @@ public:
 	bool isScanDone;
 	struct q_entry;
 	std::vector<std::vector<std::string>> PreviousScans;
+	int num_found;
 	// constructor
 	LavaScan(); // default
 	/* scans */
@@ -200,7 +201,7 @@ inline void LavaScan::iterateDirectory(std::string directory, bool clean, int nu
 
 				if (scanFile(filePath) == CL_VIRUS) {
 					clean = false; //File in direcotry is infected
-					num_viruses_found++;//increase the virus count
+					this->num_found++;//increase the virus count
 				}
 				//CHECK FOR USER CANCEL GOES HERE
 				//closedir(directory)
@@ -354,7 +355,7 @@ inline bool LavaScan::scanDirectory(std::string dirPath, int num_viruses_found) 
 //The first parameter is a path the the antibody file
 inline bool LavaScan::QuickScan()
 {
-	int num_found = 0; //setting virus counter to 0
+	this->num_found = 0; //setting virus counter to 0
 	std::string start_time = get_time();//getting start time for scan
 	//Keeps track of if malware is detected and where
 	bool clean = true;
@@ -383,7 +384,7 @@ std::string& replace(std::string& s, const std::string& from, const std::string&
 inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 {
 	// set ss is the set of shit we are gonna scan...simple foreach loop for now
-	int num_found = 0;//set the virus count to 0
+	this-> num_found = 0;//set the virus count to 0
 	std::string start_time = get_time(); //get start time for scan
 	for (auto path : ss) {
 		//std::cout << "\t" << path << ".\n";
@@ -401,7 +402,7 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 				//it's a file, use scanfile
 				//std::cout << path << " is a file.";
 				if (scanFile(path.c_str()) == CL_VIRUS) {
-					num_found++;
+					this->num_found++;
 				}
 			}
 			else
@@ -688,6 +689,7 @@ inline void LavaScan::UpdatePreviousScans() {
 
 inline LavaScan::LavaScan() {
 	CurrentScanCount = 0;
+	num_found = 0;
 	isScanDone = false;
 	if ((ret = cl_init(CL_INIT_DEFAULT)) != CL_SUCCESS) { //Initializing clamav
 		printf("Can't initialize libclamav: %s\n", cl_strerror(ret));//returns the error name in case of error
