@@ -400,7 +400,9 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 			{
 				//it's a file, use scanfile
 				//std::cout << path << " is a file.";
-				num_found += scanFile(path.c_str()); // if file is infected will be increased by 1, if not infected it won't increase
+				if (scanFile(path.c_str()) == CL_VIRUS) {
+					num_found++;
+				}
 			}
 			else
 			{
