@@ -330,7 +330,7 @@ inline bool FE::Display() {
 	else if (this->view == 3) // in-prog scan page
 		this->DrawInProgressScan();
 	else if (this->view == 4) //adv scan sched pg
-		this->ScheduleAdvScanView();
+		this->ScheduleAdvScanView(); 
 	else if (this->view == 5) //quarentine view
 		this->QuarantineView();
 	else
@@ -402,6 +402,8 @@ inline bool FE::DrawMainPage()
 		nk_layout_row_static(ctx, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3, 1);
 		if (nk_button_label(ctx, "")) {
 			//fprintf(stdout, "history pressed\n");
+			std::thread t1 = std::thread([this] {this->UpdatePreviousScans(); });
+			t1.detach();
 			this->view = 2;
 			nk_clear(this->ctx);
 		}
@@ -607,7 +609,7 @@ inline bool FE::AdvancedScanView() {
 		if (nk_button_label(ctx, "")) {
 			// run adv scan now
 			if (advancedScanPaths.size() > 0) {
-				this->currentScanGoing = "Advanced Scan";
+				this->currentScanGoing = "Advanced";
 				this->view = 3;
 				//this->AdvanceScanNow(advancedScanPaths);
 				this->scanTasks.push(3);
@@ -648,8 +650,6 @@ inline bool FE::AdvancedScanView() {
 
 inline bool FE::DrawHistoryPage()
 {
-	std::thread t1 = std::thread([this] {this->UpdatePreviousScans(); });
-	t1.detach();
 	// test cout what we got
 	/*std::vector<std::vector<std::string>> test = read_log();
 	for (auto ss : test) {
@@ -1045,6 +1045,7 @@ inline bool FE::ChangeFontSize(float s = 28) {
 static int all = 0;
 inline bool FE::QuarantineView()
 {
+	//int sel = 0;
 	// 1. get list of viruses found
 	// 2. checkbox list
 	// 3. delete selected. on done btn
@@ -1059,8 +1060,25 @@ inline bool FE::QuarantineView()
 		nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
 		if (nk_button_label(ctx, "")) {
 			//fprintf(stdout, "back arrow\n");
-			this->view = 0;
+			// move files back
 			advancedScanPaths.clear();
+			std::set<q_entry> q;
+			int i = 0;
+			for (auto thing : this->QuarantineContents) {
+				try {
+					q.insert(thing);
+				}
+				catch (int e) {
+					std::cout << "shoot we messed up quaranting!\n";
+				}
+				i++;
+			}
+			all = 0; //for next scan
+			this->num_removed = 0;
+			//this->remove_quarantined_files(toRemove);
+			this->moveQuarantineHome(q);
+			this->log_scan();
+			this->view = 0;
 			nk_clear(this->ctx);
 		}
 		this->drawImageSubRect(&this->backArrow, &bar);
@@ -1069,10 +1087,10 @@ inline bool FE::QuarantineView()
 	nk_end(this->ctx);
 
 	// text to chose delete shit
-	if (nk_begin(this->ctx, "choseshittodelete", nk_rect(bar.w+350,5,500,30),
+	if (nk_begin(this->ctx, "choseshittodelete", nk_rect(bar.w+50,5,900,30),
 		NK_WINDOW_NO_SCROLLBAR)) {
-		nk_layout_row_static(ctx, 30, 500, 1);
-		nk_label_wrap(this->ctx, "Please select viruses to remove!");
+		nk_layout_row_static(ctx, 30, WINDOW_WIDTH-150, 1);
+		nk_label_wrap(this->ctx, "Please select viruses to remove! Press Done when you're ready!");
 	}
 	nk_end(this->ctx);
 
@@ -1081,25 +1099,39 @@ inline bool FE::QuarantineView()
 	if (nk_begin(this->ctx, "checkboxes", nk_rect(bar.w+10,45, WINDOW_WIDTH-15-bar.x-bar.w, WINDOW_HEIGHT-150),
 		NK_WINDOW_BORDER | NK_WINDOW_SCROLL_AUTO_HIDE)) {
 		if (this->QuarantineContents.size() > 0) {
-			int i = 0;
+			int i = 0; 
 			// print check boxes
 			for (auto s : this->QuarantineContents) {
-				nk_layout_row_dynamic(ctx, 30, 1);
-				nk_checkbox_label(ctx, (s.origin_directory + s.old_file_name + "       (" + s.virus_name + ")").c_str(), &array[i]);
+				nk_layout_row_static(ctx, 30, 32*(s.origin_directory.length() + s.old_file_name.length()), 1);
+				nk_checkbox_label(ctx, ("  (" + s.virus_name + "): " + s.origin_directory+s.old_file_name).c_str(), &array[i]);
 				//try {
-				//	/*if (array.at(i) == 1) {
-				//		std::cout << s.old_file_name << " checked \n";
-				//	}*/
-				//	std::cout << s.old_file_name << " (" << array[i] << ") \n";
+				//	if (array.at(i) == 1) {
+				//		//std::cout << s.old_file_name << " checked \n";
+				//		sel++;
+				//	}
+				//	else {
+				//		sel--;
+				//	}
+				//	//std::cout << s.old_file_name << " (" << array[i] << ") \n";
+				//	
 				//}
 				//catch (int e) {
-				//	std::cout << "\nout of bounds\n";
+				//	//std::cout << "\nout of bounds\n";
+				//	
 				//}
+				//std::cout << "()"+s.origin_directory + s.old_file_name <<std::endl;
 				i++;
 			}
+			//sk_layout_row_dynamic(ctx, 15, 1);
+			//nk_label(this->ctx, "                                                                                                                         ", NK_TEXT_ALIGN_LEFT);
 		}
 		else {
-			std::cout << "no viruses found!\n";
+			//std::cout << "no viruses found!\n";
+			nk_layout_row_dynamic(this->ctx, 250, 1);
+			//nk_label_wrap(this->ctx, "No Viruses Found! Either Press the back button or the Done button.");
+			nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(150, 150, 800, 100), " NO VIRUSES FOUND", 17, &this->font2->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+			nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(150, 250, 800, 100), "    Please Hit The Done/Back button", 35, &this->font->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+
 		}
 		
 	}
@@ -1133,7 +1165,8 @@ inline bool FE::QuarantineView()
 	if (nk_begin(this->ctx, "submit", nk_rect(WINDOW_WIDTH-15-200, WINDOW_HEIGHT - 100 + 2, 200, 50),
 		NK_WINDOW_NO_SCROLLBAR)) {
 		nk_layout_row_static(ctx, 50, 200, 1);
-		if (nk_button_label(ctx, "Delete")) {
+
+		if (nk_button_label(ctx, "Done")) {
 			// loop thru the array and if element is 1, push to a set to ret to our mans
 			std::set<std::string>toRemove;
 			std::set<q_entry> q;
@@ -1157,6 +1190,7 @@ inline bool FE::QuarantineView()
 			this->log_scan();
 			this->view = 0;
 		}
+		
 	}
 	nk_end(this->ctx);
 

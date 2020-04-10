@@ -102,6 +102,7 @@ public:
 	std::set<LavaScan::q_entry> read_quarantine_contents();
 	void quarantine_file(std::string filepath, std::string virus_name);
 	bool remove_quarantined_files(std::set<std::string> to_remove);
+	bool postMoveQuarantine(std::set<q_entry> to_remove);
 	bool quarantineIsEmpty();
 	void move_file(std::string file_path, std::string location_directory, std::string final_extension);
 	void make_quarantine_directory();
@@ -109,6 +110,7 @@ public:
 	void iterateDirectory(std::string directory, bool clean, int num_viruses_found);
 	int scanFile(std::string filePath);
 	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
+	bool reset_QC();
 	std::vector<std::string> ReadAntibody(std::string antibodyfilelocation);
 	int FileCount(std::string dirPath);
 	int TotalSetFileCount(std::set<std::string> p);
@@ -345,6 +347,18 @@ inline void LavaScan::AddToAntibody(std::string dirPath, std::string antibodyfil
 	WriteAntibody(existing, antibodyfilelocation);
 }
 
+inline bool LavaScan::reset_QC() { //after a scan just reset quarantine contents
+	this->QuarantineContents.clear();
+	this->QuarantineContents = read_quarantine_contents();
+	CurrentScanCount = 0;
+	currentScanGoing = "";
+	num_found = 0; num_removed = 0;
+	isScanDone = false;
+	start_time = std::string("");
+	finish_time = std::string("");
+	return true;
+}
+
 inline bool LavaScan::scanDirectory(std::string dirPath, int num_viruses_found) {
 	this->CurrentScanCount++; // 
 	bool clean = true; //Setting directory as clean
@@ -374,7 +388,7 @@ inline bool LavaScan::QuickScan()
 	this->finish_time = get_time();//get end time for scan
 	//log_scan("Quick",start_time, finish_time, num_found, num_found); //log scan
 	isScanDone = true;
-	this->QuarantineContents = this->read_quarantine_contents();
+	//this->QuarantineContents = this->read_quarantine_contents();
 	return true;
 }
 
@@ -425,7 +439,8 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 	this->finish_time = get_time(); //get end time
 	//log_scan("Advanced",start_time, finish_time, num_found, num_found); //logging scan
 	isScanDone = true;
-	this->QuarantineContents = this->read_quarantine_contents();
+	//this->QuarantineContents = this->read_quarantine_contents();
+	
 	return true;
 }
 
@@ -505,6 +520,8 @@ inline void LavaScan::quarantine_file(std::string filepath, std::string virus_na
 	quarantineFile << file_name + "," + quarantine_file_name + "," + file_directory + "," + virus_name << std::endl; //adding it to the quarantine info file (quarantine.lava)
 	quarantineFile.close();
 	move_file(filepath, ".\\LAVA_Quarantine\\", ".lava"); //moving file to quarantine folder
+	q_entry q; q.origin_directory = file_directory; q.new_file_name = quarantine_file_name; q.old_file_name = file_name; q.virus_name = virus_name;
+	this->QuarantineContents.insert(q);
 }
 
 inline void LavaScan::move_file(std::string file_path, std::string location_directory, std::string final_extension) {
@@ -520,6 +537,8 @@ inline void LavaScan::move_file(std::string file_path, std::string location_dire
 }
 
 inline bool LavaScan::remove_quarantined_files(std::set<std::string> to_remove) { //returns false if errors occurred
+	if (to_remove.size() == 0)
+		return true;
 	bool success = true;
 	std::fstream quarantineFile;
 	std::fstream temp;
@@ -556,7 +575,7 @@ inline bool LavaScan::remove_quarantined_files(std::set<std::string> to_remove) 
 			{
 				//Unable to remove file, keep it in the quarantine folder
 				//error message
-				temp << line << std::endl;
+				//temp << line << std::endl; //again, we dont want to log if we just move back, may be temporary
 				success = false;
 			}
 			else {
@@ -569,6 +588,15 @@ inline bool LavaScan::remove_quarantined_files(std::set<std::string> to_remove) 
 	std::remove("quarantine.lava");
 	std::rename("temp.lava", "quarantine.lava");
 	return success;
+}
+
+inline bool LavaScan::postMoveQuarantine(std::set<q_entry> to_remove) { //after a file has been moved back, remove from qaurantine.lava
+	if (to_remove.size() == 0)
+		return true;
+	std::ofstream ofs;
+	ofs.open("quarantine.lava", std::ofstream::out | std::ofstream::trunc);
+	ofs.close();
+	return true;
 }
 
 inline void LavaScan::make_quarantine_directory() {
@@ -606,7 +634,7 @@ inline bool LavaScan::CompleteScan() {
 	this-> finish_time = get_time();
 	//log_scan("Complete",start_time, finish_time, num_found, num_found);
 	isScanDone = true;
-	this->QuarantineContents = this->read_quarantine_contents();
+	//this->QuarantineContents = this->read_quarantine_contents();
 	return clean;
 }
 
@@ -615,6 +643,7 @@ inline void LavaScan::log_scan() {
 	log_file.open("scan_log.lava", std::ios::app);
 	log_file << this->currentScanGoing + "," + this->start_time + "," + this->finish_time + "," + std::to_string(this->num_found) + "," + std::to_string(this->num_removed) + "\n";
 	log_file.close();
+	this->reset_QC();//reset qc state after logging every scan
 }
 
 inline std::string LavaScan::get_time() {
@@ -697,8 +726,9 @@ inline void LavaScan::UpdatePreviousScans() {
 inline bool LavaScan::moveQuarantineHome(std::set<q_entry> q)
 {
 	for (auto thing : q) {
-		move_file(".\\LAVA_Quarantine\\"+thing.new_file_name, thing.origin_directory, thing.old_file_name); //moving file to quarantine folder
+		move_file(".\\LAVA_Quarantine\\"+thing.new_file_name, thing.origin_directory, (fs::path(thing.old_file_name).extension()).string() ); //moving file to quarantine folder
 	}
+	this->postMoveQuarantine(q);
 	return true;
 }
 
