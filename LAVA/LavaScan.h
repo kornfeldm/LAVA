@@ -209,7 +209,7 @@ inline void LavaScan::iterateDirectory(std::string directory, bool clean)
 				if (scanFile(filePath) == CL_VIRUS) {
 					clean = false; //File in direcotry is infected
 					this->num_found++;//increase the virus count
-					this->viruses_found++;//increase the virus count
+					////this->viruses_found++;//increase the virus count
 				}
 				//CHECK FOR USER CANCEL GOES HERE
 				//closedir(directory)
@@ -409,8 +409,8 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 	this-> start_time = get_time(); //get start time for scan
 	//int num_found = 0;//set the virus count to 0
 	std::string start_time = get_time(); //get start time for scan
-	this->viruses_found = 0;
-	this->viruses_removed = 0;
+	//this->viruses_found = 0;
+	//this->viruses_removed = 0;
 	for (auto path : ss) {
 		//std::cout << "\t" << path << ".\n";
 		struct stat s;
@@ -533,7 +533,7 @@ inline void LavaScan::quarantine_file(std::string filepath, std::string virus_na
 	quarantine_file_name += extension;
 	quarantineFile << file_name + "," + quarantine_file_name + "," + file_directory + "," + virus_name << std::endl; //adding it to the quarantine info file (quarantine.lava)
 	quarantineFile.close();
-	move_file(filepath, ".\\LAVA_Quarantine\\", ".lava"); //moving file to quarantine folder
+	//move_file(filepath, ".\\LAVA_Quarantine\\", ".lava"); //moving file to quarantine folder
 	q_entry q; q.origin_directory = file_directory; q.new_file_name = quarantine_file_name; q.old_file_name = file_name; q.virus_name = virus_name;
 	this->QuarantineContents.insert(q);
 	move_file(filepath, ".\\LAVA_Quarantine\\" + quarantine_file_name); //moving file to quarantine folder
@@ -653,12 +653,12 @@ inline void LavaScan::make_quarantine_directory() {
 inline bool LavaScan::CompleteScan() {
 	this->start_time = get_time();
 	bool clean = true;
-	this->viruses_found = 0;
-	this->viruses_removed = 0;
+	//this->viruses_found = 0;
+	//this->viruses_removed = 0;
 	// for now just scan c$
 	//   later get func to get drive letters
 	const char* dirs = "C:\\";
-	clean = this->scanDirectory(dirs,num_found);
+	clean = this->scanDirectory(dirs);
 	this-> finish_time = get_time();
 	//log_scan("Complete",start_time, finish_time, num_found, num_found);
 	isScanDone = true;
@@ -754,7 +754,7 @@ inline void LavaScan::UpdatePreviousScans() {
 inline bool LavaScan::moveQuarantineHome(std::set<q_entry> q)
 {
 	for (auto thing : q) {
-		move_file(".\\LAVA_Quarantine\\"+thing.new_file_name, thing.origin_directory, (fs::path(thing.old_file_name).extension()).string() ); //moving file to quarantine folder
+		move_file(".\\LAVA_Quarantine\\"+thing.new_file_name, thing.origin_directory+thing.old_file_name); //moving file to quarantine folder
 	}
 	this->postMoveQuarantine(q);
 	return true;
