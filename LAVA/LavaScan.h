@@ -117,6 +117,7 @@ public:
 	std::vector<std::vector<std::string>> read_log();
 	std::string get_time();
 	void UpdatePreviousScans();
+	bool moveQuarantineHome(std::set<q_entry> q);
 };
 
 inline int LavaScan::scanFile(std::string filePath) {
@@ -548,7 +549,7 @@ inline bool LavaScan::remove_quarantined_files(std::set<std::string> to_remove) 
 		if (to_remove.find(file_name) == to_remove.end()) {
 			//moving file back to its original location
 			//move_file(".\\LAVA_Quarantine\\" + file_quarantine_name, file_origin, file_name.substr(file_name.find(".")));
-			temp << line << std::endl; //keeping it in quarantine
+			//temp << line << std::endl; //keeping it in quarantine //commenting this out for now. no need to write to file after removing.
 		}
 		else {
 			if (std::remove((".\\LAVA_Quarantine\\" + file_quarantine_name).c_str()) != 0)
@@ -691,6 +692,14 @@ inline std::vector<std::vector<std::string>> LavaScan::read_log() {
 
 inline void LavaScan::UpdatePreviousScans() {
 	this->PreviousScans = this->read_log();
+}
+
+inline bool LavaScan::moveQuarantineHome(std::set<q_entry> q)
+{
+	for (auto thing : q) {
+		move_file(".\\LAVA_Quarantine\\"+thing.new_file_name, thing.origin_directory, thing.old_file_name); //moving file to quarantine folder
+	}
+	return true;
 }
 
 inline LavaScan::LavaScan() {

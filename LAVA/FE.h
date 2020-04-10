@@ -600,7 +600,7 @@ inline bool FE::AdvancedScanView() {
 	nk_end(this->ctx);
 
 	/* adv scan now */
-	struct nk_rect scanButton = nk_rect(AddFoF.x+125, AddFoF.y+75, 300, 50);
+	struct nk_rect scanButton = nk_rect(AddFoF.x+125, AddFoF.y+75, 250, 36);
 	if (nk_begin(this->ctx, "advscannow", scanButton, NK_WINDOW_NO_SCROLLBAR))
 	{
 		nk_layout_row_static(ctx, 65, scanButton.w, 1);
@@ -618,7 +618,7 @@ inline bool FE::AdvancedScanView() {
 		struct nk_rect textArea2 = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
 		nk_draw_text(nk_window_get_canvas(this->ctx), textArea2, "  Adv. Scan Now ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 		// draw triangle
-		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea2.x + 245, textArea2.y, textArea2.w - 252, textArea2.h));
+		this->drawImageSubRect(&this->triangleLogo, &nk_rect(scanButton.x + scanButton.w - 40, scanButton.y, scanButton.h, scanButton.h));
 	}
 	nk_end(this->ctx);
 
@@ -1085,7 +1085,7 @@ inline bool FE::QuarantineView()
 			// print check boxes
 			for (auto s : this->QuarantineContents) {
 				nk_layout_row_dynamic(ctx, 30, 1);
-				nk_checkbox_label(ctx, (s.origin_directory + s.old_file_name + "\t (" + s.virus_name + ")").c_str(), &array[i]);
+				nk_checkbox_label(ctx, (s.origin_directory + s.old_file_name + "       (" + s.virus_name + ")").c_str(), &array[i]);
 				//try {
 				//	/*if (array.at(i) == 1) {
 				//		std::cout << s.old_file_name << " checked \n";
@@ -1136,11 +1136,14 @@ inline bool FE::QuarantineView()
 		if (nk_button_label(ctx, "Delete")) {
 			// loop thru the array and if element is 1, push to a set to ret to our mans
 			std::set<std::string>toRemove;
+			std::set<q_entry> q;
 			int i = 0;
 			for (auto thing : this->QuarantineContents) {
 				try {
 					if (array.at(i) == 1)
 						toRemove.insert(thing.old_file_name);
+					else
+						q.insert(thing);
 				}
 				catch (int e) {
 					std::cout << "shoot we messed up quaranting!\n";
@@ -1150,6 +1153,7 @@ inline bool FE::QuarantineView()
 			all = 0; //for next scan
 			this->num_removed = toRemove.size();
 			this->remove_quarantined_files(toRemove);
+			this->moveQuarantineHome(q);
 			this->log_scan();
 			this->view = 0;
 		}
