@@ -78,7 +78,7 @@ public:
 	// memburs
 	std::string AntibodyFileLocation = "C:\\test.LavaAnti";
 	int fd, ret, CurrentScanCount;
-	unsigned long int size = 0;
+	unsigned long int size = 0; std::string start_time; std::string finish_time;
 	unsigned int sigs = 0;
 	long double mb;
 	const char* virname;
@@ -86,9 +86,11 @@ public:
 	struct cl_scan_options options;
 	bool isScanDone;
 	struct q_entry;
+	std::string currentScanGoing;
 	std::vector<std::vector<std::string>> PreviousScans;
 	std::set<LavaScan::q_entry> QuarantineContents;
 	int num_found;
+	int num_removed;
 	// constructor
 	LavaScan(); // default
 	/* scans */
@@ -111,7 +113,7 @@ public:
 	int FileCount(std::string dirPath);
 	int TotalSetFileCount(std::set<std::string> p);
 	std::set<std::string> countQuarantineContents();
-	void log_scan(std::string type, std::string start, std::string finish, int found, int removed);
+	void log_scan();
 	std::vector<std::vector<std::string>> read_log();
 	std::string get_time();
 	void UpdatePreviousScans();
@@ -357,7 +359,7 @@ inline bool LavaScan::scanDirectory(std::string dirPath, int num_viruses_found) 
 inline bool LavaScan::QuickScan()
 {
 	this->num_found = 0; //setting virus counter to 0
-	std::string start_time = get_time();//getting start time for scan
+	this->start_time = get_time();//getting start time for scan
 	//Keeps track of if malware is detected and where
 	bool clean = true;
 	//Read from the file
@@ -368,8 +370,8 @@ inline bool LavaScan::QuickScan()
 		//Scan it
 		clean = scanDirectory(directorylist[i], num_found);
 	}
-	std::string finish_time = get_time();//get end time for scan
-	log_scan("Quick",start_time, finish_time, num_found, num_found); //log scan
+	this->finish_time = get_time();//get end time for scan
+	//log_scan("Quick",start_time, finish_time, num_found, num_found); //log scan
 	isScanDone = true;
 	this->QuarantineContents = this->read_quarantine_contents();
 	return true;
@@ -387,7 +389,7 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 {
 	// set ss is the set of shit we are gonna scan...simple foreach loop for now
 	this-> num_found = 0;//set the virus count to 0
-	std::string start_time = get_time(); //get start time for scan
+	this-> start_time = get_time(); //get start time for scan
 	for (auto path : ss) {
 		//std::cout << "\t" << path << ".\n";
 		struct stat s;
@@ -419,8 +421,8 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 			return false;
 		}
 	}
-	std::string finish_time = get_time(); //get end time
-	log_scan("Advanced",start_time, finish_time, num_found, num_found); //logging scan
+	this->finish_time = get_time(); //get end time
+	//log_scan("Advanced",start_time, finish_time, num_found, num_found); //logging scan
 	isScanDone = true;
 	this->QuarantineContents = this->read_quarantine_contents();
 	return true;
@@ -593,24 +595,24 @@ inline void LavaScan::make_quarantine_directory() {
 }
 
 inline bool LavaScan::CompleteScan() {
-	std::string start_time = get_time();
+	this->start_time = get_time();
 	bool clean = true;
 	int num_found = 0;
 	// for now just scan c$
 	//   later get func to get drive letters
 	const char* dirs = "C:\\";
 	clean = this->scanDirectory(dirs,num_found);
-	std::string finish_time = get_time();
-	log_scan("Complete",start_time, finish_time, num_found, num_found);
+	this-> finish_time = get_time();
+	//log_scan("Complete",start_time, finish_time, num_found, num_found);
 	isScanDone = true;
 	this->QuarantineContents = this->read_quarantine_contents();
 	return clean;
 }
 
-inline void LavaScan::log_scan(std::string type, std::string start, std::string finish, int found, int removed) {
+inline void LavaScan::log_scan() {
 	std::fstream log_file;
 	log_file.open("scan_log.lava", std::ios::app);
-	log_file << type + "," + start + "," + finish + "," + std::to_string(found) + "," + std::to_string(removed) + "\n";
+	log_file << this->currentScanGoing + "," + this->start_time + "," + this->finish_time + "," + std::to_string(this->num_found) + "," + std::to_string(this->num_removed) + "\n";
 	log_file.close();
 }
 
@@ -693,8 +695,11 @@ inline void LavaScan::UpdatePreviousScans() {
 
 inline LavaScan::LavaScan() {
 	CurrentScanCount = 0;
-	num_found = 0;
+	currentScanGoing = "";
+	num_found = 0; num_removed = 0;
 	isScanDone = false;
+	start_time = std::string("");
+	finish_time = std::string("");
 	if ((ret = cl_init(CL_INIT_DEFAULT)) != CL_SUCCESS) { //Initializing clamav
 		printf("Can't initialize libclamav: %s\n", cl_strerror(ret));//returns the error name in case of error
 		exit(2);

@@ -206,7 +206,7 @@ public:
 	struct nk_image addLogo;
 	struct nk_image calendarLogo;
 	struct nk_image trashIcon;
-	std::string currentScanGoing;
+	//std::string currentScanGoing;
 	std::queue<int> scanTasks;
 	std::vector<std::vector<std::string>> scanHistorySet;
 	int maxfiles=0;
@@ -1001,7 +1001,7 @@ inline bool FE::DrawScansPage()
 }
 
 inline FE::FE() {
-	currentScanGoing = "";
+	//currentScanGoing = "";
 	this->view = 0;
 	this->m_scanViews = 0;
 	/* INIT IMAGES */
@@ -1042,6 +1042,7 @@ inline bool FE::ChangeFontSize(float s = 28) {
 	return true;
 }
 
+static int all = 0;
 inline bool FE::QuarantineView()
 {
 	// 1. get list of viruses found
@@ -1067,23 +1068,33 @@ inline bool FE::QuarantineView()
 	}
 	nk_end(this->ctx);
 
-	if (nk_begin(this->ctx, "checkboxes", nk_rect(bar.w+10,60, WINDOW_WIDTH-10-bar.w, WINDOW_HEIGHT-150),
-		NULL)) {
+	// text to chose delete shit
+	if (nk_begin(this->ctx, "choseshittodelete", nk_rect(bar.w+350,5,500,30),
+		NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_static(ctx, 30, 500, 1);
+		nk_label_wrap(this->ctx, "Please select viruses to remove!");
+	}
+	nk_end(this->ctx);
+
+	static std::vector<int> array(this->QuarantineContents.size());
+	// CHECK BOXES
+	if (nk_begin(this->ctx, "checkboxes", nk_rect(bar.w+10,45, WINDOW_WIDTH-15-bar.x-bar.w, WINDOW_HEIGHT-150),
+		NK_WINDOW_BORDER | NK_WINDOW_SCROLL_AUTO_HIDE)) {
 		if (this->QuarantineContents.size() > 0) {
-			static std::vector<int> array(this->QuarantineContents.size());
 			int i = 0;
 			// print check boxes
 			for (auto s : this->QuarantineContents) {
 				nk_layout_row_dynamic(ctx, 30, 1);
-				nk_checkbox_label(ctx, (s.origin_directory + s.old_file_name + " (" + s.virus_name + ")").c_str(), &array[i]);
-				/*try {
-					if (array.at(i) == 1) {
-						std::cout << s.old_file_name << " checked \n";
-					}
-				}
-				catch (int e) {
-					std::cout << "\nout of bounds\n";
-				}*/
+				nk_checkbox_label(ctx, (s.origin_directory + s.old_file_name + "\t (" + s.virus_name + ")").c_str(), &array[i]);
+				//try {
+				//	/*if (array.at(i) == 1) {
+				//		std::cout << s.old_file_name << " checked \n";
+				//	}*/
+				//	std::cout << s.old_file_name << " (" << array[i] << ") \n";
+				//}
+				//catch (int e) {
+				//	std::cout << "\nout of bounds\n";
+				//}
 				i++;
 			}
 		}
@@ -1093,7 +1104,57 @@ inline bool FE::QuarantineView()
 		
 	}
 	nk_end(this->ctx);
+
+	// SELECT ALL/DONT
+	if (nk_begin(this->ctx, "all", nk_rect(bar.x+bar.w+10, WINDOW_HEIGHT-100+2, 200, 50),
+		NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_static(ctx, 50, 200, 1);
+		if (all == 0) {
+			//display sel all
+			if (nk_button_label(this->ctx, "Select All")) {
+				//std::cout << "sell pressed" << std::endl;
+				std::fill(array.begin(), array.end(), 1);
+				all = 1;
+			}
+		}
+		else {
+			// all=1
+			// disaply unsel all
+			if (nk_button_label(ctx, "Unselect All")) {
+				//std::cout << "unsel pressed" << std::endl;
+				std::fill(array.begin(), array.end(), 0);
+				all = 0;
+			}
+		}
+	}
+	nk_end(this->ctx);
 	
+	// done button
+	if (nk_begin(this->ctx, "submit", nk_rect(WINDOW_WIDTH-15-200, WINDOW_HEIGHT - 100 + 2, 200, 50),
+		NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_static(ctx, 50, 200, 1);
+		if (nk_button_label(ctx, "Delete")) {
+			// loop thru the array and if element is 1, push to a set to ret to our mans
+			std::set<std::string>toRemove;
+			int i = 0;
+			for (auto thing : this->QuarantineContents) {
+				try {
+					if (array.at(i) == 1)
+						toRemove.insert(thing.old_file_name);
+				}
+				catch (int e) {
+					std::cout << "shoot we messed up quaranting!\n";
+				}
+				i++;
+			}
+			all = 0; //for next scan
+			this->num_removed = toRemove.size();
+			this->remove_quarantined_files(toRemove);
+			this->log_scan();
+			this->view = 0;
+		}
+	}
+	nk_end(this->ctx);
 
 	return true;
 }
