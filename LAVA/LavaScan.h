@@ -87,6 +87,7 @@ public:
 	bool isScanDone;
 	struct q_entry;
 	std::vector<std::vector<std::string>> PreviousScans;
+	std::set<LavaScan::q_entry> QuarantineContents;
 	int num_found;
 	// constructor
 	LavaScan(); // default
@@ -369,8 +370,9 @@ inline bool LavaScan::QuickScan()
 	}
 	std::string finish_time = get_time();//get end time for scan
 	log_scan("Quick",start_time, finish_time, num_found, num_found); //log scan
-	return clean;
 	isScanDone = true;
+	this->QuarantineContents = this->read_quarantine_contents();
+	return true;
 }
 
 std::string& replace(std::string& s, const std::string& from, const std::string& to)
@@ -420,6 +422,7 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 	std::string finish_time = get_time(); //get end time
 	log_scan("Advanced",start_time, finish_time, num_found, num_found); //logging scan
 	isScanDone = true;
+	this->QuarantineContents = this->read_quarantine_contents();
 	return true;
 }
 
@@ -600,6 +603,7 @@ inline bool LavaScan::CompleteScan() {
 	std::string finish_time = get_time();
 	log_scan("Complete",start_time, finish_time, num_found, num_found);
 	isScanDone = true;
+	this->QuarantineContents = this->read_quarantine_contents();
 	return clean;
 }
 

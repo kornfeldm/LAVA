@@ -778,7 +778,6 @@ inline bool FE::DrawHistoryPage()
 	}
 	nk_end(this->ctx);
 	nk_style_set_font(this->ctx, &this->font->handle);
-
 	
 	return true;
 }
@@ -1068,6 +1067,34 @@ inline bool FE::QuarantineView()
 	}
 	nk_end(this->ctx);
 
+	if (nk_begin(this->ctx, "checkboxes", nk_rect(bar.w+10,60, WINDOW_WIDTH-10-bar.w, WINDOW_HEIGHT-150),
+		NULL)) {
+		if (this->QuarantineContents.size() > 0) {
+			static std::vector<int> array(this->QuarantineContents.size());
+			int i = 0;
+			// print check boxes
+			for (auto s : this->QuarantineContents) {
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_checkbox_label(ctx, (s.origin_directory + s.old_file_name + " (" + s.virus_name + ")").c_str(), &array[i]);
+				/*try {
+					if (array.at(i) == 1) {
+						std::cout << s.old_file_name << " checked \n";
+					}
+				}
+				catch (int e) {
+					std::cout << "\nout of bounds\n";
+				}*/
+				i++;
+			}
+		}
+		else {
+			std::cout << "no viruses found!\n";
+		}
+		
+	}
+	nk_end(this->ctx);
+	
+
 	return true;
 }
 
@@ -1185,6 +1212,37 @@ inline bool FE::init(sf::Window *win) {
 		nk_style_set_font(this->ctx, &this->font->handle);
 		//nk_init_default(this->ctx, &font->handle);
 	}
+
+	struct nk_color table[NK_COLOR_COUNT];
+	table[NK_COLOR_TEXT] = nk_rgba(175, 175, 175, 255);
+	table[NK_COLOR_WINDOW] = nk_rgba(45, 45, 45, 255);
+	table[NK_COLOR_HEADER] = nk_rgba(40, 40, 40, 255);
+	table[NK_COLOR_BORDER] = nk_rgba(65, 65, 65, 255);
+	table[NK_COLOR_BUTTON] = nk_rgba(50, 50, 50, 255);
+	table[NK_COLOR_BUTTON_HOVER] = nk_rgba(40, 40, 40, 255);
+	table[NK_COLOR_BUTTON_ACTIVE] = nk_rgba(35, 35, 35, 255);
+	table[NK_COLOR_TOGGLE] = nk_rgba(100, 100, 100, 255);
+	table[NK_COLOR_TOGGLE_HOVER] = nk_rgba(140,138,128, 255);
+	table[NK_COLOR_TOGGLE_CURSOR] = nk_rgba(255, 69, 0, 255);
+	table[NK_COLOR_SELECT] = nk_rgba(45, 45, 45, 255);
+	table[NK_COLOR_SELECT_ACTIVE] = nk_rgba(35, 35, 35, 255);
+	table[NK_COLOR_SLIDER] = nk_rgba(38, 38, 38, 255);
+	table[NK_COLOR_SLIDER_CURSOR] = nk_rgba(100, 100, 100, 255);
+	table[NK_COLOR_SLIDER_CURSOR_HOVER] = nk_rgba(120, 120, 120, 255);
+	table[NK_COLOR_SLIDER_CURSOR_ACTIVE] = nk_rgba(150, 150, 150, 255);
+	table[NK_COLOR_PROPERTY] = nk_rgba(38, 38, 38, 255);
+	table[NK_COLOR_EDIT] = nk_rgba(38, 38, 38, 255);
+	table[NK_COLOR_EDIT_CURSOR] = nk_rgba(175, 175, 175, 255);
+	table[NK_COLOR_COMBO] = nk_rgba(45, 45, 45, 255);
+	table[NK_COLOR_CHART] = nk_rgba(120, 120, 120, 255);
+	table[NK_COLOR_CHART_COLOR] = nk_rgba(45, 45, 45, 255);
+	table[NK_COLOR_CHART_COLOR_HIGHLIGHT] = nk_rgba(255, 0, 0, 255);
+	table[NK_COLOR_SCROLLBAR] = nk_rgba(40, 40, 40, 255);
+	table[NK_COLOR_SCROLLBAR_CURSOR] = nk_rgba(100, 100, 100, 255);
+	table[NK_COLOR_SCROLLBAR_CURSOR_HOVER] =nk_rgba(120, 120, 120, 255);
+	table[NK_COLOR_SCROLLBAR_CURSOR_ACTIVE] = nk_rgba(150, 150, 150, 255);
+	table[NK_COLOR_TAB_HEADER] = nk_rgba(40, 40, 40, 255);
+	nk_style_from_table(ctx, table);
 
 	// load some image stuff
 	//struct nk_buffer cmds;

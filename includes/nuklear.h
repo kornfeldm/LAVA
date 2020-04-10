@@ -14463,14 +14463,14 @@ nk_style_from_table(struct nk_context* ctx, const struct nk_color* table)
 
 	/* checkbox toggle */
 	toggle = &style->checkbox;
-	nk_zero_struct(*toggle);
-	toggle->normal = nk_style_item_color(table[NK_COLOR_TOGGLE]);
-	toggle->hover = nk_style_item_color(table[NK_COLOR_TOGGLE_HOVER]);
+	nk_zero_struct(*toggle); 
+	toggle->normal = nk_style_item_color(table[NK_COLOR_TOGGLE_HOVER]);
+	toggle->hover = nk_style_item_color(table[NK_COLOR_TOGGLE]);
 	toggle->active = nk_style_item_color(table[NK_COLOR_TOGGLE_HOVER]);
 	toggle->cursor_normal = nk_style_item_color(table[NK_COLOR_TOGGLE_CURSOR]);
 	toggle->cursor_hover = nk_style_item_color(table[NK_COLOR_TOGGLE_CURSOR]);
 	toggle->userdata = nk_handle_ptr(0);
-	toggle->text_background = table[NK_COLOR_WINDOW];
+	toggle->text_background = table[NK_COLOR_TOGGLE_HOVER];
 	toggle->text_normal = table[NK_COLOR_TEXT];
 	toggle->text_hover = table[NK_COLOR_TEXT];
 	toggle->text_active = table[NK_COLOR_TEXT];
