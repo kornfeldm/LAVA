@@ -460,7 +460,7 @@ inline void LavaScan::move_file(std::string file_path, std::string new_location_
 	to << from.rdbuf();
 	from.close();
 	to.close();
-	std::remove(file_path.c_str()); //removing the original file
+	_unlink(file_path.c_str()); //removing the original file
 }
 
 inline bool LavaScan::remove_quarantined_files(std::set<std::string> to_remove) { //returns false if errors occurred
@@ -492,11 +492,11 @@ inline bool LavaScan::remove_quarantined_files(std::set<std::string> to_remove) 
 		}
 		if (to_remove.find(file_name) == to_remove.end()) {
 			//moving file back to its original location
-			//move_file(".\\LAVA_Quarantine\\" + file_quarantine_name, file_origin + file_name);
-			temp << line << std::endl; //keeping it in quarantine
+			move_file(".\\LAVA_Quarantine\\" + file_quarantine_name, file_origin + file_name);
+			//temp << line << std::endl; //keeping it in quarantine
 		}
 		else {
-			if (std::remove((".\\LAVA_Quarantine\\" + file_quarantine_name).c_str()) != 0)
+			if (_unlink((".\\LAVA_Quarantine\\" + file_quarantine_name).c_str()) != 0)
 			{
 				//Unable to remove file, keep it in the quarantine folder
 				//error message
@@ -510,7 +510,7 @@ inline bool LavaScan::remove_quarantined_files(std::set<std::string> to_remove) 
 	}
 	temp.close();
 	quarantineFile.close();
-	std::remove("quarantine.lava");
+	_unlink("quarantine.lava");
 	std::rename("temp.lava", "quarantine.lava");
 	return success;
 }
@@ -685,9 +685,9 @@ inline LavaScan::LavaScan() {
 	//quarantine_file("C:\\Users\\dylan\\Downloads\\a_virus.txt", "too cool");
 	//quarantine_file("C:\\Users\\dylan\\Documents\\a_virus.txt", "trojan");
 	//quarantine_file("C:\\Users\\dylan\\Pictures\\a_virus.txt", "trojan");
-	//std::set<std::string> to_remove;
+	std::set<std::string> to_remove;
 	//to_remove.insert("a_virus.txt");
-	//remove_quarantined_files(to_remove);
+	remove_quarantined_files(to_remove);
 	//std::set<struct q_entry> entries = read_quarantine_contents();
 	//for (struct q_entry q :entries) {
 		//std::cout << "File name: " + q.old_file_name + ", new name: " + q.new_file_name + ", origin directory: " + q.origin_directory + ", virus name: " + q.virus_name << std::endl;
