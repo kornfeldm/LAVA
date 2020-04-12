@@ -232,6 +232,8 @@ public:
 	bool scanDirectory(std::string dirPath);
 	void iterateDirectory(std::string directory, bool clean);
 	int scanFile(std::string filePath);
+	int scheduleScanWeekly(int inputDay, int inputHour, int inputMinute);
+	int rmScheduledScan();
 	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
 	bool reset_QC();
 	std::vector<std::string> ReadAntibody(std::string antibodyfilelocation);
@@ -244,6 +246,70 @@ public:
 	void UpdatePreviousScans();
 	bool moveQuarantineHome(std::set<q_entry> q);
 };
+
+inline int LavaScan::scheduleScanWeekly(int inputDay, int inputHour, int inputMinute) {
+	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
+	std::string day = "Sun"; //Scan every Sunday default to this
+	std::string time = "00:00"; //At 12:00AM 
+	std::string hour = "00";
+	std::string minute = "00";
+	switch (inputDay) {
+	case 1:
+		day = "SUN";
+		break;
+	case 2:
+		day = "MON";
+		break;
+	case 3:
+		day = "TUE";
+		break;
+	case 4:
+		day = "WED";
+		break;
+	case 5:
+		day = "THU";
+		break;
+	case 6:
+		day = "FRI";
+		break;
+	case 7:
+		day = "SAT";
+		break;
+	default:
+		return -1;
+		break;
+	}
+
+	if (inputHour < 0 || inputHour > 23){
+		return -2;
+	}
+	if (inputHour < 10){
+		hour = "0" + std::to_string(inputHour);
+	} else {
+		hour = std::to_string(inputHour);
+	}
+
+	if (inputMinute < 0 || inputMinute > 59) {
+		return -3;
+	}
+	if (inputMinute < 10) {
+		minute = "0" + std::to_string(inputMinute);
+	}
+	else {
+		minute = std::to_string(inputMinute);
+	}
+
+	time = hour + ":" + minute;
+
+	std::string path = "\"C:\\Windows\\System32\\notepad.exe\""; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Weekly /D " + day + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time;
+	system(cmdcpp.c_str());
+}
+
+inline int LavaScan::rmScheduledScan() {
+	std::string cmdcpp = "SCHTASKS /DELETE /TN \"LAVA\\ScheduleScan\"";
+	system(cmdcpp.c_str());
+}
 
 inline int LavaScan::scanFile(std::string filePath) {
 	// update scan count
