@@ -121,6 +121,9 @@ public:
 	std::string get_time();
 	void UpdatePreviousScans();
 	bool moveQuarantineHome(std::set<q_entry> q);
+	void check_db_folder();
+	void check_config_files();
+	bool update_virus_database();
 };
 
 inline int LavaScan::scanFile(std::string filePath) {
@@ -759,6 +762,116 @@ inline bool LavaScan::moveQuarantineHome(std::set<q_entry> q)
 	this->postMoveQuarantine(q);
 	return true;
 }
+//function that checks if the db folder exists, if not, creates it
+inline void LavaScan::check_db_folder() {
+	struct stat buf;
+	stat(".\\x64\\Debug\\db", &buf);
+	//check if the db directory exists
+	if (!(buf.st_mode & S_IFDIR)) {
+		//case if it doesn't exist
+		printf("db directory not found.\n Attempting to make the Database Directory...\n");
+		if (int ret = CreateDirectoryA(cl_retdbdir(), NULL) == 0) {
+			if (ret == ERROR_ALREADY_EXISTS) {
+				//direcotry already exists
+				printf("Quarantine Direcotory Ready\n");
+			}
+			else if (ret == ERROR_PATH_NOT_FOUND) {
+				printf("frigg this case");
+			}
+			else {
+				//some other error
+				std::cout << "Error making the quarantine directory, error: " + GetLastError() << std::endl;
+			}
+		}
+		else printf("DB Directory Ready\n");
+	}
+}
+
+inline void LavaScan::check_config_files() {
+	char buf[256];
+	GetCurrentDirectoryA(256, buf); //gets the current working directory
+	//openning all the files to read
+	std::fstream clamd_file;
+	std::fstream clamd_temp;
+	std::fstream freshclam_file;
+	std::fstream freshclam_temp;
+	clamd_file.open("..\\clam64stuff\\clamd.conf", std::ios::in | std::ios::out);
+	clamd_temp.open("..\\clam64stuff\\clamd_temp.conf", std::ios::out);
+	freshclam_file.open("..\\clam64stuff\\freshclam.conf", std::ios::in | std::ios::out);
+	freshclam_temp.open("..\\clam64stuff\\freshclam_temp.conf", std::ios::out);
+
+	clamd_temp << "";
+	freshclam_temp << "";
+	std::string line;
+	while(getline(clamd_file, line)) { //loops over every line in the clamd.conf file looking for the DatabaseDirectory line
+		//std::cout << line << std::endl;;
+		if (line.find("DatabaseDirectory") != std::string::npos) {
+			clamd_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl; //set the database directory to the full file path of the db folder
+		}
+		else {
+			clamd_temp << line << std::endl;
+		}
+	}
+	while (getline(freshclam_file, line)) {//loops over every line in the freshclam.conf file looking for the DatabaseDirectory line
+		//std::cout << line << std::endl;;
+		if (line.find("DatabaseDirectory") != std::string::npos) {
+			freshclam_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl;//set the database directory to the full file path of the db folder
+		}
+		else {
+			freshclam_temp << line << std::endl;
+		}
+	}
+
+	//closing all the files 
+	clamd_file.close();
+	freshclam_file.close();
+	clamd_temp.close();
+	freshclam_temp.close();
+	_unlink("..\\clam64stuff\\clamd.conf");
+	_unlink("..\\clam64stuff\\freshclam.conf");
+	rename("..\\clam64stuff\\clamd_temp.conf", "..\\clam64stuff\\clamd.conf");
+	rename("..\\clam64stuff\\freshclam_temp.conf", "..\\clam64stuff\\freshclam.conf");
+}
+
+inline bool LavaScan::update_virus_database() {
+	check_db_folder();//checking the existence (creating) of db folder
+	check_config_files();//checking/updating config files
+
+	// set the size of the structures
+	TCHAR ProcessName[256];
+	STARTUPINFO si;
+	PROCESS_INFORMATION pi;
+
+	wcscpy(ProcessName, L"C:\\Users\\Dylan\\Documents\\GitHub\\LAVA\\clam64stuff\\freshclam.exe");
+	ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si);
+	ZeroMemory(&pi, sizeof(pi));
+
+	// start the program up
+	if (!CreateProcess(
+		NULL,   // the path
+		ProcessName,			//Command line argument
+		NULL,           // Process handle not inheritable
+		NULL,           // Thread handle not inheritable
+		FALSE,          // Set handle inheritance to FALSE
+		0,              // No creation flags
+		NULL,           // Use parent's environment block
+		NULL,           // Use parent's starting directory 
+		&si,            // Pointer to STARTUPINFO structure
+		&pi             // Pointer to PROCESS_INFORMATION structure
+	)){
+		printf("CreateProcess failed (%d).\n", GetLastError());
+		return false;
+	}
+
+	// Wait until child process exits.
+	WaitForSingleObject(pi.hProcess, INFINITE);
+
+	// Close process and thread handles. 
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+	return true;
+}
 
 inline LavaScan::LavaScan() {
 	CurrentScanCount = 0;
@@ -767,6 +880,16 @@ inline LavaScan::LavaScan() {
 	isScanDone = false;
 	start_time = std::string("");
 	finish_time = std::string("");
+
+	printf("Updating virus databse...");
+	if (!update_virus_database()) {//checks whether failed to update the database
+		printf("Failed to update the database!\nError: %s", GetLastError());
+	}
+	else {
+		printf("Virus database updated!");
+	}
+
+
 	if ((ret = cl_init(CL_INIT_DEFAULT)) != CL_SUCCESS) { //Initializing clamav
 		printf("Can't initialize libclamav: %s\n", cl_strerror(ret));//returns the error name in case of error
 		exit(2);
