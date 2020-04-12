@@ -5,31 +5,88 @@
 extern std::string CurrentScanFile = std::string("");
 
 class ProgressMonitor {
+
+	/*
+		How to use this class:
+		A. Declare it before a scan. For each directory you want to scan:
+
+			1. Run the function, Reccommend(std::string directory);
+				- This will return one of the following int values:
+					- 0 if it's reccomended that the progress is monitored by counting files (this includes all files recursively)
+					- 1 if it's reccomended that the progress is moinitored by counting level 5 folders (i.e. directories found at level four recursively if the parent folder is 0)
+
+			2. To determine the total progress necessary, for each directory:
+				- Run either:
+					- CountDirectories(std::string directory);
+					- CountFiles(std::string directory);
+				- Note: while the reccommend function will make a reccommendation, it is only that- a reccommendation.
+				        With this in mind, you may choose to ignore it, so ultimately the choice is yours how you'd like to proceed as long as you keep it consistant.
+
+			3. From there every time you finish scanning a file or level 5 folder:
+				- Run the respective function depending on which it was:
+					- FinishedDirectory();
+					- FinishedFile();
+					- FinishedFile();
+				- The internal varibales will automatically update accordingly.
+		
+		B.  To return the current progress, you have a few options:
+			- GetPercentage();
+				- Returns a float of the percentage of progress completed (range 0.0 - 100.0)
+			- GetTotal();
+				- Returns a double of the total amount of notable files/folders to scan (both completed and remaining)
+			- GetCompleted();
+				- Returns a double of the total amount of notable files/folders that have already been scanned
+
+	*/
+
 protected:
 	//Internal variables
-	float levelFiveFolderCount = 0;
-	float levelFiveFoldersCompleted = 0;
+	//Folders Scanned
+	double totalFolderCount = 0;
+	double folderCountCompleted = 0;
+	//Files Scanned
+	double totalFileCount = 0;
+	double fileCountCompleted = 0;
+	//Total Progress
+	double totalProgressCount = 0;
+	double totalProgressCompleted = 0;
+	//1-100% value for the progress bar
 	float progessPercentage = 0;
+
+	//Internal function to keep the variables up to date
+	void UpdatePercentage()
+	{
+		if (totalProgressCount != 0) {
+			progessPercentage = totalProgressCompleted / totalProgressCount;
+		}
+		else {
+			progessPercentage = 0;
+		}
+		return;
+	}
 
 public:
 	//Return the variables for use outside of the class
 	float GetPercentage(){
 		return progessPercentage;
 	}
-	float GetTotal() {
-		return levelFiveFolderCount;
+	double GetTotal() {
+		return totalProgressCount;
 	}
-	float GetCompleted() {
-		return levelFiveFoldersCompleted;
+	double GetCompleted() {
+		return totalProgressCompleted;
 	}
+
 	//Call this every time a level five folder is scanned during a scan
 	void FinishedDirectory(){
-		levelFiveFoldersCompleted++;
-		if (levelFiveFolderCount != 0){
-			progessPercentage = levelFiveFoldersCompleted / levelFiveFolderCount;
-		} else {
-			progessPercentage = 0;
-		}
+		folderCountCompleted++;
+		UpdatePercentage();
+		return;
+	}
+	//Call this every time a notable file is scanned during a scan
+	void FinishedFile() {
+		fileCountCompleted++;
+		UpdatePercentage();
 		return;
 	}
 	
@@ -51,7 +108,7 @@ public:
 				if (item->d_type == DT_DIR)
 				{
 					//If we're not at the fifth level yet, go a level deeper
-					if (level < 4)
+					if (level < depth)
 					{
 						std::string newDirectory = directory + item->d_name + "\\";
 						CountDirectories(newDirectory, depth, level++);
@@ -59,7 +116,7 @@ public:
 					//If we are then add the amount of folders to the total count
 					if (level == 4)
 					{
-						levelFiveFolderCount++;
+						totalFolderCount++;
 					}
 				}
 				item = readdir(dir);
@@ -67,6 +124,71 @@ public:
 		}
 		closedir(dir);
 		return;
+	}
+
+	void CountFiles(std::string directory) {
+		//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
+		//This is a modified version of iterateDirectory
+		if (directory.substr(directory.length() - 2) == ".\\")
+		{
+			return;
+		}
+		struct dirent* item;
+		const char* location = directory.c_str();
+		DIR* dir = opendir(location);
+		if (dir != NULL) {
+			item = readdir(dir);
+			while (item != NULL) {
+				if (item->d_type == DT_DIR)
+				{
+					std::string newDirectory = directory + item->d_name + "\\";
+					CountDirectories(newDirectory);
+				}
+				if (item->d_type == DT_REG)
+				{
+					totalFolderCount++;
+				}
+				item = readdir(dir);
+			}
+		}
+		closedir(dir);
+		return;
+	}
+
+	int Reccommend(std::string directory, int depth = 4, int level = 0)
+	{
+		int procedure = 0;
+		//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
+		//This is a modified version of iterateDirectory
+		if (directory.substr(directory.length() - 2) == ".\\")
+		{
+			return;
+		}
+		struct dirent* item;
+		const char* location = directory.c_str();
+		DIR* dir = opendir(location);
+		if (dir != NULL) {
+			item = readdir(dir);
+			while (item != NULL) {
+				if (item->d_type == DT_DIR)
+				{
+					//If we're not at the fifth level yet, go a level deeper
+					if ((level < depth) && (procedure == 0))
+					{
+						std::string newDirectory = directory + item->d_name + "\\";
+						procedure = Reccommend(newDirectory, depth, level++);
+					}
+					//If we are then add the amount of folders to the total count
+					if (level == 4)
+					{
+						return 1;
+					}
+				}
+				item = readdir(dir);
+			}
+		}
+		closedir(dir);
+		return procedure;
 	}
 	
 };
