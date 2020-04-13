@@ -803,25 +803,30 @@ inline void LavaScan::check_config_files() {
 	clamd_temp << "";
 	freshclam_temp << "";
 	std::string line;
+	bool line_changed = false;
 	while(getline(clamd_file, line)) { //loops over every line in the clamd.conf file looking for the DatabaseDirectory line
 		//std::cout << line << std::endl;;
 		if (line.find("DatabaseDirectory") != std::string::npos) {
 			clamd_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl; //set the database directory to the full file path of the db folder
+			line_changed = true;
 		}
 		else {
 			clamd_temp << line << std::endl;
 		}
 	}
+	if(!line_changed) clamd_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl; //case if DatabaseDirectory was not set in clamd.conf
+	line_changed = false;
 	while (getline(freshclam_file, line)) {//loops over every line in the freshclam.conf file looking for the DatabaseDirectory line
 		//std::cout << line << std::endl;;
 		if (line.find("DatabaseDirectory") != std::string::npos) {
 			freshclam_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl;//set the database directory to the full file path of the db folder
+			line_changed = true;
 		}
 		else {
 			freshclam_temp << line << std::endl;
 		}
 	}
-
+	if (!line_changed) freshclam_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl; //case if DatabaseDirectory was not set in freshclam.conf
 	//closing all the files 
 	clamd_file.close();
 	freshclam_file.close();
@@ -881,12 +886,12 @@ inline LavaScan::LavaScan() {
 	start_time = std::string("");
 	finish_time = std::string("");
 
-	printf("Updating virus databse...");
+	printf("Updating virus databse...\n");
 	if (!update_virus_database()) {//checks whether failed to update the database
-		printf("Failed to update the database!\nError: %s", GetLastError());
+		printf("Failed to update the database!\nError: %s\n", GetLastError());
 	}
 	else {
-		printf("Virus database updated!");
+		printf("Virus database updated!\n");
 	}
 
 
