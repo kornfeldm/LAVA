@@ -62,6 +62,9 @@ protected:
 		else {
 			progessPercentage = 0;
 		}
+		if (progessPercentage > 100){
+			progessPercentage = 100;
+		}
 		return;
 	}
 
@@ -77,6 +80,25 @@ public:
 		return totalProgressCompleted;
 	}
 
+	//Only run this if the scan is finished and the progress monitor falls behind. This cannot be undone.
+	void FinishedEarly() {
+		totalProgressCompleted = totalProgressCount;
+		progessPercentage = 100;
+		return;
+	}
+
+	//Resets everything back to default. This cannot be undone.
+	void ResetProgressMonitor() {
+	    totalFolderCount = 0;
+		folderCountCompleted = 0;
+		totalFileCount = 0;
+		fileCountCompleted = 0;
+		totalProgressCount = 0;
+		totalProgressCompleted = 0;
+		progessPercentage = 0;
+		return;
+	}
+
 	//Call this every time a level five folder is scanned during a scan
 	void FinishedDirectory(){
 		folderCountCompleted++;
@@ -87,6 +109,12 @@ public:
 	void FinishedFile() {
 		fileCountCompleted++;
 		UpdatePercentage();
+		return;
+	}
+
+	//Adds a single file to the total to scan. For if the user adds a single file in advanced scan.
+	void AddFile() {
+		totalFileCount++;
 		return;
 	}
 	
