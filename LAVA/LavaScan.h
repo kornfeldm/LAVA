@@ -3,6 +3,10 @@
 #define LAVASCAN_H
 #pragma warning(disable : 4996) //_CRT_SECURE_NO_WARNINGS
 extern std::string CurrentScanFile = std::string("");
+// Define user defined literal "_quoted" operator.
+std::string operator"" _quoted(const char* text, std::size_t len) {
+	return "\"" + std::string(text, len) + "\"";
+}
 
 class ProgressMonitor {
 
@@ -162,7 +166,7 @@ public:
 		//This is a modified version of iterateDirectory
 		if (directory.substr(directory.length() - 2) == ".\\")
 		{
-			return;
+			return 0;
 		}
 		struct dirent* item;
 		const char* location = directory.c_str();
@@ -1005,14 +1009,14 @@ inline void LavaScan::check_db_folder() {
 	//check if the db directory exists
 	if (!(buf.st_mode & S_IFDIR)) {
 		//case if it doesn't exist
-		printf("db directory not found.\n Attempting to make the Database Directory...\n");
+		std::cout<<"db directory not found.\n Attempting to make the Database Directory...\n";
 		if (int ret = CreateDirectoryA(cl_retdbdir(), NULL) == 0) {
 			if (ret == ERROR_ALREADY_EXISTS) {
 				//direcotry already exists
-				printf("Quarantine Direcotory Ready\n");
+				std::cout<<"Quarantine Direcotory Ready\n";
 			}
 			else if (ret == ERROR_PATH_NOT_FOUND) {
-				printf("frigg this case");
+				std::cout<<"frigg this case";
 			}
 			else {
 				//some other error
@@ -1021,6 +1025,8 @@ inline void LavaScan::check_db_folder() {
 		}
 		else printf("DB Directory Ready\n");
 	}
+	else { std::cout << "db_dir exists\n"; }
+	
 }
 
 inline void LavaScan::check_config_files() {
@@ -1074,43 +1080,82 @@ inline void LavaScan::check_config_files() {
 	rename("..\\clam64stuff\\freshclam_temp.conf", "..\\clam64stuff\\freshclam.conf");
 }
 
+std::string GetExeFileName() {
+	char buffer[MAX_PATH] = {};
+	::GetModuleFileNameA(NULL, buffer, MAX_PATH);
+	return std::string(buffer);
+}
+std::string GetExePath()
+{
+	std::string f = GetExeFileName();
+	return f.substr(0, f.find_last_of("\\/"));
+}
+std::string GetLAVAFolder()
+{
+	const unsigned long maxDir = 260;
+	char currentDir[maxDir];
+	GetCurrentDirectoryA(maxDir, currentDir);
+	std::string str = std::string(currentDir);
+	fs::path p = str;
+	/*std::cout << p.parent_path() << std::endl;*/
+	//getch();
+	return p.parent_path().string();
+}
+
 inline bool LavaScan::update_virus_database() {
-	check_db_folder();//checking the existence (creating) of db folder
-	check_config_files();//checking/updating config files
+	//std::cout << "\n " << GetExePath() << "\nend";
+	
+	
+	try {
+		check_db_folder();//checking the existence (creating) of db folder
+		check_config_files();//checking/updating config files
 
-	// set the size of the structures
-	TCHAR ProcessName[256];
-	STARTUPINFO si;
-	PROCESS_INFORMATION pi;
-
-	wcscpy(ProcessName, L"C:\\Users\\Dylan\\Documents\\GitHub\\LAVA\\clam64stuff\\freshclam.exe");
-	ZeroMemory(&si, sizeof(si));
-	si.cb = sizeof(si);
-	ZeroMemory(&pi, sizeof(pi));
-
-	// start the program up
-	if (!CreateProcess(
-		NULL,   // the path
-		ProcessName,			//Command line argument
-		NULL,           // Process handle not inheritable
-		NULL,           // Thread handle not inheritable
-		FALSE,          // Set handle inheritance to FALSE
-		0,              // No creation flags
-		NULL,           // Use parent's environment block
-		NULL,           // Use parent's starting directory 
-		&si,            // Pointer to STARTUPINFO structure
-		&pi             // Pointer to PROCESS_INFORMATION structure
-	)){
-		printf("CreateProcess failed (%d).\n", GetLastError());
-		return false;
+		//// set the size of the structures
+		//TCHAR ProcessName[256];
+		//STARTUPINFO si;
+		//PROCESS_INFORMATION pi;
+		//std::string pname = GetExePath() + "\\..\\clam64stuff\\freshclam.exe"; std::wstring widestr = std::wstring(pname.begin(), pname.end());
+		//std::cout << "\n\t" << pname << std::endl;
+		//getch();
+		//wcscpy(ProcessName, widestr.c_str());
+		//ZeroMemory(&si, sizeof(si));
+		//si.cb = sizeof(si);
+		//ZeroMemory(&pi, sizeof(pi));
+		//
+		//// start the program up
+		//if (!CreateProcess(
+		//	NULL,   // the path
+		//	ProcessName,			//Command line argument
+		//	NULL,           // Process handle not inheritable
+		//	NULL,           // Thread handle not inheritable
+		//	FALSE,          // Set handle inheritance to FALSE
+		//	0,              // No creation flags
+		//	NULL,           // Use parent's environment block
+		//	NULL,           // Use parent's starting directory 
+		//	&si,            // Pointer to STARTUPINFO structure
+		//	&pi             // Pointer to PROCESS_INFORMATION structure
+		//)) {
+		//	printf("CreateProcess failed (%d).\n", GetLastError());
+		//	return false;
+		//}
+		//
+		//// Wait until child process exits.
+		//WaitForSingleObject(pi.hProcess, INFINITE);
+		//
+		//// Close process and thread handles. 
+		//CloseHandle(pi.hProcess);
+		//CloseHandle(pi.hThread);
+		
+		std::string pname = GetLAVAFolder() + "\\clam64stuff\\freshclam.exe"; std::wstring widestr = std::wstring(pname.begin(), pname.end());
+		//std::cout << "\n\t" << pname << std::endl;
+		pname = "\""+pname+"\"";
+		//getch();
+		system(pname.c_str());
+	}
+	catch (int e) {
+		std::cout << "\nsomething borked up";
 	}
 
-	// Wait until child process exits.
-	WaitForSingleObject(pi.hProcess, INFINITE);
-
-	// Close process and thread handles. 
-	CloseHandle(pi.hProcess);
-	CloseHandle(pi.hThread);
 	return true;
 }
 

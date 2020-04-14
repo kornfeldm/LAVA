@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <fstream>
 #include <io.h>
+#include <Lmcons.h>
 #include <limits.h>
 #include <math.h>
 #include <queue>
