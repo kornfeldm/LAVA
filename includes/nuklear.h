@@ -14576,7 +14576,7 @@ nk_style_from_table(struct nk_context* ctx, const struct nk_color* table)
 	prog->cursor_normal = nk_style_item_color(table[NK_COLOR_SLIDER_CURSOR]);
 	prog->cursor_hover = nk_style_item_color(table[NK_COLOR_SLIDER_CURSOR_HOVER]);
 	prog->cursor_active = nk_style_item_color(table[NK_COLOR_SLIDER_CURSOR_ACTIVE]);
-	prog->border_color = nk_rgba(0, 0, 0, 0);
+	prog->border_color = nk_rgba(255, 0, 0, 0);
 	prog->cursor_border_color = nk_rgba(0, 0, 0, 0);
 	prog->userdata = nk_handle_ptr(0);
 	prog->padding = nk_vec2(4, 4);

@@ -880,13 +880,15 @@ inline bool FE::DrawInProgressScan()
 	nk_end(this->ctx);
 
 	/* prog bbar */
-	if (nk_begin(this->ctx, "progbar", nk_rect(traplogo.x, traplogo.y+275+traplogo.h, traplogo.w, 50),
-		NK_WINDOW_BORDER))
+	if (nk_begin(this->ctx, "progbar", nk_rect(traplogo.x-5, traplogo.y+275+traplogo.h, traplogo.w, 65),
+		NK_WINDOW_NO_SCROLLBAR))
 	{
-		nk_size currentValue = this->pm.GetPercentage();
+		/*nk_size currentValue = this->pm.GetPercentage();*/
+		nk_size currentValue = 69;
 		nk_size maxValue = 100;
 		nk_modify modifyable = NK_FIXED;
-		nk_progress(ctx, &currentValue, 100, NK_MODIFIABLE);
+		nk_layout_row_dynamic(this->ctx, traplogo.w, 1);
+		nk_progress(ctx, &currentValue, 100, NULL);
 		std::cout << "\n  " << currentValue;
 	}
 	nk_end(this->ctx);
@@ -1485,11 +1487,11 @@ inline bool FE::init(sf::Window *win) {
 	table[NK_COLOR_TOGGLE_HOVER] = nk_rgba(140,138,128, 255);
 	table[NK_COLOR_TOGGLE_CURSOR] = nk_rgba(255, 69, 0, 255);
 	table[NK_COLOR_SELECT] = nk_rgba(45, 45, 45, 255);
-	table[NK_COLOR_SELECT_ACTIVE] = nk_rgba(35, 35, 35, 255);
-	table[NK_COLOR_SLIDER] = nk_rgba(38, 38, 38, 255);
-	table[NK_COLOR_SLIDER_CURSOR] = nk_rgba(100, 100, 100, 255);
-	table[NK_COLOR_SLIDER_CURSOR_HOVER] = nk_rgba(120, 120, 120, 255);
-	table[NK_COLOR_SLIDER_CURSOR_ACTIVE] = nk_rgba(150, 150, 150, 255);
+	table[NK_COLOR_SELECT_ACTIVE] = nk_rgba(208, 7, 27, 255);
+	table[NK_COLOR_SLIDER] = nk_rgba(208, 119, 126, 255);
+	table[NK_COLOR_SLIDER_CURSOR] = nk_rgba(255, 69, 0, 255);
+	table[NK_COLOR_SLIDER_CURSOR_HOVER] = nk_rgba(255, 69, 0, 255);
+	table[NK_COLOR_SLIDER_CURSOR_ACTIVE] = nk_rgba(255, 69, 0, 255);
 	table[NK_COLOR_PROPERTY] = nk_rgba(38, 38, 38, 255);
 	table[NK_COLOR_EDIT] = nk_rgba(38, 38, 38, 255);
 	table[NK_COLOR_EDIT_CURSOR] = nk_rgba(175, 175, 175, 255);
