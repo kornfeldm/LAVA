@@ -162,7 +162,7 @@ public:
 		//This is a modified version of iterateDirectory
 		if (directory.substr(directory.length() - 2) == ".\\")
 		{
-			return;
+			return 0;
 		}
 		struct dirent* item;
 		const char* location = directory.c_str();
@@ -179,7 +179,7 @@ public:
 						procedure = Reccommend(newDirectory, depth, level++);
 					}
 					//If we are then add the amount of folders to the total count
-					if (level == 4)
+					if (level == level)
 					{
 						return 1;
 					}
