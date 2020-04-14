@@ -257,6 +257,7 @@ public:
 		std::set<int> days; //days is 1-31
 		std::set < std::pair<std::string, std::set<std::string>>> on; //on first, second, last friday and monday. set of pairs(first/second/.. , <days to happen>)
 	} _schedulerInfo;
+	//ProgressMonitor pm;
 	
 	/* MEMBER FUNCTIONS */
 	static struct nk_image icon_load(const char* filename, bool flip = false);
@@ -837,6 +838,7 @@ inline bool FE::DrawInProgressScan()
 				break;
 			case 3: //adv
 				//this->maxfiles = this->TotalSetFileCount(advancedScanPaths);
+				//pm.Reccommend();
 				this->AdvanceScanNow(advancedScanPaths);
 				break;
 			default:
@@ -877,23 +879,17 @@ inline bool FE::DrawInProgressScan()
 	}
 	nk_end(this->ctx);
 
-	///* prog bbar */
-	///* Current scanning items TEXT */
-	//if (nk_begin(this->ctx, "progbar", nk_rect(traplogo.x, traplogo.y+275+traplogo.h, traplogo.w, 50),
-	//	NK_WINDOW_DYNAMIC | NK_WINDOW_MOVABLE))
-	//{
-	//	nk_size currentValue = this->CurrentScanCount;
-	//	nk_size maxValue = this->maxfiles;
-	//	nk_modify modifyable = NK_FIXED;
-	//	if (nk_progress(ctx, &currentValue, maxValue, modifyable))
-	//	{
-	//		nk_draw_progress(this->canvas, modifyable,
-	//			NULL, NULL,
-	//			NULL, currentValue, maxValue);
-	//		
-	//	}
-	//}
-	//nk_end(this->ctx);
+	/* prog bbar */
+	if (nk_begin(this->ctx, "progbar", nk_rect(traplogo.x, traplogo.y+275+traplogo.h, traplogo.w, 50),
+		NK_WINDOW_BORDER))
+	{
+		nk_size currentValue = this->pm.GetPercentage();
+		nk_size maxValue = 100;
+		nk_modify modifyable = NK_FIXED;
+		nk_progress(ctx, &currentValue, 100, NK_MODIFIABLE);
+		std::cout << "\n  " << currentValue;
+	}
+	nk_end(this->ctx);
 
 	if (this->isScanDone) { // if current scan done display our done button!
 		

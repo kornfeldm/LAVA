@@ -217,6 +217,7 @@ public:
 	std::set<LavaScan::q_entry> QuarantineContents;
 	int num_found;
 	int num_removed;
+	ProgressMonitor pm;
 	// constructor
 	LavaScan(); // default
 	/* scans */
@@ -664,6 +665,12 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 				//it's a directory, use scandir
 				//std::cout << path << " is a directory.";
 				scanDirectory(std::string(path+"\\"));
+				if (pm.Reccommend(path) == 1) {
+					pm.CountDirectories(path);
+				}
+				else { // 0. countfiles
+					pm.CountFiles(path);
+				}
 			}
 			else if (s.st_mode & S_IFREG)
 			{
