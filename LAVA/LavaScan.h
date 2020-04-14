@@ -183,7 +183,7 @@ public:
 						procedure = Reccommend(newDirectory, depth, level++);
 					}
 					//If we are then add the amount of folders to the total count
-					if (level == 4)
+					if (level == depth)
 					{
 						return 1;
 					}
