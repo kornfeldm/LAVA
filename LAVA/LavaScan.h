@@ -5,31 +5,88 @@
 extern std::string CurrentScanFile = std::string("");
 
 class ProgressMonitor {
+
+	/*
+		How to use this class:
+		A. Declare it before a scan. For each directory you want to scan:
+
+			1. Run the function, Reccommend(std::string directory);
+				- This will return one of the following int values:
+					- 0 if it's reccomended that the progress is monitored by counting files (this includes all files recursively)
+					- 1 if it's reccomended that the progress is moinitored by counting level 5 folders (i.e. directories found at level four recursively if the parent folder is 0)
+
+			2. To determine the total progress necessary, for each directory:
+				- Run either:
+					- CountDirectories(std::string directory);
+					- CountFiles(std::string directory);
+				- Note: while the reccommend function will make a reccommendation, it is only that- a reccommendation.
+				        With this in mind, you may choose to ignore it, so ultimately the choice is yours how you'd like to proceed as long as you keep it consistant.
+
+			3. From there every time you finish scanning a file or level 5 folder:
+				- Run the respective function depending on which it was:
+					- FinishedDirectory();
+					- FinishedFile();
+					- FinishedFile();
+				- The internal varibales will automatically update accordingly.
+		
+		B.  To return the current progress, you have a few options:
+			- GetPercentage();
+				- Returns a float of the percentage of progress completed (range 0.0 - 100.0)
+			- GetTotal();
+				- Returns a double of the total amount of notable files/folders to scan (both completed and remaining)
+			- GetCompleted();
+				- Returns a double of the total amount of notable files/folders that have already been scanned
+
+	*/
+
 protected:
 	//Internal variables
-	float levelFiveFolderCount = 0;
-	float levelFiveFoldersCompleted = 0;
+	//Folders Scanned
+	double totalFolderCount = 0;
+	double folderCountCompleted = 0;
+	//Files Scanned
+	double totalFileCount = 0;
+	double fileCountCompleted = 0;
+	//Total Progress
+	double totalProgressCount = 0;
+	double totalProgressCompleted = 0;
+	//1-100% value for the progress bar
 	float progessPercentage = 0;
+
+	//Internal function to keep the variables up to date
+	void UpdatePercentage()
+	{
+		if (totalProgressCount != 0) {
+			progessPercentage = totalProgressCompleted / totalProgressCount;
+		}
+		else {
+			progessPercentage = 0;
+		}
+		return;
+	}
 
 public:
 	//Return the variables for use outside of the class
 	float GetPercentage(){
 		return progessPercentage;
 	}
-	float GetTotal() {
-		return levelFiveFolderCount;
+	double GetTotal() {
+		return totalProgressCount;
 	}
-	float GetCompleted() {
-		return levelFiveFoldersCompleted;
+	double GetCompleted() {
+		return totalProgressCompleted;
 	}
+
 	//Call this every time a level five folder is scanned during a scan
 	void FinishedDirectory(){
-		levelFiveFoldersCompleted++;
-		if (levelFiveFolderCount != 0){
-			progessPercentage = levelFiveFoldersCompleted / levelFiveFolderCount;
-		} else {
-			progessPercentage = 0;
-		}
+		folderCountCompleted++;
+		UpdatePercentage();
+		return;
+	}
+	//Call this every time a notable file is scanned during a scan
+	void FinishedFile() {
+		fileCountCompleted++;
+		UpdatePercentage();
 		return;
 	}
 	
@@ -51,7 +108,7 @@ public:
 				if (item->d_type == DT_DIR)
 				{
 					//If we're not at the fifth level yet, go a level deeper
-					if (level < 4)
+					if (level < depth)
 					{
 						std::string newDirectory = directory + item->d_name + "\\";
 						CountDirectories(newDirectory, depth, level++);
@@ -59,7 +116,7 @@ public:
 					//If we are then add the amount of folders to the total count
 					if (level == 4)
 					{
-						levelFiveFolderCount++;
+						totalFolderCount++;
 					}
 				}
 				item = readdir(dir);
@@ -67,6 +124,71 @@ public:
 		}
 		closedir(dir);
 		return;
+	}
+
+	void CountFiles(std::string directory) {
+		//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
+		//This is a modified version of iterateDirectory
+		if (directory.substr(directory.length() - 2) == ".\\")
+		{
+			return;
+		}
+		struct dirent* item;
+		const char* location = directory.c_str();
+		DIR* dir = opendir(location);
+		if (dir != NULL) {
+			item = readdir(dir);
+			while (item != NULL) {
+				if (item->d_type == DT_DIR)
+				{
+					std::string newDirectory = directory + item->d_name + "\\";
+					CountDirectories(newDirectory);
+				}
+				if (item->d_type == DT_REG)
+				{
+					totalFolderCount++;
+				}
+				item = readdir(dir);
+			}
+		}
+		closedir(dir);
+		return;
+	}
+
+	int Reccommend(std::string directory, int depth = 4, int level = 0)
+	{
+		int procedure = 0;
+		//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
+		//This is a modified version of iterateDirectory
+		if (directory.substr(directory.length() - 2) == ".\\")
+		{
+			return;
+		}
+		struct dirent* item;
+		const char* location = directory.c_str();
+		DIR* dir = opendir(location);
+		if (dir != NULL) {
+			item = readdir(dir);
+			while (item != NULL) {
+				if (item->d_type == DT_DIR)
+				{
+					//If we're not at the fifth level yet, go a level deeper
+					if ((level < depth) && (procedure == 0))
+					{
+						std::string newDirectory = directory + item->d_name + "\\";
+						procedure = Reccommend(newDirectory, depth, level++);
+					}
+					//If we are then add the amount of folders to the total count
+					if (level == 4)
+					{
+						return 1;
+					}
+				}
+				item = readdir(dir);
+			}
+		}
+		closedir(dir);
+		return procedure;
 	}
 	
 };
@@ -110,6 +232,9 @@ public:
 	bool scanDirectory(std::string dirPath);
 	void iterateDirectory(std::string directory, bool clean);
 	int scanFile(std::string filePath);
+	int scheduleScanWeekly(int inputDay, int inputHour, int inputMinute);
+	int scheduleScanMonthly(int inputDay, int inputHour, int inputMinute);
+	int rmScheduledScan();
 	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
 	bool reset_QC();
 	std::vector<std::string> ReadAntibody(std::string antibodyfilelocation);
@@ -122,6 +247,117 @@ public:
 	void UpdatePreviousScans();
 	bool moveQuarantineHome(std::set<q_entry> q);
 };
+
+//Make a monthly scan. Parameters -> inputDay: Day of Week (1-7, where 1 is Sunday, 7 is Saturday); inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59);
+//Returns 0 on completion or errors -1, -2 or -3 if there's an issue with the parameters depending on which causes the problem
+inline int LavaScan::scheduleScanWeekly(int inputDay, int inputHour, int inputMinute) {
+	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
+	std::string day = "Sun";
+	std::string time = "00:00";
+	std::string hour = "00";
+	std::string minute = "00";
+	switch (inputDay) {
+	case 1:
+		day = "SUN";
+		break;
+	case 2:
+		day = "MON";
+		break;
+	case 3:
+		day = "TUE";
+		break;
+	case 4:
+		day = "WED";
+		break;
+	case 5:
+		day = "THU";
+		break;
+	case 6:
+		day = "FRI";
+		break;
+	case 7:
+		day = "SAT";
+		break;
+	default:
+		return -1;
+		break;
+	}
+
+	if (inputHour < 0 || inputHour > 23){
+		return -2;
+	}
+	if (inputHour < 10){
+		hour = "0" + std::to_string(inputHour);
+	} else {
+		hour = std::to_string(inputHour);
+	}
+
+	if (inputMinute < 0 || inputMinute > 59) {
+		return -3;
+	}
+	if (inputMinute < 10) {
+		minute = "0" + std::to_string(inputMinute);
+	}
+	else {
+		minute = std::to_string(inputMinute);
+	}
+
+	time = hour + ":" + minute;
+
+	std::string path = "\"C:\\Windows\\System32\\notepad.exe\""; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Weekly /D " + day + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time;
+	system(cmdcpp.c_str());
+	return 0;
+}
+
+//Make a monthly scan. Parameters -> inputDay: Day of Month (1-31); inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59);
+//Returns 0 on completion or errors -1, -2 or -3 if there's an issue with the parameters depending on which causes the problem
+inline int LavaScan::scheduleScanMonthly(int inputDay, int inputHour, int inputMinute) {
+	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
+	std::string day = "1";
+	std::string time = "00:00"; 
+	std::string hour = "00";
+	std::string minute = "00";
+	if (inputDay < 1 || inputDay > 31) {
+		return -1;
+	} else {
+		day = std::to_string(inputDay);
+	}
+
+	if (inputHour < 0 || inputHour > 23) {
+		return -2;
+	}
+
+	if (inputHour < 10) {
+		hour = "0" + std::to_string(inputHour);
+	} else {
+		hour = std::to_string(inputHour);
+	}
+
+	if (inputMinute < 0 || inputMinute > 59) {
+		return -3;
+	}
+
+	if (inputMinute < 10) {
+		minute = "0" + std::to_string(inputMinute);
+	} else {
+		minute = std::to_string(inputMinute);
+	}
+
+	time = hour + ":" + minute;
+
+	std::string path = "\"C:\\Windows\\System32\\notepad.exe\""; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Monthly /D " + day + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time;
+	system(cmdcpp.c_str());
+	return 0;
+}
+
+//Removes the scheduled scan and returns 0 on completion
+inline int LavaScan::rmScheduledScan() {
+	std::string cmdcpp = "SCHTASKS /DELETE /TN \"LAVA\\ScheduleScan\"";
+	system(cmdcpp.c_str());
+	return 0;
+}
 
 inline int LavaScan::scanFile(std::string filePath) {
 	// update scan count
