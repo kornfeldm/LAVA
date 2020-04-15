@@ -649,7 +649,12 @@ inline bool LavaScan::QuickScan()
 	for (int i = 0; i < directorylist.size(); i++)
 	{
 		//Scan it
-		clean = scanDirectory(directorylist[i]);
+		if (clean == true)
+		{
+			clean = scanDirectory(directorylist[i]);
+		} else {
+			scanDirectory(directorylist[i]);
+		}
 	}
 	this->finish_time = get_time();//get end time for scan
 	//log_scan("Quick",start_time, finish_time, num_found, num_found); //log scan
