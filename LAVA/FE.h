@@ -153,6 +153,8 @@ UINT MultiFolderSelect(HWND hWnd, LPCTSTR szTitle, CString folder=L"C:\\")
 	return g_Multi.cFolders;
 }
 
+
+
 struct pics {
 	const char* squareLogo;
 	const char* rectLogo;
@@ -283,6 +285,7 @@ public:
 	bool QuarantineView();
 	bool ScheduleAdvScanView();
 	bool displayScheduleArrows();
+	bool displayScheduleType();
 };
 inline struct nk_image FE::icon_load(const char* filename, bool flip)
 {
@@ -1236,6 +1239,25 @@ inline bool FE::QuarantineView()
 	return true;
 }
 
+int changeHrFormat(int hr, bool am) {
+	if (am) {
+		if (hr == 12) {
+			hr = 0;
+		}
+	}
+	else { // pm
+		if (hr == 12) {
+			hr = 23;
+		}
+		else {
+			hr = hr + 12;
+		}
+	}
+
+	return hr;
+}
+
+
 inline bool FE::ScheduleAdvScanView()
 {
 	/* BACK ARROW ICON */
@@ -1340,8 +1362,42 @@ inline bool FE::ScheduleAdvScanView()
 		}
 		break;
 
-	case 0:
+	case 0: // DAILY BRUV
 		try {
+			// type : daily
+			static bool op = true;
+			this->displayScheduleType();
+			// ask for time
+			//nk_clear(this->ctx);
+
+			if (nk_begin(this->ctx, "hrsstext", nk_rect(125, 180, 100, 30),
+				NK_WINDOW_SCROLL_AUTO_HIDE|NK_WINDOW_NO_SCROLLBAR)) {
+				// default combo box
+				nk_layout_row_dynamic(this->ctx, 30, 1);
+				nk_label_wrap(this->ctx, "Hour: ");
+			}
+			nk_end(this->ctx);
+			// AM OR PM
+			if (nk_begin(this->ctx, "amPM", nk_rect(125 + 100 + 2 + 300, 180, 300, 60),
+				NULL)) {
+				nk_layout_row_dynamic(this->ctx, 30, 2);
+				if (nk_option_label(this->ctx, "AM", op == true)) op = false;
+				if (nk_option_label(this->ctx, "PM", op == true)) op = false;
+			}
+			nk_end(this->ctx);
+			unsigned static short int trigger_type = 0; // init state, make user choose what they want :) but start at one time
+			static const char* hrs[] = { "1","2","3","4","5","6","7","8","9","10","11","12" };
+			/* try selectable */
+			if (nk_begin(this->ctx, "hrs", nk_rect(125 + 100 + 2, 180, 300, 60),
+				NULL)) {
+				// default combo box
+				nk_layout_row_static(ctx, 30, 160, 1);
+				trigger_type = nk_combo(ctx, hrs, 12, trigger_type, 30, nk_vec2(160, 200));
+				std::cout << "\n\t hr : " << changeHrFormat(trigger_type + 1, op);
+			}
+			nk_end(this->ctx);
+
+
 			this->displayScheduleArrows();
 		}
 		catch (int e) {
@@ -1349,8 +1405,9 @@ inline bool FE::ScheduleAdvScanView()
 		}
 		break;
 
-	case 1:
+	case 1://weekly
 		try {
+			this->displayScheduleType();
 			this->displayScheduleArrows();
 		}
 		catch (int e) {
@@ -1358,8 +1415,9 @@ inline bool FE::ScheduleAdvScanView()
 		}
 		break;
 
-	case 2:
+	case 2: //mohnhtly
 		try {
+			this->displayScheduleType();
 			this->displayScheduleArrows();
 		}
 		catch (int e) {
@@ -1367,8 +1425,9 @@ inline bool FE::ScheduleAdvScanView()
 		}
 		break;
 
-	case 3:
+	case 3: //one time
 		try {
+			this->displayScheduleType();
 			this->displayScheduleArrows();
 		}
 		catch (int e) {
@@ -1389,10 +1448,6 @@ inline bool FE::ScheduleAdvScanView()
 		std::cout << "\n  flip";
 		break;
 	}
-
-	
-
-	//BACK AND NEXT BTNS HERE
 
 	return true;
 }
@@ -1431,6 +1486,52 @@ inline bool FE::displayScheduleArrows()
 		//this->drawImage(&this->purpleFwd);
 	}
 	nk_end(this->ctx);
+	return true;
+}
+
+inline bool FE::displayScheduleType()
+{
+	try {
+		// add logo
+		/*if (nk_begin(this->ctx, "lavalogo", r_logo,
+			NK_WINDOW_NO_SCROLLBAR)) {
+			this->drawImage(&this->squareImage);
+		}
+		nk_end(this->ctx);*/
+
+		std::string typ = "Schedule Type: ";
+		switch (this->_schedulerInfo.type) {
+		case 0:
+			typ.append( "Daily ");
+			break;
+		case 1:
+			typ.append("Weekly ");
+			break;
+		case 2:
+			typ.append("Monthly ");
+			break;
+		case 3:
+			typ.append("One Time ");
+			break;
+		default:
+			typ.append("failed ");
+			break;
+		}
+
+		// text
+		if (nk_begin(this->ctx, "txt", nk_rect(125,150,800, 30),
+			NK_WINDOW_NO_SCROLLBAR)) {
+			/*nk_layout_row_dynamic(this->ctx, 80, 1);
+			nk_label_wrap(this->ctx, "Chose a Scan, Please!");*/
+			nk_layout_row_dynamic(this->ctx,30,1);
+			//std::cout << "\n\t" << typ;
+			nk_label_wrap(this->ctx, typ.c_str());
+		}
+		nk_end(this->ctx);
+	}
+	catch (int e) {
+		std::cout << "failed the sched type bruv" << std::endl;
+	}
 	return true;
 }
 
