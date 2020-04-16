@@ -260,6 +260,7 @@ public:
 		std::set < std::pair<std::string, std::set<std::string>>> on; //on first, second, last friday and monday. set of pairs(first/second/.. , <days to happen>)
 	} _schedulerInfo;
 	//ProgressMonitor pm;
+	struct tm sel_date;
 	
 	/* MEMBER FUNCTIONS */
 	static struct nk_image icon_load(const char* filename, bool flip = false);
@@ -1042,7 +1043,10 @@ inline FE::FE() {
 	this->m_scanViews = 0;
 	this->_schedulerInfo = {};
 	this->_schedulerInfo.type = -1;
-
+	//static struct tm sel_date;
+	time_t now = time(0);
+	this->sel_date = *localtime(&now);
+	sel_date.tm_sec = 0;
 	/* INIT IMAGES */
 	this->pp.scan = "../Assets/scan2.png";
 	this->pp.rectLogo = "../Assets/rectLogo.png";
@@ -1370,33 +1374,120 @@ inline bool FE::ScheduleAdvScanView()
 			// ask for time
 			//nk_clear(this->ctx);
 
-			if (nk_begin(this->ctx, "hrsstext", nk_rect(125, 180, 100, 30),
-				NK_WINDOW_SCROLL_AUTO_HIDE|NK_WINDOW_NO_SCROLLBAR)) {
-				// default combo box
-				nk_layout_row_dynamic(this->ctx, 30, 1);
-				nk_label_wrap(this->ctx, "Hour: ");
-			}
-			nk_end(this->ctx);
-			// AM OR PM
-			if (nk_begin(this->ctx, "amPM", nk_rect(125 + 100 + 2 + 300, 180, 300, 60),
-				NULL)) {
-				nk_layout_row_dynamic(this->ctx, 30, 2);
-				if (nk_option_label(this->ctx, "AM", op == true)) op = false;
-				if (nk_option_label(this->ctx, "PM", op == true)) op = false;
-			}
-			nk_end(this->ctx);
-			unsigned static short int trigger_type = 0; // init state, make user choose what they want :) but start at one time
-			static const char* hrs[] = { "1","2","3","4","5","6","7","8","9","10","11","12" };
-			/* try selectable */
-			if (nk_begin(this->ctx, "hrs", nk_rect(125 + 100 + 2, 180, 300, 60),
-				NULL)) {
-				// default combo box
-				nk_layout_row_static(ctx, 30, 160, 1);
-				trigger_type = nk_combo(ctx, hrs, 12, trigger_type, 30, nk_vec2(160, 200));
-				std::cout << "\n\t hr : " << changeHrFormat(trigger_type + 1, op);
-			}
-			nk_end(this->ctx);
+			//if (nk_begin(this->ctx, "hrsstext", nk_rect(125, 180, 100, 30),
+			//	NK_WINDOW_SCROLL_AUTO_HIDE|NK_WINDOW_NO_SCROLLBAR)) {
+			//	// default combo box
+			//	nk_layout_row_dynamic(this->ctx, 30, 1);
+			//	nk_label_wrap(this->ctx, "Hour: ");
+			//}
+			//nk_end(this->ctx);
+			//// AM OR PM
+			//if (nk_begin(this->ctx, "amPM", nk_rect(125 + 100 + 2 + 300, 180, 300, 60),
+			//	NULL)) {
+			//	nk_layout_row_dynamic(this->ctx, 30, 2);
+			//	if (nk_option_label(this->ctx, "AM", op == true)) op = true;
+			//	if (nk_option_label(this->ctx, "PM", op == false)) op = false;
+			//}
+			//nk_end(this->ctx);
+			//unsigned static short int trigger_type = 0; // init state, make user choose what they want :) but start at one time
+			//static const char* hrs[] = { "1","2","3","4","5","6","7","8","9","10","11","12" };
+			///* try selectable */
+			//if (nk_begin(this->ctx, "hrs", nk_rect(125 + 100 + 2, 180, 300, 60),
+			//	NULL)) {
+			//	// default combo box
+			//	nk_layout_row_static(ctx, 30, 160, 1);
+			//	trigger_type = nk_combo(ctx, hrs, 12, trigger_type, 30, nk_vec2(160, 200));
+			//	//std::cout << "\n\t hr : " << changeHrFormat(trigger_type + 1, op);
+			//}
+			//nk_end(this->ctx);
 
+			// day...input?
+			/* date combobox */
+			nk_style_set_font(this->ctx, &this->font5->handle);
+			if (nk_begin(this->ctx, "calendarr", nk_rect(125, 180, 500, 500)
+			, NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_NO_SCROLLBAR)) {
+				static int time_selected = 0;
+				static int date_selected = 0;
+				char buffer[64];
+				nk_layout_row_static(ctx, 28, 200, 1);
+				/* time combobox */
+				sprintf(buffer, "%02d:%02d:%02d", sel_date.tm_hour, sel_date.tm_min, sel_date.tm_sec);
+				if (nk_combo_begin_label(ctx, buffer, nk_vec2(200, 250))) {
+					time_selected = 1;
+					nk_layout_row_dynamic(ctx, 25, 1);
+					sel_date.tm_hour = nk_propertyi(ctx, "#Hour:", 0, sel_date.tm_hour, 23, 1, 1);
+					sel_date.tm_min = nk_propertyi(ctx, "#Mins:", 0, sel_date.tm_min, 59, 1, 1);
+					sel_date.tm_sec = nk_propertyi(ctx, "#Secs:", 0, sel_date.tm_sec, 59, 1, 1); // we dont need secs prob
+					nk_combo_end(ctx);
+				}
+				sprintf(buffer, "%02d-%02d-%02d", sel_date.tm_mday, sel_date.tm_mon + 1, sel_date.tm_year + 1900);
+				if (nk_combo_begin_label(ctx, buffer, nk_vec2(350, 400)))
+				{
+					int i = 0;
+					const char* month[] = { "January", "February", "March",
+						"April", "May", "June", "July", "August", "September",
+						"October", "November", "December" };
+					const char* week_days[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
+					const int month_days[] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
+					int year = sel_date.tm_year + 1900;
+					int leap_year = (!(year % 4) && ((year % 100))) || !(year % 400);
+					int days = (sel_date.tm_mon == 1) ?
+						month_days[sel_date.tm_mon] + leap_year :
+						month_days[sel_date.tm_mon];
+
+					/* header with month and year */
+					date_selected = 1;
+					nk_layout_row_begin(ctx, NK_DYNAMIC, 20, 3);
+					nk_layout_row_push(ctx, 0.05f);
+					if (nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_LEFT)) {
+						if (sel_date.tm_mon == 0) {
+							sel_date.tm_mon = 11;
+							sel_date.tm_year = NK_MAX(0, sel_date.tm_year - 1);
+						}
+						else sel_date.tm_mon--;
+					}
+					nk_layout_row_push(ctx, 0.9f);
+					sprintf(buffer, "%s %d", month[sel_date.tm_mon], year);
+					nk_label(ctx, buffer, NK_TEXT_CENTERED);
+					nk_layout_row_push(ctx, 0.05f);
+					if (nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_RIGHT)) {
+						if (sel_date.tm_mon == 11) {
+							sel_date.tm_mon = 0;
+							sel_date.tm_year++;
+						}
+						else sel_date.tm_mon++;
+					}
+					nk_layout_row_end(ctx);
+
+					/* good old week day formula (double because precision) */
+					{int year_n = (sel_date.tm_mon < 2) ? year - 1 : year;
+					int y = year_n % 100;
+					int c = year_n / 100;
+					int y4 = (int)((float)y / 4);
+					int c4 = (int)((float)c / 4);
+					int m = (int)(2.6 * (double)(((sel_date.tm_mon + 10) % 12) + 1) - 0.2);
+					int week_day = (((1 + m + y + y4 + c4 - 2 * c) % 7) + 7) % 7;
+
+					/* weekdays  */
+					nk_layout_row_dynamic(ctx, 35, 7);
+					for (i = 0; i < (int)NK_LEN(week_days); ++i)
+						nk_label(ctx, week_days[i], NK_TEXT_CENTERED);
+
+					/* days  */
+					if (week_day > 0) nk_spacing(ctx, week_day);
+					for (i = 1; i <= days; ++i) {
+						sprintf(buffer, "%d", i);
+						if (nk_button_label(ctx, buffer)) {
+							sel_date.tm_mday = i;
+							nk_combo_close(ctx);
+						}
+					}}
+					nk_combo_end(ctx);
+				}
+				
+			}
+			nk_end(this->ctx);
+			nk_style_set_font(this->ctx, &this->font->handle);
 
 			this->displayScheduleArrows();
 		}
@@ -1562,7 +1653,7 @@ inline bool FE::init(sf::Window *win) {
 		this->font4 = nk_font_atlas_add_from_file(this->atlas4, "../Assets/font.ttf", 84, 0);
 		nk_sfml_font_stash_end();
 	}
-	{//logo text size 88;
+	{//logo text size 22;
 		nk_sfml_font_stash_begin(&this->atlas5);
 		this->font5 = nk_font_atlas_add_from_file(this->atlas5, "../Assets/font.ttf", 22, 0);
 		nk_sfml_font_stash_end();
