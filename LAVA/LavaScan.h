@@ -56,12 +56,13 @@ protected:
 	//Internal function to keep the variables up to date
 	void UpdatePercentage()
 	{
+		totalProgressCompleted = folderCountCompleted + fileCountCompleted;
 		if (totalProgressCount != 0) {
-			progessPercentage = totalProgressCompleted / totalProgressCount;
-		}
-		else {
+			progessPercentage = (totalProgressCompleted / totalProgressCount) * 100;
+		} else {
 			progessPercentage = 0;
 		}
+
 		if (progessPercentage > 100){
 			progessPercentage = 100;
 		}
@@ -83,6 +84,8 @@ public:
 	//Only run this if the scan is finished and the progress monitor falls behind. This cannot be undone.
 	void FinishedEarly() {
 		totalProgressCompleted = totalProgressCount;
+		fileCountCompleted = totalFileCount;
+		folderCountCompleted = totalFolderCount;
 		progessPercentage = 100;
 		return;
 	}
@@ -115,6 +118,7 @@ public:
 	//Adds a single file to the total to scan. For if the user adds a single file in advanced scan.
 	void AddFile() {
 		totalFileCount++;
+		totalProgressCount++;
 		return;
 	}
 	
@@ -145,6 +149,7 @@ public:
 					if (level == 4)
 					{
 						totalFolderCount++;
+						totalProgressCount++;
 					}
 				}
 				item = readdir(dir);
@@ -174,7 +179,8 @@ public:
 				}
 				if (item->d_type == DT_REG)
 				{
-					totalFolderCount++;
+					totalFileCount++;
+					totalProgressCount++;
 				}
 				item = readdir(dir);
 			}
