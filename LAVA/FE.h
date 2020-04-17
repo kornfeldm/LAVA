@@ -1491,25 +1491,25 @@ inline bool FE::displayScheduleArrows()
 			sel_date.tm_year += 1900;
 			switch (this->_schedulerInfo.type) {
 			case 0: //daily
-				std::cout << "\ndaily\n\t" << sel_date.tm_mon <<"/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " days\n";
+				/*std::cout << "\ndaily\n\t" << sel_date.tm_mon <<"/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " days\n";
 				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";
 				for (auto s : advancedScanPaths) {
 					std::cout << "\n\t " << s;
-				}
+				}*/
 				break;
 			case 1: // weekly
-				std::cout << "\nweekly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " weekz\n";
+				/*std::cout << "\nweekly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " weekz\n";
 				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";
 				for (auto s : advancedScanPaths) {
 					std::cout << "\n\t " << s;
-				}
+				}*/
 				break;
 			case 2: //monthly
-				std::cout << "\nmonthly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << this->_schedulerInfo.reccuring << " months\n";
+				/*std::cout << "\nmonthly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << this->_schedulerInfo.reccuring << " months\n";
 				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";
 				for (auto s : advancedScanPaths) {
 					std::cout << "\n\t " << s;
-				}
+				}*/
 				break;
 			default: //3=one time and we done want that so do nothing tyfys
 				break;
