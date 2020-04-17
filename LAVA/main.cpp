@@ -9,7 +9,9 @@
 #include <ShlObj.h>
 #include <assert.h>
 #include <atlstr.h>
+#include <CommCtrl.h>
 #include <conio.h>
+#include <ctime>
 #include <dirent.h>
 #include <dlgs.h>
 #include <fcntl.h>
