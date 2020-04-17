@@ -8,6 +8,9 @@ std::string operator"" _quoted(const char* text, std::size_t len) {
 	return "\"" + std::string(text, len) + "\"";
 }
 
+long int current_Count;
+long int total_Count; 
+
 class ProgressMonitor {
 
 	/*
@@ -231,6 +234,30 @@ public:
 	
 };
 
+void FileCount(std::string dirPath)
+{
+	auto dirIter = std::filesystem::recursive_directory_iterator(dirPath);
+	struct stat s;
+	if (stat(dirPath.c_str(), &s) == 0)
+	{
+		if (s.st_mode & S_IFDIR)
+		{
+			for (auto& entry : dirIter)
+			{
+				if (entry.is_regular_file())
+				{
+					/*std::cout << "\n\t\tfile " << entry.path();
+					std::cout << "\n counter : " << total_Count;*/
+					++total_Count;
+				}
+			}
+		}
+		else if (s.st_mode & S_IFREG)
+		{
+			++total_Count;
+		}
+	}
+}
 
 class LavaScan
 {
@@ -279,7 +306,7 @@ public:
 	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
 	bool reset_QC();
 	std::vector<std::string> ReadAntibody(std::string antibodyfilelocation);
-	int FileCount(std::string dirPath);
+	//void FileCount(std::string dirPath);
 	int TotalSetFileCount(std::set<std::string> p);
 	std::set<std::string> countQuarantineContents();
 	void log_scan();
@@ -415,7 +442,7 @@ inline int LavaScan::rmScheduledScan() {
 
 inline int LavaScan::scanFile(std::string filePath) {
 	// update scan count
-	CurrentScanCount++;
+	CurrentScanCount++; current_Count++;
 	// update current scan dir for GUI
 	CurrentScanFile = filePath;
 	//std::cout << "\n\tfile:" << filePath;
@@ -542,46 +569,36 @@ inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilel
 
 namespace fs = std::filesystem;
 
-inline int LavaScan::FileCount( std::string dirPath )
-{
-	getch();
-	int count = 0;
-	for (auto& p : fs::recursive_directory_iterator(dirPath))
-		count++;
-	
-	return count;
-}
-
-inline int LavaScan::TotalSetFileCount(std::set<std::string> p) {
-	int count = 0;
-	for (auto path : p) {
-		//std::cout << "\t" << path << ".\n";
-		struct stat s;
-		if (stat(path.c_str(), &s) == 0)
-		{
-			if (s.st_mode & S_IFDIR)
-			{
-				count += FileCount(path);
-			}
-			else if (s.st_mode & S_IFREG)
-			{
-				count++;
-			}
-			else
-			{
-				//something else
-				std::cout << "\n ok wtf is this\n";
-			}
-		}
-		else
-		{
-			//error
-			return -4;
-		}
-	}
-
-	return count;
-}
+//inline int LavaScan::TotalSetFileCount(std::set<std::string> p) {
+//	int count = 0;
+//	for (auto path : p) {
+//		//std::cout << "\t" << path << ".\n";
+		//struct stat s;
+		//if (stat(path.c_str(), &s) == 0)
+		//{
+		//	if (s.st_mode & S_IFDIR)
+		//	{
+		//		/*count += FileCount(path);*/
+		//	}
+		//	else if (s.st_mode & S_IFREG)
+		//	{
+		//		count++;
+		//	}
+//			else
+//			{
+//				//something else
+//				std::cout << "\n ok wtf is this\n";
+//			}
+//		}
+//		else
+//		{
+//			//error
+//			return -4;
+//		}
+//	}
+//
+//	return count;
+//}
 
 //Write new directories to the antibody file. Parameters are <vector containting strings of diretories>, path to antibody file
 void WriteAntibody(std::vector<std::string> directorylist, std::string antibodyfilelocation)
@@ -715,13 +732,16 @@ bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 			{
 				//it's a directory, use scandir
 				//std::cout << path << " is a directory.";
-				scanDirectory(std::string(path+"\\"));
-				if (pm.Reccommend(path) == 1) {
-					pm.CountDirectories(path);
-				}
-				else { // 0. countfiles
-					pm.CountFiles(path);
-				}
+				//scanDirectory(std::string(path+"\\"));
+				//if (pm.Reccommend(path) == 1) {
+				//	pm.CountDirectories(path);
+				//	pm.FinishedDirectory();
+				//}
+				//else { // 0. countfiles
+				//	pm.CountFiles(path);
+				//	pm.FinishedFile();
+				//}
+				scanDirectory(std::string(path + "\\"));
 			}
 			else if (s.st_mode & S_IFREG)
 			{

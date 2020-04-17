@@ -73,7 +73,18 @@ static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 				/* User has clicked the "Add Folder" button.
 				 * Add the contents of szLastSelection to your list. */
 				//printf("%s\n", g_Multi.szLastSelection);
-				advancedScanPaths.insert(ToNarrow(g_Multi.szLastSelection));
+#ifndef UNICODE  
+				typedef std::string String;
+#else
+				typedef std::wstring String;
+#endif
+				if (advancedScanPaths.find(ToNarrow(g_Multi.szLastSelection)) == advancedScanPaths.end()) {
+					advancedScanPaths.insert(ToNarrow(g_Multi.szLastSelection));
+					// thread to count that shit carti
+					std::thread t1 = std::thread([] {FileCount(ToNarrow(g_Multi.szLastSelection)); });
+					t1.detach();
+				}
+				
 			}
 			else
 			{
@@ -893,15 +904,18 @@ inline bool FE::DrawInProgressScan()
 
 	/* prog bbar */
 	if (nk_begin(this->ctx, "progbar", nk_rect(traplogo.x-5, traplogo.y+275+traplogo.h, traplogo.w, 65),
-		NK_WINDOW_NO_SCROLLBAR))
+		NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR))
 	{
 		/*nk_size currentValue = this->pm.GetPercentage();*/
-		nk_size currentValue = 69;
-		nk_size maxValue = 100;
+		/*nk_size currentValue = 69;
+		nk_size maxValue = 100;*/
+		long double curcount = current_Count;
+		long double totcount = total_Count;
+		nk_size currentValue = (curcount / totcount)*100;
 		nk_modify modifyable = NK_FIXED;
 		nk_layout_row_dynamic(this->ctx, traplogo.w, 1);
 		nk_progress(ctx, &currentValue, 100, NULL);
-		std::cout << "\n  " << currentValue;
+		//std::cout << "\n  " << currentValue << " " << current_Count << "/" << total_Count;
 	}
 	nk_end(this->ctx);
 
@@ -1766,7 +1780,7 @@ inline bool FE::init(sf::Window *win) {
 	}
 
 	struct nk_color table[NK_COLOR_COUNT];
-	table[NK_COLOR_TEXT] = nk_rgba(175, 175, 175, 255);
+	table[NK_COLOR_TEXT] = nk_rgba(200, 200, 200, 255);
 	table[NK_COLOR_WINDOW] = nk_rgba(45, 45, 45, 255);
 	table[NK_COLOR_HEADER] = nk_rgba(40, 40, 40, 255);
 	table[NK_COLOR_BORDER] = nk_rgba(65, 65, 65, 255);
@@ -1778,7 +1792,8 @@ inline bool FE::init(sf::Window *win) {
 	table[NK_COLOR_TOGGLE_CURSOR] = nk_rgba(255, 69, 0, 255);
 	table[NK_COLOR_SELECT] = nk_rgba(45, 45, 45, 255);
 	table[NK_COLOR_SELECT_ACTIVE] = nk_rgba(208, 7, 27, 255);
-	table[NK_COLOR_SLIDER] = nk_rgba(208, 119, 126, 255);
+	/*table[NK_COLOR_SLIDER] = nk_rgba(208, 119, 126, 255);*/
+	table[NK_COLOR_SLIDER] = nk_rgba(45, 45, 45, 255);
 	table[NK_COLOR_SLIDER_CURSOR] = nk_rgba(255, 69, 0, 255);
 	table[NK_COLOR_SLIDER_CURSOR_HOVER] = nk_rgba(255, 69, 0, 255);
 	table[NK_COLOR_SLIDER_CURSOR_ACTIVE] = nk_rgba(255, 69, 0, 255);
