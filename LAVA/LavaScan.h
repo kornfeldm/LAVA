@@ -253,6 +253,7 @@ public:
 	bool QuickScan();
 	bool AdvanceScan();
 	bool AdvanceScanNow(std::set<std::string> s);
+	std::set<char> get_drive_letters();
 	void eicarTest(std::string path="C:\\test\\eicar.com.txt");
 	std::set<LavaScan::q_entry> read_quarantine_contents();
 	void quarantine_file(std::string filepath, std::string virus_name);
@@ -928,15 +929,41 @@ inline void LavaScan::make_quarantine_directory() {
 	}
 }
 
+inline std::set<char> LavaScan::get_drive_letters() {
+	std::set<char> letters;
+	DWORD drive_mask = GetLogicalDrives();//return a bit mask of the logival drive letters
+	if (drive_mask == 0) // case if unsuccessful
+	{
+		printf("Failed to get drive bitmask!\n");
+	}
+	int index = 0; //index keeps track of the bit position
+	while (drive_mask)
+	{
+		if (drive_mask & 1) {
+			printf("Drive %c found\n", (char)('A' + index));
+			letters.insert((char)('A' + index));
+		}
+		// increment, check next drive
+		index++;
+		// shift the bitmask binary right
+		drive_mask >>= 1;
+	}
+	return letters;
+}
+
 inline bool LavaScan::CompleteScan() {
 	this->start_time = get_time();
 	bool clean = true;
 	//this->viruses_found = 0;
 	//this->viruses_removed = 0;
-	// for now just scan c$
-	//   later get func to get drive letters
-	const char* dirs = "C:\\";
-	clean = this->scanDirectory(dirs);
+	std::set<char> drive_letters = get_drive_letters(); //get all the drive letters
+	for (char letter : drive_letters) {
+		std::string dirs = "";
+		dirs += letter;
+		dirs += ":\\";
+		std::cout<< "Scanning drive " +  dirs << std::endl;
+		clean = clean && this->scanDirectory(dirs);
+	}
 	this-> finish_time = get_time();
 	//log_scan("Complete",start_time, finish_time, num_found, num_found);
 	isScanDone = true;
@@ -1278,6 +1305,8 @@ inline LavaScan::LavaScan() {
 	if (clean) printf("Directory is not infected");
 	else printf("Directory is not infected");*/
 
+	//Testing CompleteScan
+	//std::set<char> drive_letters = get_drive_letters();
 	// have a seperate thread load shit into PreviousScans...race condition if many scans on a pc maybe...we will see
 	std::thread t1 = std::thread([this] {this->UpdatePreviousScans(); });
 	t1.detach();
