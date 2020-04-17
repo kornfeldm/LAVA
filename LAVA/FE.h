@@ -237,13 +237,6 @@ public:
 		2 : quick scan
 		3 : advanced scan
 	*/
-	unsigned int m_schedulerViews;
-	/*
-		0 : choose one time, monthly, weekly, or daily
-		1 : daily
-		2 : weekly
-		3 : monthly
-	*/
 
 	// if type=daily or once user startDate startTime and reccuring(0 if one time)
 	// if type=weekly use startDate startTime recurring and daysOfWeek
@@ -287,7 +280,7 @@ public:
 	bool ScheduleAdvScanView();
 	bool displayScheduleArrows();
 	bool displayScheduleType();
-	bool displayCalendar(int x, int y);
+	bool displayCalendar(int x, int y, bool reccurring);
 };
 inline struct nk_image FE::icon_load(const char* filename, bool flip)
 {
@@ -674,9 +667,6 @@ inline bool FE::AdvancedScanView() {
 				this->currentScanGoing = "Scheduled Scan";
 				this->_schedulerInfo = {};
 				this->_schedulerInfo.type = -1;
-				time_t now = time(0);
-				this->sel_date = *localtime(&now);
-				this->sel_date.tm_sec = 0;
 				this->view = 4;
 			}
 			nk_clear(this->ctx);
@@ -1357,6 +1347,9 @@ inline bool FE::ScheduleAdvScanView()
 				nk_layout_row_static(ctx, bar1.h, bar1.w, 1);
 				if (nk_button_image(this->ctx, this->purpleFwd)) {
 					//this->view = 1;
+					time_t now = time(0);
+					this->sel_date = *localtime(&now);
+					this->sel_date.tm_sec = 0;
 					this->_schedulerInfo.type = (int)trigger_type;
 					//std::cout << "\n\t " << trigger_type << "   " << this->_schedulerInfo.type ;
 				}
@@ -1408,7 +1401,7 @@ inline bool FE::ScheduleAdvScanView()
 			// day...input?
 			/* date combobox */
 			
-			this->displayCalendar(125, 210);
+			this->displayCalendar(125, 210,true);
 			this->displayScheduleArrows();
 		}
 		catch (int e) {
@@ -1419,6 +1412,7 @@ inline bool FE::ScheduleAdvScanView()
 	case 1://weekly
 		try {
 			this->displayScheduleType();
+			this->displayCalendar(125, 210, true);
 			this->displayScheduleArrows();
 		}
 		catch (int e) {
@@ -1429,6 +1423,7 @@ inline bool FE::ScheduleAdvScanView()
 	case 2: //mohnhtly
 		try {
 			this->displayScheduleType();
+			this->displayCalendar(125, 210, true);
 			this->displayScheduleArrows();
 		}
 		catch (int e) {
@@ -1439,6 +1434,7 @@ inline bool FE::ScheduleAdvScanView()
 	case 3: //one time
 		try {
 			this->displayScheduleType();
+			this->displayCalendar(125, 210, false);
 			this->displayScheduleArrows();
 		}
 		catch (int e) {
@@ -1481,16 +1477,44 @@ inline bool FE::displayScheduleArrows()
 		//this->drawImage(&this->purpleFwd);
 	}
 	nk_end(this->ctx);
-	/* FRONT arrow AT BOTTOM */
+	/* done arrow AT BOTTOM */
 	struct nk_rect bar2 = nk_rect(WINDOW_WIDTH * .5 + 5, 650, 140, 65);
 	//struct nk_rect bar1 = nk_rect(600,600,120,65);
-	if (nk_begin(this->ctx, "purparrowfor", bar2,
+	if (nk_begin(this->ctx, "donedonedonedone", bar2,
 		NK_WINDOW_NO_SCROLLBAR)) {
 		/* hidden button behind icon to press */
 		nk_layout_row_static(ctx, bar2.h, bar2.w, 1);
 		if (nk_button_image(this->ctx, this->done)) {
 			//std::cout << "\n\t " << trigger_type;
 			//this->view = 1;
+			// print shit based on input L)
+			sel_date.tm_year += 1900;
+			switch (this->_schedulerInfo.type) {
+			case 0: //daily
+				std::cout << "\ndaily\n\t" << sel_date.tm_mon <<"/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " days\n";
+				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";
+				for (auto s : advancedScanPaths) {
+					std::cout << "\n\t " << s;
+				}
+				break;
+			case 1: // weekly
+				std::cout << "\nweekly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " weekz\n";
+				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";
+				for (auto s : advancedScanPaths) {
+					std::cout << "\n\t " << s;
+				}
+				break;
+			case 2: //monthly
+				std::cout << "\nmonthly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << this->_schedulerInfo.reccuring << " months\n";
+				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";
+				for (auto s : advancedScanPaths) {
+					std::cout << "\n\t " << s;
+				}
+				break;
+			default: //3=one time and we done want that so do nothing tyfys
+				break;
+			}
+			this->view = 0;
 			this->_schedulerInfo = {};
 			this->_schedulerInfo.type = -1;
 		}
@@ -1546,7 +1570,7 @@ inline bool FE::displayScheduleType()
 	return true;
 }
 
-inline bool FE::displayCalendar(int x, int y)
+inline bool FE::displayCalendar(int x, int y, bool reccurring)
 {
 	//nk_rect(r.x, r.y, r.w, r.h); //x 125 y 210 w 125 h 2
 	/*nk_rect(125, 212, 125, 24);
@@ -1560,7 +1584,7 @@ inline bool FE::displayCalendar(int x, int y)
 		nk_label_wrap(this->ctx, "Start Time: ");
 	} nk_end(this->ctx);
 
-	if (nk_begin(this->ctx, "labelsforcalander2", nk_rect(x, y + 36, 125, 24),
+	if (nk_begin(this->ctx, "labelsforcalander2", nk_rect(x, y + 34, 125, 24),
 		NK_WINDOW_NO_SCROLLBAR)) {
 		nk_layout_row_static(ctx, 24, 125, 1);
 		nk_label_wrap(this->ctx, "Start Date: ");
@@ -1649,6 +1673,38 @@ inline bool FE::displayCalendar(int x, int y)
 
 	}
 	nk_end(this->ctx);
+
+	// recurring option if not onme time
+	if (reccurring) {
+		if (nk_begin(this->ctx, "recurring", nk_rect(x,y+66,155,26)
+		, NK_WINDOW_NO_SCROLLBAR)) {
+			nk_layout_row_static(ctx, 24, 155, 1);
+			nk_label_wrap(this->ctx, "Recur Every : ");
+		}nk_end(this->ctx);
+
+		// property brothers box
+		if (nk_begin(this->ctx, "recurringbox", nk_rect(x+160, y + 66, 170, 30)
+			, NK_WINDOW_NO_SCROLLBAR)) {
+			switch (this->_schedulerInfo.type) {
+			case 0: //daily
+				nk_layout_row_dynamic(ctx, 30, 1);
+				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Days: ", 0, this->_schedulerInfo.reccuring, 7, 1, 1);
+				break;
+			case 1: // weekly
+				nk_layout_row_dynamic(ctx, 30, 1);
+				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Weeks: ", 0, this->_schedulerInfo.reccuring, 52, 1, 1);
+				break;
+			case 2: //monthly
+				nk_layout_row_dynamic(ctx, 30, 1);
+				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Months: ", 0, this->_schedulerInfo.reccuring, 12, 1, 1);
+				break;
+			default: //3=one time and we done want that so do nothing tyfys
+				break;
+			}
+		}nk_end(this->ctx);
+
+	}
+
 	nk_style_set_font(this->ctx, &this->font->handle);
 	return true;
 }
