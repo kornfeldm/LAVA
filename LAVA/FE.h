@@ -170,6 +170,7 @@ struct pics {
 	const char* purpleFwd;
 	const char* purpleBack;
 	const char* done;
+	const char* support;
 };
 
 /* FE CLASS */
@@ -216,6 +217,7 @@ public:
 	struct nk_image purpleFwd;
 	struct nk_image purpleBack;
 	struct nk_image done;
+	struct nk_image support;
 	//std::string currentScanGoing;
 	std::queue<int> scanTasks;
 	std::vector<std::vector<std::string>> scanHistorySet;
@@ -448,6 +450,18 @@ inline bool FE::DrawMainPage()
 		nk_draw_text(nk_window_get_canvas(this->ctx), HISTTEXT, " History", 8, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
+
+	// SUPPORT PAGE
+	nk_style_set_font(this->ctx, &this->font5->handle);
+	if (nk_begin(this->ctx, "SUPPORT", nk_rect(WINDOW_WIDTH-190, WINDOW_HEIGHT-80, 188, 78), 
+		NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_dynamic(this->ctx, 75,1);
+		if (nk_button_image_label(this->ctx, this->support, "             Support", NK_TEXT_ALIGN_RIGHT)) {
+			this->SupportPage();
+		}
+	}
+	nk_end(this->ctx);
+	nk_style_set_font(this->ctx, &this->font->handle);
 
 	return true;
 }
@@ -1057,6 +1071,7 @@ inline FE::FE() {
 	this->pp.purpleBack = "../Assets/goback.png";
 	this->pp.purpleFwd = "../Assets/cont.png";
 	this->pp.done = "../Assets/done.png";
+	this->pp.support = "../Assets/Support.png";
 	this->scanHistorySet = read_log();
 }
 
@@ -1805,6 +1820,8 @@ inline bool FE::init(sf::Window *win) {
 	this->purpleBack = this->icon_load(pp.purpleBack);
 	this->purpleFwd = this->icon_load(pp.purpleFwd);
 	this->done = this->icon_load(pp.done);
+	this->support = this->icon_load(pp.support);
+
 	return true;
 }
 
