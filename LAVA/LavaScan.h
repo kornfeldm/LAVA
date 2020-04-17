@@ -60,12 +60,13 @@ protected:
 	//Internal function to keep the variables up to date
 	void UpdatePercentage()
 	{
+		totalProgressCompleted = folderCountCompleted + fileCountCompleted;
 		if (totalProgressCount != 0) {
-			progessPercentage = totalProgressCompleted / totalProgressCount;
-		}
-		else {
+			progessPercentage = (totalProgressCompleted / totalProgressCount) * 100;
+		} else {
 			progessPercentage = 0;
 		}
+
 		if (progessPercentage > 100){
 			progessPercentage = 100;
 		}
@@ -87,6 +88,8 @@ public:
 	//Only run this if the scan is finished and the progress monitor falls behind. This cannot be undone.
 	void FinishedEarly() {
 		totalProgressCompleted = totalProgressCount;
+		fileCountCompleted = totalFileCount;
+		folderCountCompleted = totalFolderCount;
 		progessPercentage = 100;
 		return;
 	}
@@ -119,6 +122,7 @@ public:
 	//Adds a single file to the total to scan. For if the user adds a single file in advanced scan.
 	void AddFile() {
 		totalFileCount++;
+		totalProgressCount++;
 		return;
 	}
 	
@@ -149,6 +153,7 @@ public:
 					if (level == 4)
 					{
 						totalFolderCount++;
+						totalProgressCount++;
 					}
 				}
 				item = readdir(dir);
@@ -178,7 +183,8 @@ public:
 				}
 				if (item->d_type == DT_REG)
 				{
-					totalFolderCount++;
+					totalFileCount++;
+					totalProgressCount++;
 				}
 				item = readdir(dir);
 			}
@@ -230,7 +236,7 @@ class LavaScan
 {
 public:
 	// memburs
-	std::string AntibodyFileLocation = "C:\\test.LavaAnti";
+	std::string AntibodyFileLocation = "test.LavaAnti";
 	int fd, ret, CurrentScanCount;
 	unsigned long int size = 0; std::string start_time; std::string finish_time;
 	unsigned int sigs = 0;
@@ -266,6 +272,7 @@ public:
 	bool scanDirectory(std::string dirPath);
 	void iterateDirectory(std::string directory, bool clean);
 	int scanFile(std::string filePath);
+	void SupportPage();
 	int scheduleScanWeekly(int inputDay, int inputHour, int inputMinute);
 	int scheduleScanMonthly(int inputDay, int inputHour, int inputMinute);
 	int rmScheduledScan();
@@ -284,6 +291,16 @@ public:
 	void check_config_files();
 	bool update_virus_database();
 };
+
+//Open support page in the default browser
+inline void LavaScan::SupportPage() {
+	//The shell command is marginally slower but will use the default browser. It also requires shellapi.h, which I've included.
+	ShellExecute(0, 0, L"https://github.com/kornfeldm/LAVA/issues", 0, 0, SW_SHOW);
+	//The system command below is faster but cannot use default browser so I commented it out. If performance becomes a problem use this instead.
+	//Because I had to choose a browser I chose the one guaranteed to be installed.
+	//system("start microsoft-edge:https://github.com/kornfeldm/LAVA/issues");
+	
+}
 
 //Make a monthly scan. Parameters -> inputDay: Day of Week (1-7, where 1 is Sunday, 7 is Saturday); inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59);
 //Returns 0 on completion or errors -1, -2 or -3 if there's an issue with the parameters depending on which causes the problem
@@ -646,7 +663,7 @@ inline bool LavaScan::scanDirectory(std::string dirPath) {
 
 //The engine and options are just passed through to the directory scanner.
 //The first parameter is a path the the antibody file
-inline bool LavaScan::QuickScan()
+bool LavaScan::QuickScan()
 {
 	this->num_found = 0; //setting virus counter to 0
 	this->start_time = get_time();//getting start time for scan
@@ -658,7 +675,12 @@ inline bool LavaScan::QuickScan()
 	for (int i = 0; i < directorylist.size(); i++)
 	{
 		//Scan it
-		clean = scanDirectory(directorylist[i]);
+		if (clean == true)
+		{
+			clean = scanDirectory(directorylist[i]);
+		} else {
+			scanDirectory(directorylist[i]);
+		}
 	}
 	this->finish_time = get_time();//get end time for scan
 	//log_scan("Quick",start_time, finish_time, num_found, num_found); //log scan
@@ -675,7 +697,7 @@ std::string& replace(std::string& s, const std::string& from, const std::string&
 	return s;
 }
 
-inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
+bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 {
 	// set ss is the set of shit we are gonna scan...simple foreach loop for now
 	this-> num_found = 0;//set the virus count to 0

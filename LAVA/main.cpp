@@ -35,6 +35,7 @@
 #include <thread>
 #include <vector>
 #include <windows.h>
+#include <shellapi.h>
 #include "LavaScan.h"
 #include <fileapi.h>
 // nuklear includes
