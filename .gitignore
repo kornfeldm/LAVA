@@ -257,3 +257,5 @@ paket-files/
 .idea/
 *.sln.iml
 
+LAVA/.vs/LAVA/v16/Browse.VC.db
+*.db

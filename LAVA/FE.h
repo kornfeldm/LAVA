@@ -25,6 +25,8 @@ std::set<std::string> advancedScanPaths;
 //#define WINDOW_HEIGHT 800
 //#define IMG_COLOR nk_rgba(255, 255, 255, 255)
 
+static const char* Days[] = { "Sunday","Monday","Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+
 /* Use this function to allocate space for text below an image. see how the back arrow is displayed in the DisplayScansPage function is used
 */
 struct nk_rect SubRectTextBelow(struct nk_rect *big, struct nk_rect *sub ) {
@@ -151,6 +153,8 @@ UINT MultiFolderSelect(HWND hWnd, LPCTSTR szTitle, CString folder=L"C:\\")
 	return g_Multi.cFolders;
 }
 
+
+
 struct pics {
 	const char* squareLogo;
 	const char* rectLogo;
@@ -163,6 +167,9 @@ struct pics {
 	const char* addButton;
 	const char* calendar;
 	const char* trash;
+	const char* purpleFwd;
+	const char* purpleBack;
+	const char* done;
 };
 
 /* FE CLASS */
@@ -206,7 +213,10 @@ public:
 	struct nk_image addLogo;
 	struct nk_image calendarLogo;
 	struct nk_image trashIcon;
-	std::string currentScanGoing;
+	struct nk_image purpleFwd;
+	struct nk_image purpleBack;
+	struct nk_image done;
+	//std::string currentScanGoing;
 	std::queue<int> scanTasks;
 	std::vector<std::vector<std::string>> scanHistorySet;
 	int maxfiles=0;
@@ -227,6 +237,23 @@ public:
 		2 : quick scan
 		3 : advanced scan
 	*/
+
+	// if type=daily or once user startDate startTime and reccuring(0 if one time)
+	// if type=weekly use startDate startTime recurring and daysOfWeek
+	// if type=montly use startdate starttime months then either days OR On
+	struct schedulerInfo {
+		unsigned int type; //0=once, 1=daily, 2=weekly, 3=monthly
+		std::string startDate;
+		std::string startTime;
+		int reccuring; // happen every x days or x weeks or x months
+		std::set<int> daysOfWeek; //what days to do weekly scan. ex: every two weeks occur on mon and fri at 6pm starting 4/20/20 {0->6}
+		std::set<int> months; // if months size =0 include all, else do only whats in the set
+		bool days_on_switch; // false days true on
+		std::set<int> days; //days is 1-31
+		std::set < std::pair<std::string, std::set<std::string>>> on; //on first, second, last friday and monday. set of pairs(first/second/.. , <days to happen>)
+	} _schedulerInfo;
+	//ProgressMonitor pm;
+	struct tm sel_date;
 	
 	/* MEMBER FUNCTIONS */
 	static struct nk_image icon_load(const char* filename, bool flip = false);
@@ -251,6 +278,9 @@ public:
 	bool ChangeFontSize(float s); //s is size, default is 28.
 	bool QuarantineView();
 	bool ScheduleAdvScanView();
+	bool displayScheduleArrows();
+	bool displayScheduleType();
+	bool displayCalendar(int x, int y, bool reccurring);
 };
 inline struct nk_image FE::icon_load(const char* filename, bool flip)
 {
@@ -329,8 +359,10 @@ inline bool FE::Display() {
 		this->DrawHistoryPage();
 	else if (this->view == 3) // in-prog scan page
 		this->DrawInProgressScan();
-	else if (this->view == 4) //adv scan sched pg
+	else if (this->view == 4) {
+		//adv scan sched pg
 		this->ScheduleAdvScanView();
+	}
 	else if (this->view == 5) //quarentine view
 		this->QuarantineView();
 	else
@@ -402,6 +434,8 @@ inline bool FE::DrawMainPage()
 		nk_layout_row_static(ctx, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3, 1);
 		if (nk_button_label(ctx, "")) {
 			//fprintf(stdout, "history pressed\n");
+			std::thread t1 = std::thread([this] {this->UpdatePreviousScans(); });
+			t1.detach();
 			this->view = 2;
 			nk_clear(this->ctx);
 		}
@@ -600,14 +634,14 @@ inline bool FE::AdvancedScanView() {
 	nk_end(this->ctx);
 
 	/* adv scan now */
-	struct nk_rect scanButton = nk_rect(AddFoF.x+125, AddFoF.y+75, 300, 50);
+	struct nk_rect scanButton = nk_rect(AddFoF.x+125, AddFoF.y+75, 250, 36);
 	if (nk_begin(this->ctx, "advscannow", scanButton, NK_WINDOW_NO_SCROLLBAR))
 	{
 		nk_layout_row_static(ctx, 65, scanButton.w, 1);
 		if (nk_button_label(ctx, "")) {
 			// run adv scan now
 			if (advancedScanPaths.size() > 0) {
-				this->currentScanGoing = "Advanced Scan";
+				this->currentScanGoing = "Advanced";
 				this->view = 3;
 				//this->AdvanceScanNow(advancedScanPaths);
 				this->scanTasks.push(3);
@@ -618,7 +652,7 @@ inline bool FE::AdvancedScanView() {
 		struct nk_rect textArea2 = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
 		nk_draw_text(nk_window_get_canvas(this->ctx), textArea2, "  Adv. Scan Now ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 		// draw triangle
-		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea2.x + 245, textArea2.y, textArea2.w - 252, textArea2.h));
+		this->drawImageSubRect(&this->triangleLogo, &nk_rect(scanButton.x + scanButton.w - 40, scanButton.y, scanButton.h, scanButton.h));
 	}
 	nk_end(this->ctx);
 
@@ -631,6 +665,8 @@ inline bool FE::AdvancedScanView() {
 			if (advancedScanPaths.size() > 0) {
 				// run adv scan l8r
 				this->currentScanGoing = "Scheduled Scan";
+				this->_schedulerInfo = {};
+				this->_schedulerInfo.type = -1;
 				this->view = 4;
 			}
 			nk_clear(this->ctx);
@@ -776,7 +812,6 @@ inline bool FE::DrawHistoryPage()
 	}
 	nk_end(this->ctx);
 	nk_style_set_font(this->ctx, &this->font->handle);
-
 	
 	return true;
 }
@@ -801,6 +836,7 @@ inline bool FE::DrawInProgressScan()
 				break;
 			case 3: //adv
 				//this->maxfiles = this->TotalSetFileCount(advancedScanPaths);
+				//pm.Reccommend();
 				this->AdvanceScanNow(advancedScanPaths);
 				break;
 			default:
@@ -841,23 +877,19 @@ inline bool FE::DrawInProgressScan()
 	}
 	nk_end(this->ctx);
 
-	///* prog bbar */
-	///* Current scanning items TEXT */
-	//if (nk_begin(this->ctx, "progbar", nk_rect(traplogo.x, traplogo.y+275+traplogo.h, traplogo.w, 50),
-	//	NK_WINDOW_DYNAMIC | NK_WINDOW_MOVABLE))
-	//{
-	//	nk_size currentValue = this->CurrentScanCount;
-	//	nk_size maxValue = this->maxfiles;
-	//	nk_modify modifyable = NK_FIXED;
-	//	if (nk_progress(ctx, &currentValue, maxValue, modifyable))
-	//	{
-	//		nk_draw_progress(this->canvas, modifyable,
-	//			NULL, NULL,
-	//			NULL, currentValue, maxValue);
-	//		
-	//	}
-	//}
-	//nk_end(this->ctx);
+	/* prog bbar */
+	if (nk_begin(this->ctx, "progbar", nk_rect(traplogo.x-5, traplogo.y+275+traplogo.h, traplogo.w, 65),
+		NK_WINDOW_NO_SCROLLBAR))
+	{
+		/*nk_size currentValue = this->pm.GetPercentage();*/
+		nk_size currentValue = 69;
+		nk_size maxValue = 100;
+		nk_modify modifyable = NK_FIXED;
+		nk_layout_row_dynamic(this->ctx, traplogo.w, 1);
+		nk_progress(ctx, &currentValue, 100, NULL);
+		std::cout << "\n  " << currentValue;
+	}
+	nk_end(this->ctx);
 
 	if (this->isScanDone) { // if current scan done display our done button!
 		
@@ -1000,9 +1032,15 @@ inline bool FE::DrawScansPage()
 }
 
 inline FE::FE() {
-	currentScanGoing = "";
+	//currentScanGoing = "";
 	this->view = 0;
 	this->m_scanViews = 0;
+	this->_schedulerInfo = {};
+	this->_schedulerInfo.type = -1;
+	//static struct tm sel_date;
+	/*time_t now = time(0);
+	this->sel_date = *localtime(&now);
+	sel_date.tm_sec = 0;*/
 	/* INIT IMAGES */
 	this->pp.scan = "../Assets/scan2.png";
 	this->pp.rectLogo = "../Assets/rectLogo.png";
@@ -1016,6 +1054,9 @@ inline FE::FE() {
 	this->pp.addButton = "../Assets/add.png";
 	this->pp.calendar = "../Assets/calendar.png";
 	this->pp.trash = "../Assets/trash.png";
+	this->pp.purpleBack = "../Assets/goback.png";
+	this->pp.purpleFwd = "../Assets/cont.png";
+	this->pp.done = "../Assets/done.png";
 	this->scanHistorySet = read_log();
 }
 
@@ -1041,14 +1082,179 @@ inline bool FE::ChangeFontSize(float s = 28) {
 	return true;
 }
 
+static int all = 0;
 inline bool FE::QuarantineView()
 {
+	//int sel = 0;
 	// 1. get list of viruses found
 	// 2. checkbox list
 	// 3. delete selected. on done btn
+	
+	/* BACK ARROW ICON */
+	struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
+	struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
+	if (nk_begin(this->ctx, "barrow", backArrowAndText,
+		NK_WINDOW_NO_SCROLLBAR)) {
+
+		/* hidden button behind icon to press */
+		nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
+		if (nk_button_label(ctx, "")) {
+			//fprintf(stdout, "back arrow\n");
+			// move files back
+			advancedScanPaths.clear();
+			std::set<q_entry> q;
+			int i = 0;
+			for (auto thing : this->QuarantineContents) {
+				try {
+					q.insert(thing);
+				}
+				catch (int e) {
+					std::cout << "shoot we messed up quaranting!\n";
+				}
+				i++;
+			}
+			all = 0; //for next scan
+			this->num_removed = 0;
+			//this->remove_quarantined_files(toRemove);
+			this->moveQuarantineHome(q);
+			this->log_scan();
+			this->view = 0;
+			nk_clear(this->ctx);
+		}
+		this->drawImageSubRect(&this->backArrow, &bar);
+		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+	}
+	nk_end(this->ctx);
+
+	// text to chose delete shit
+	if (nk_begin(this->ctx, "choseshittodelete", nk_rect(bar.w+50,5,900,30),
+		NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_static(ctx, 30, WINDOW_WIDTH-150, 1);
+		nk_label_wrap(this->ctx, "Please select viruses to remove! Press Done when you're ready!");
+	}
+	nk_end(this->ctx);
+
+	static std::vector<int> array(this->QuarantineContents.size());
+	// CHECK BOXES
+	if (nk_begin(this->ctx, "checkboxes", nk_rect(bar.w+10,45, WINDOW_WIDTH-15-bar.x-bar.w, WINDOW_HEIGHT-150),
+		NK_WINDOW_BORDER | NK_WINDOW_SCROLL_AUTO_HIDE)) {
+		if (this->QuarantineContents.size() > 0) {
+			int i = 0; 
+			// print check boxes
+			for (auto s : this->QuarantineContents) {
+				nk_layout_row_static(ctx, 30, 32*(s.origin_directory.length() + s.old_file_name.length()), 1);
+				nk_checkbox_label(ctx, ("  (" + s.virus_name + "): " + s.origin_directory+s.old_file_name).c_str(), &array[i]);
+				//try {
+				//	if (array.at(i) == 1) {
+				//		//std::cout << s.old_file_name << " checked \n";
+				//		sel++;
+				//	}
+				//	else {
+				//		sel--;
+				//	}
+				//	//std::cout << s.old_file_name << " (" << array[i] << ") \n";
+				//	
+				//}
+				//catch (int e) {
+				//	//std::cout << "\nout of bounds\n";
+				//	
+				//}
+				//std::cout << "()"+s.origin_directory + s.old_file_name <<std::endl;
+				i++;
+			}
+			//sk_layout_row_dynamic(ctx, 15, 1);
+			//nk_label(this->ctx, "                                                                                                                         ", NK_TEXT_ALIGN_LEFT);
+		}
+		else {
+			//std::cout << "no viruses found!\n";
+			nk_layout_row_dynamic(this->ctx, 250, 1);
+			//nk_label_wrap(this->ctx, "No Viruses Found! Either Press the back button or the Done button.");
+			nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(150, 150, 800, 100), " NO VIRUSES FOUND", 17, &this->font2->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+			nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(150, 250, 800, 100), "    Please Hit The Done/Back button", 35, &this->font->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+
+		}
+		
+	}
+	nk_end(this->ctx);
+
+	// SELECT ALL/DONT
+	if (nk_begin(this->ctx, "all", nk_rect(bar.x+bar.w+10, WINDOW_HEIGHT-100+2, 200, 50),
+		NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_static(ctx, 50, 200, 1);
+		if (all == 0) {
+			//display sel all
+			if (nk_button_label(this->ctx, "Select All")) {
+				//std::cout << "sell pressed" << std::endl;
+				std::fill(array.begin(), array.end(), 1);
+				all = 1;
+			}
+		}
+		else {
+			// all=1
+			// disaply unsel all
+			if (nk_button_label(ctx, "Unselect All")) {
+				//std::cout << "unsel pressed" << std::endl;
+				std::fill(array.begin(), array.end(), 0);
+				all = 0;
+			}
+		}
+	}
+	nk_end(this->ctx);
+	
+	// done button
+	if (nk_begin(this->ctx, "submit", nk_rect(WINDOW_WIDTH-15-200, WINDOW_HEIGHT - 100 + 2, 200, 50),
+		NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_static(ctx, 50, 200, 1);
+
+		if (nk_button_label(ctx, "Done")) {
+			// loop thru the array and if element is 1, push to a set to ret to our mans
+			std::set<std::string>toRemove;
+			std::set<q_entry> q;
+			int i = 0;
+			for (auto thing : this->QuarantineContents) {
+				try {
+					if (array.at(i) == 1)
+						toRemove.insert(thing.old_file_name);
+					else
+						q.insert(thing);
+				}
+				catch (int e) {
+					std::cout << "shoot we messed up quaranting!\n";
+				}
+				i++;
+			}
+			all = 0; //for next scan
+			this->num_removed = toRemove.size();
+			this->remove_quarantined_files(toRemove);
+			this->moveQuarantineHome(q);
+			this->log_scan();
+			this->view = 0;
+		}
+		
+	}
+	nk_end(this->ctx);
 
 	return true;
 }
+
+int changeHrFormat(int hr, bool am) {
+	if (am) {
+		if (hr == 12) {
+			hr = 0;
+		}
+	}
+	else { // pm
+		if (hr == 12) {
+			hr = 23;
+		}
+		else {
+			hr = hr + 12;
+		}
+	}
+
+	return hr;
+}
+
 
 inline bool FE::ScheduleAdvScanView()
 {
@@ -1067,7 +1273,7 @@ inline bool FE::ScheduleAdvScanView()
 			nk_clear(this->ctx);
 		}
 		this->drawImageSubRect(&this->backArrow, &bar);
-		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " EXIT ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
 
@@ -1099,28 +1305,407 @@ inline bool FE::ScheduleAdvScanView()
 	}
 	nk_end(this->ctx);
 
-	/* try selectable */
-	if (nk_begin(this->ctx, "triggertype", nk_rect(25, 140, 300, 200),
-		NK_WINDOW_NO_SCROLLBAR)) {
+	switch (this->_schedulerInfo.type) {
+		//std::cout << "\n\tcurrent select: " << this->_schedulerInfo.type;
+	case -1:
+		try {
+			// select trigger type
+			if (nk_begin(this->ctx, "triggertxt", nk_rect(WINDOW_WIDTH * .5 - 150, WINDOW_HEIGHT * .5 - 50, 300, 28),
+				NK_WINDOW_NO_SCROLLBAR)) {
+				nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(WINDOW_WIDTH * .5 - 150, WINDOW_HEIGHT * .5 - 50, 300, 200),
+					" Scheduler Type", 15,
+					&this->font->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+			}
+			nk_end(this->ctx);
 
-		// default combo box
-		nk_layout_row_static(ctx, 30, 160, 1);
-		trigger_type = nk_combo(ctx, items, 4, trigger_type, 30, nk_vec2(160, 200));
-		/*nk_layout_row_static(ctx, 50, 300, 1);
-		int i = 0;
-		if (nk_combo_begin_label(ctx, items[trigger_type], nk_vec2(200, 200))) {
+			/* try selectable */
+			if (nk_begin(this->ctx, "triggertype", nk_rect(WINDOW_WIDTH * .5 - 150, WINDOW_HEIGHT * .5, 300, 60),
+				NULL)) {
+
+				// default combo box
+				nk_layout_row_static(ctx, 30, 160, 1);
+				trigger_type = nk_combo(ctx, items, 4, trigger_type, 30, nk_vec2(160, 200));
+				/*nk_layout_row_static(ctx, 50, 300, 1);
+				int i = 0;
+				if (nk_combo_begin_label(ctx, items[trigger_type], nk_vec2(200, 200))) {
+					nk_layout_row_dynamic(ctx, 25, 1);
+					for (i = 0; i < 4; ++i)
+						if (nk_combo_item_label(ctx, items[i], NK_TEXT_LEFT))
+							trigger_type = i;
+					nk_combo_end(ctx);
+				}*/
+				//std::cout << "\n\ttype chosen: " << items[trigger_type] << "\n";
+			}
+			nk_end(this->ctx);
+
+			/* FORWARD ARROW AT BOTTOM */
+			struct nk_rect bar1 = nk_rect(WINDOW_WIDTH * .5 - 60, 650, 120, 65);
+			//struct nk_rect bar1 = nk_rect(600,600,120,65);
+			if (nk_begin(this->ctx, "purparrowforward", bar1,
+				NK_WINDOW_NO_SCROLLBAR)) {
+				/* hidden button behind icon to press */
+				nk_layout_row_static(ctx, bar1.h, bar1.w, 1);
+				if (nk_button_image(this->ctx, this->purpleFwd)) {
+					//this->view = 1;
+					time_t now = time(0);
+					this->sel_date = *localtime(&now);
+					this->sel_date.tm_sec = 0;
+					this->_schedulerInfo.type = (int)trigger_type;
+					//std::cout << "\n\t " << trigger_type << "   " << this->_schedulerInfo.type ;
+				}
+				//this->drawImage(&this->purpleFwd);
+			}
+			nk_end(this->ctx);
+			return true;
+		}
+		catch (int e) {
+			fprintf(stdout, "flip we messed up the selectable");
+		}
+		break;
+
+	case 0: // DAILY BRUV
+		try {
+			// type : daily
+			static bool op = true;
+			this->displayScheduleType();
+			// ask for time
+			//nk_clear(this->ctx);
+
+			//if (nk_begin(this->ctx, "hrsstext", nk_rect(125, 180, 100, 30),
+			//	NK_WINDOW_SCROLL_AUTO_HIDE|NK_WINDOW_NO_SCROLLBAR)) {
+			//	// default combo box
+			//	nk_layout_row_dynamic(this->ctx, 30, 1);
+			//	nk_label_wrap(this->ctx, "Hour: ");
+			//}
+			//nk_end(this->ctx);
+			//// AM OR PM
+			//if (nk_begin(this->ctx, "amPM", nk_rect(125 + 100 + 2 + 300, 180, 300, 60),
+			//	NULL)) {
+			//	nk_layout_row_dynamic(this->ctx, 30, 2);
+			//	if (nk_option_label(this->ctx, "AM", op == true)) op = true;
+			//	if (nk_option_label(this->ctx, "PM", op == false)) op = false;
+			//}
+			//nk_end(this->ctx);
+			//unsigned static short int trigger_type = 0; // init state, make user choose what they want :) but start at one time
+			//static const char* hrs[] = { "1","2","3","4","5","6","7","8","9","10","11","12" };
+			///* try selectable */
+			//if (nk_begin(this->ctx, "hrs", nk_rect(125 + 100 + 2, 180, 300, 60),
+			//	NULL)) {
+			//	// default combo box
+			//	nk_layout_row_static(ctx, 30, 160, 1);
+			//	trigger_type = nk_combo(ctx, hrs, 12, trigger_type, 30, nk_vec2(160, 200));
+			//	//std::cout << "\n\t hr : " << changeHrFormat(trigger_type + 1, op);
+			//}
+			//nk_end(this->ctx);
+
+			// day...input?
+			/* date combobox */
+			
+			this->displayCalendar(125, 210,true);
+			this->displayScheduleArrows();
+		}
+		catch (int e) {
+			fprintf(stdout, "flip we messed up the selectable");
+		}
+		break;
+
+	case 1://weekly
+		try {
+			this->displayScheduleType();
+			this->displayCalendar(125, 210, true);
+			this->displayScheduleArrows();
+		}
+		catch (int e) {
+			fprintf(stdout, "flip we messed up the selectable");
+		}
+		break;
+
+	case 2: //mohnhtly
+		try {
+			this->displayScheduleType();
+			this->displayCalendar(125, 210, true);
+			this->displayScheduleArrows();
+		}
+		catch (int e) {
+			fprintf(stdout, "flip we messed up the selectable");
+		}
+		break;
+
+	case 3: //one time
+		try {
+			this->displayScheduleType();
+			this->displayCalendar(125, 210, false);
+			this->displayScheduleArrows();
+		}
+		catch (int e) {
+			fprintf(stdout, "flip we messed up the selectable");
+		}
+		break;
+
+	case 4:
+		try {
+			this->displayScheduleArrows();
+		}
+		catch (int e) {
+			fprintf(stdout, "flip we messed up the selectable");
+		}
+		break;
+
+	default: 
+		std::cout << "\n  flip";
+		break;
+	}
+
+	return true;
+}
+
+inline bool FE::displayScheduleArrows()
+{
+	/* back arrow AT BOTTOM */
+	struct nk_rect bar1 = nk_rect(WINDOW_WIDTH * .5 - 120 - 5, 650, 120, 65);
+	//struct nk_rect bar1 = nk_rect(600,600,120,65);
+	if (nk_begin(this->ctx, "purparrowback", bar1,
+		NK_WINDOW_NO_SCROLLBAR)) {
+		/* hidden button behind icon to press */
+		nk_layout_row_static(ctx, bar1.h, bar1.w, 1);
+		if (nk_button_image(this->ctx, this->purpleBack)) {
+			//std::cout << "\n\t " << trigger_type;
+			//this->view = 1;
+			this->_schedulerInfo = {};
+			this->_schedulerInfo.type = -1;
+		}
+		//this->drawImage(&this->purpleFwd);
+	}
+	nk_end(this->ctx);
+	/* done arrow AT BOTTOM */
+	struct nk_rect bar2 = nk_rect(WINDOW_WIDTH * .5 + 5, 650, 140, 65);
+	//struct nk_rect bar1 = nk_rect(600,600,120,65);
+	if (nk_begin(this->ctx, "donedonedonedone", bar2,
+		NK_WINDOW_NO_SCROLLBAR)) {
+		/* hidden button behind icon to press */
+		nk_layout_row_static(ctx, bar2.h, bar2.w, 1);
+		if (nk_button_image(this->ctx, this->done)) {
+			//std::cout << "\n\t " << trigger_type;
+			//this->view = 1;
+			// print shit based on input L)
+			sel_date.tm_year += 1900;
+			switch (this->_schedulerInfo.type) {
+			case 0: //daily
+				/*std::cout << "\ndaily\n\t" << sel_date.tm_mon <<"/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " days\n";
+				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";
+				for (auto s : advancedScanPaths) {
+					std::cout << "\n\t " << s;
+				}*/
+				break;
+			case 1: // weekly
+				/*std::cout << "\nweekly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " weekz\n";
+				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";
+				for (auto s : advancedScanPaths) {
+					std::cout << "\n\t " << s;
+				}*/
+				break;
+			case 2: //monthly
+				/*std::cout << "\nmonthly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << this->_schedulerInfo.reccuring << " months\n";
+				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";
+				for (auto s : advancedScanPaths) {
+					std::cout << "\n\t " << s;
+				}*/
+				break;
+			default: //3=one time and we done want that so do nothing tyfys
+				break;
+			}
+			this->view = 0;
+			this->_schedulerInfo = {};
+			this->_schedulerInfo.type = -1;
+		}
+		//this->drawImage(&this->purpleFwd);
+	}
+	nk_end(this->ctx);
+	return true;
+}
+
+inline bool FE::displayScheduleType()
+{
+	try {
+		// add logo
+		/*if (nk_begin(this->ctx, "lavalogo", r_logo,
+			NK_WINDOW_NO_SCROLLBAR)) {
+			this->drawImage(&this->squareImage);
+		}
+		nk_end(this->ctx);*/
+
+		std::string typ = "Schedule Type: ";
+		switch (this->_schedulerInfo.type) {
+		case 0:
+			typ.append( "Daily ");
+			break;
+		case 1:
+			typ.append("Weekly ");
+			break;
+		case 2:
+			typ.append("Monthly ");
+			break;
+		case 3:
+			typ.append("One Time ");
+			break;
+		default:
+			typ.append("failed ");
+			break;
+		}
+
+		// text
+		if (nk_begin(this->ctx, "txt", nk_rect(125,150,800, 32),
+			NK_WINDOW_NO_SCROLLBAR)) {
+			/*nk_layout_row_dynamic(this->ctx, 80, 1);
+			nk_label_wrap(this->ctx, "Chose a Scan, Please!");*/
+			nk_layout_row_dynamic(this->ctx,32,1);
+			//std::cout << "\n\t" << typ;
+			nk_label_wrap(this->ctx, typ.c_str());
+		}
+		nk_end(this->ctx);
+	}
+	catch (int e) {
+		std::cout << "failed the sched type bruv" << std::endl;
+	}
+	return true;
+}
+
+inline bool FE::displayCalendar(int x, int y, bool reccurring)
+{
+	//nk_rect(r.x, r.y, r.w, r.h); //x 125 y 210 w 125 h 2
+	/*nk_rect(125, 212, 125, 24);
+	nk_rect(125, 210 + 36, 125, 24);
+	nk_rect(125 + 132, 210, 500, 300);*/
+	nk_style_set_font(this->ctx, &this->font5->handle);
+	// labels
+	if (nk_begin(this->ctx, "labelsforcalander", nk_rect(x, y+2, 125, 24) ,
+		NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_static(ctx, 24, 125, 1);
+		nk_label_wrap(this->ctx, "Start Time: ");
+	} nk_end(this->ctx);
+
+	if (nk_begin(this->ctx, "labelsforcalander2", nk_rect(x, y + 34, 125, 24),
+		NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_static(ctx, 24, 125, 1);
+		nk_label_wrap(this->ctx, "Start Date: ");
+	} nk_end(this->ctx);
+
+	if (nk_begin(this->ctx, "calendarr", nk_rect(x + 132, 210, 230, 65)
+		, NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_NO_SCROLLBAR)) {
+		static int time_selected = 0;
+		static int date_selected = 0;
+		char buffer[64];
+		nk_layout_row_static(ctx, 28, 200, 1);
+		/* time combobox */
+		sprintf(buffer, "%02d:%02d:%02d", sel_date.tm_hour, sel_date.tm_min, sel_date.tm_sec);
+		if (nk_combo_begin_label(ctx, buffer, nk_vec2(200, 250))) {
+			time_selected = 1;
 			nk_layout_row_dynamic(ctx, 25, 1);
-			for (i = 0; i < 4; ++i)
-				if (nk_combo_item_label(ctx, items[i], NK_TEXT_LEFT))
-					trigger_type = i;
+			sel_date.tm_hour = nk_propertyi(ctx, "#Hour:", 0, sel_date.tm_hour, 23, 1, 1);
+			sel_date.tm_min = nk_propertyi(ctx, "#Mins:", 0, sel_date.tm_min, 59, 1, 1);
+			sel_date.tm_sec = nk_propertyi(ctx, "#Secs:", 0, sel_date.tm_sec, 59, 1, 1); // we dont need secs prob
 			nk_combo_end(ctx);
-		}*/
-		//std::cout << "\n\ttype chosen: " << items[trigger_type] << "\n";
+		}
+		sprintf(buffer, "%02d-%02d-%02d", sel_date.tm_mon + 1, sel_date.tm_mday, sel_date.tm_year + 1900);
+		if (nk_combo_begin_label(ctx, buffer, nk_vec2(350, 400)))
+		{
+			int i = 0;
+			const char* month[] = { "January", "February", "March",
+				"April", "May", "June", "July", "August", "September",
+				"October", "November", "December" };
+			const char* week_days[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
+			const int month_days[] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
+			int year = sel_date.tm_year + 1900;
+			int leap_year = (!(year % 4) && ((year % 100))) || !(year % 400);
+			int days = (sel_date.tm_mon == 1) ?
+				month_days[sel_date.tm_mon] + leap_year :
+				month_days[sel_date.tm_mon];
+
+			/* header with month and year */
+			date_selected = 1;
+			nk_layout_row_begin(ctx, NK_DYNAMIC, 20, 3);
+			nk_layout_row_push(ctx, 0.05f);
+			if (nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_LEFT)) {
+				if (sel_date.tm_mon == 0) {
+					sel_date.tm_mon = 11;
+					sel_date.tm_year = NK_MAX(0, sel_date.tm_year - 1);
+				}
+				else sel_date.tm_mon--;
+			}
+			nk_layout_row_push(ctx, 0.9f);
+			sprintf(buffer, "%s %d", month[sel_date.tm_mon], year);
+			nk_label(ctx, buffer, NK_TEXT_CENTERED);
+			nk_layout_row_push(ctx, 0.05f);
+			if (nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_RIGHT)) {
+				if (sel_date.tm_mon == 11) {
+					sel_date.tm_mon = 0;
+					sel_date.tm_year++;
+				}
+				else sel_date.tm_mon++;
+			}
+			nk_layout_row_end(ctx);
+
+			/* good old week day formula (double because precision) */
+			{int year_n = (sel_date.tm_mon < 2) ? year - 1 : year;
+			int y = year_n % 100;
+			int c = year_n / 100;
+			int y4 = (int)((float)y / 4);
+			int c4 = (int)((float)c / 4);
+			int m = (int)(2.6 * (double)(((sel_date.tm_mon + 10) % 12) + 1) - 0.2);
+			int week_day = (((1 + m + y + y4 + c4 - 2 * c) % 7) + 7) % 7;
+
+			/* weekdays  */
+			nk_layout_row_dynamic(ctx, 35, 7);
+			for (i = 0; i < (int)NK_LEN(week_days); ++i)
+				nk_label(ctx, week_days[i], NK_TEXT_CENTERED);
+
+			/* days  */
+			if (week_day > 0) nk_spacing(ctx, week_day);
+			for (i = 1; i <= days; ++i) {
+				sprintf(buffer, "%d", i);
+				if (nk_button_label(ctx, buffer)) {
+					sel_date.tm_mday = i;
+					nk_combo_close(ctx);
+				}
+			}}
+			nk_combo_end(ctx);
+		}
+
 	}
 	nk_end(this->ctx);
 
-	//BACK AND NEXT BTNS HERE
+	// recurring option if not onme time
+	if (reccurring) {
+		if (nk_begin(this->ctx, "recurring", nk_rect(x,y+66,155,26)
+		, NK_WINDOW_NO_SCROLLBAR)) {
+			nk_layout_row_static(ctx, 24, 155, 1);
+			nk_label_wrap(this->ctx, "Recur Every : ");
+		}nk_end(this->ctx);
 
+		// property brothers box
+		if (nk_begin(this->ctx, "recurringbox", nk_rect(x+160, y + 66, 170, 30)
+			, NK_WINDOW_NO_SCROLLBAR)) {
+			switch (this->_schedulerInfo.type) {
+			case 0: //daily
+				nk_layout_row_dynamic(ctx, 30, 1);
+				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Days: ", 0, this->_schedulerInfo.reccuring, 7, 1, 1);
+				break;
+			case 1: // weekly
+				nk_layout_row_dynamic(ctx, 30, 1);
+				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Weeks: ", 0, this->_schedulerInfo.reccuring, 52, 1, 1);
+				break;
+			case 2: //monthly
+				nk_layout_row_dynamic(ctx, 30, 1);
+				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Months: ", 0, this->_schedulerInfo.reccuring, 12, 1, 1);
+				break;
+			default: //3=one time and we done want that so do nothing tyfys
+				break;
+			}
+		}nk_end(this->ctx);
+
+	}
+
+	nk_style_set_font(this->ctx, &this->font->handle);
 	return true;
 }
 
@@ -1151,7 +1736,7 @@ inline bool FE::init(sf::Window *win) {
 		this->font4 = nk_font_atlas_add_from_file(this->atlas4, "../Assets/font.ttf", 84, 0);
 		nk_sfml_font_stash_end();
 	}
-	{//logo text size 88;
+	{//logo text size 22;
 		nk_sfml_font_stash_begin(&this->atlas5);
 		this->font5 = nk_font_atlas_add_from_file(this->atlas5, "../Assets/font.ttf", 22, 0);
 		nk_sfml_font_stash_end();
@@ -1164,6 +1749,37 @@ inline bool FE::init(sf::Window *win) {
 		nk_style_set_font(this->ctx, &this->font->handle);
 		//nk_init_default(this->ctx, &font->handle);
 	}
+
+	struct nk_color table[NK_COLOR_COUNT];
+	table[NK_COLOR_TEXT] = nk_rgba(175, 175, 175, 255);
+	table[NK_COLOR_WINDOW] = nk_rgba(45, 45, 45, 255);
+	table[NK_COLOR_HEADER] = nk_rgba(40, 40, 40, 255);
+	table[NK_COLOR_BORDER] = nk_rgba(65, 65, 65, 255);
+	table[NK_COLOR_BUTTON] = nk_rgba(50, 50, 50, 255);
+	table[NK_COLOR_BUTTON_HOVER] = nk_rgba(40, 40, 40, 255);
+	table[NK_COLOR_BUTTON_ACTIVE] = nk_rgba(35, 35, 35, 255);
+	table[NK_COLOR_TOGGLE] = nk_rgba(100, 100, 100, 255);
+	table[NK_COLOR_TOGGLE_HOVER] = nk_rgba(140,138,128, 255);
+	table[NK_COLOR_TOGGLE_CURSOR] = nk_rgba(255, 69, 0, 255);
+	table[NK_COLOR_SELECT] = nk_rgba(45, 45, 45, 255);
+	table[NK_COLOR_SELECT_ACTIVE] = nk_rgba(208, 7, 27, 255);
+	table[NK_COLOR_SLIDER] = nk_rgba(208, 119, 126, 255);
+	table[NK_COLOR_SLIDER_CURSOR] = nk_rgba(255, 69, 0, 255);
+	table[NK_COLOR_SLIDER_CURSOR_HOVER] = nk_rgba(255, 69, 0, 255);
+	table[NK_COLOR_SLIDER_CURSOR_ACTIVE] = nk_rgba(255, 69, 0, 255);
+	table[NK_COLOR_PROPERTY] = nk_rgba(38, 38, 38, 255);
+	table[NK_COLOR_EDIT] = nk_rgba(38, 38, 38, 255);
+	table[NK_COLOR_EDIT_CURSOR] = nk_rgba(175, 175, 175, 255);
+	table[NK_COLOR_COMBO] = nk_rgba(45, 45, 45, 255);
+	table[NK_COLOR_CHART] = nk_rgba(120, 120, 120, 255);
+	table[NK_COLOR_CHART_COLOR] = nk_rgba(45, 45, 45, 255);
+	table[NK_COLOR_CHART_COLOR_HIGHLIGHT] = nk_rgba(255, 0, 0, 255);
+	table[NK_COLOR_SCROLLBAR] = nk_rgba(40, 40, 40, 255);
+	table[NK_COLOR_SCROLLBAR_CURSOR] = nk_rgba(100, 100, 100, 255);
+	table[NK_COLOR_SCROLLBAR_CURSOR_HOVER] =nk_rgba(120, 120, 120, 255);
+	table[NK_COLOR_SCROLLBAR_CURSOR_ACTIVE] = nk_rgba(150, 150, 150, 255);
+	table[NK_COLOR_TAB_HEADER] = nk_rgba(40, 40, 40, 255);
+	nk_style_from_table(ctx, table);
 
 	// load some image stuff
 	//struct nk_buffer cmds;
@@ -1186,6 +1802,9 @@ inline bool FE::init(sf::Window *win) {
 	this->trapImage = this->icon_load(pp.trapLogo);
 	this->calendarLogo = this->icon_load(pp.calendar);
 	this->trashIcon = this->icon_load(pp.trash);
+	this->purpleBack = this->icon_load(pp.purpleBack);
+	this->purpleFwd = this->icon_load(pp.purpleFwd);
+	this->done = this->icon_load(pp.done);
 	return true;
 }
 

@@ -3,13 +3,242 @@
 #define LAVASCAN_H
 #pragma warning(disable : 4996) //_CRT_SECURE_NO_WARNINGS
 extern std::string CurrentScanFile = std::string("");
+// Define user defined literal "_quoted" operator.
+std::string operator"" _quoted(const char* text, std::size_t len) {
+	return "\"" + std::string(text, len) + "\"";
+}
+
+class ProgressMonitor {
+
+	/*
+		How to use this class:
+		A. Declare it before a scan. For each directory you want to scan:
+
+			1. Run the function, Reccommend(std::string directory);
+				- This will return one of the following int values:
+					- 0 if it's reccomended that the progress is monitored by counting files (this includes all files recursively)
+					- 1 if it's reccomended that the progress is moinitored by counting level 5 folders (i.e. directories found at level four recursively if the parent folder is 0)
+
+			2. To determine the total progress necessary, for each directory:
+				- Run either:
+					- CountDirectories(std::string directory);
+					- CountFiles(std::string directory);
+				- Note: while the reccommend function will make a reccommendation, it is only that- a reccommendation.
+				        With this in mind, you may choose to ignore it, so ultimately the choice is yours how you'd like to proceed as long as you keep it consistant.
+
+			3. From there every time you finish scanning a file or level 5 folder:
+				- Run the respective function depending on which it was:
+					- FinishedDirectory();
+					- FinishedFile();
+					- FinishedFile();
+				- The internal varibales will automatically update accordingly.
+		
+		B.  To return the current progress, you have a few options:
+			- GetPercentage();
+				- Returns a float of the percentage of progress completed (range 0.0 - 100.0)
+			- GetTotal();
+				- Returns a double of the total amount of notable files/folders to scan (both completed and remaining)
+			- GetCompleted();
+				- Returns a double of the total amount of notable files/folders that have already been scanned
+
+	*/
+
+protected:
+	//Internal variables
+	//Folders Scanned
+	double totalFolderCount = 0;
+	double folderCountCompleted = 0;
+	//Files Scanned
+	double totalFileCount = 0;
+	double fileCountCompleted = 0;
+	//Total Progress
+	double totalProgressCount = 0;
+	double totalProgressCompleted = 0;
+	//1-100% value for the progress bar
+	float progessPercentage = 0;
+
+	//Internal function to keep the variables up to date
+	void UpdatePercentage()
+	{
+		totalProgressCompleted = folderCountCompleted + fileCountCompleted;
+		if (totalProgressCount != 0) {
+			progessPercentage = (totalProgressCompleted / totalProgressCount) * 100;
+		} else {
+			progessPercentage = 0;
+		}
+
+		if (progessPercentage > 100){
+			progessPercentage = 100;
+		}
+		return;
+	}
+
+public:
+	//Return the variables for use outside of the class
+	float GetPercentage(){
+		return progessPercentage;
+	}
+	double GetTotal() {
+		return totalProgressCount;
+	}
+	double GetCompleted() {
+		return totalProgressCompleted;
+	}
+
+	//Only run this if the scan is finished and the progress monitor falls behind. This cannot be undone.
+	void FinishedEarly() {
+		totalProgressCompleted = totalProgressCount;
+		fileCountCompleted = totalFileCount;
+		folderCountCompleted = totalFolderCount;
+		progessPercentage = 100;
+		return;
+	}
+
+	//Resets everything back to default. This cannot be undone.
+	void ResetProgressMonitor() {
+	    totalFolderCount = 0;
+		folderCountCompleted = 0;
+		totalFileCount = 0;
+		fileCountCompleted = 0;
+		totalProgressCount = 0;
+		totalProgressCompleted = 0;
+		progessPercentage = 0;
+		return;
+	}
+
+	//Call this every time a level five folder is scanned during a scan
+	void FinishedDirectory(){
+		folderCountCompleted++;
+		UpdatePercentage();
+		return;
+	}
+	//Call this every time a notable file is scanned during a scan
+	void FinishedFile() {
+		fileCountCompleted++;
+		UpdatePercentage();
+		return;
+	}
+
+	//Adds a single file to the total to scan. For if the user adds a single file in advanced scan.
+	void AddFile() {
+		totalFileCount++;
+		totalProgressCount++;
+		return;
+	}
+	
+	//Call this for each directory added to a scan
+	//Adds the amount of level five directories within a given directory to the total count
+	void CountDirectories(std::string directory, int depth = 4, int level = 0) {
+		//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
+		//This is a modified version of iterateDirectory
+		if (directory.substr(directory.length() - 2) == ".\\")
+		{
+			return;
+		}
+		struct dirent* item;
+		const char* location = directory.c_str();
+		DIR* dir = opendir(location);
+		if (dir != NULL) {
+			item = readdir(dir);
+			while (item != NULL) {
+				if (item->d_type == DT_DIR)
+				{
+					//If we're not at the fifth level yet, go a level deeper
+					if (level < depth)
+					{
+						std::string newDirectory = directory + item->d_name + "\\";
+						CountDirectories(newDirectory, depth, level++);
+					}
+					//If we are then add the amount of folders to the total count
+					if (level == 4)
+					{
+						totalFolderCount++;
+						totalProgressCount++;
+					}
+				}
+				item = readdir(dir);
+			}
+		}
+		closedir(dir);
+		return;
+	}
+
+	void CountFiles(std::string directory) {
+		//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
+		//This is a modified version of iterateDirectory
+		if (directory.substr(directory.length() - 2) == ".\\")
+		{
+			return;
+		}
+		struct dirent* item;
+		const char* location = directory.c_str();
+		DIR* dir = opendir(location);
+		if (dir != NULL) {
+			item = readdir(dir);
+			while (item != NULL) {
+				if (item->d_type == DT_DIR)
+				{
+					std::string newDirectory = directory + item->d_name + "\\";
+					CountDirectories(newDirectory);
+				}
+				if (item->d_type == DT_REG)
+				{
+					totalFileCount++;
+					totalProgressCount++;
+				}
+				item = readdir(dir);
+			}
+		}
+		closedir(dir);
+		return;
+	}
+
+	int Reccommend(std::string directory, int depth = 4, int level = 0)
+	{
+		int procedure = 0;
+		//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
+		//This is a modified version of iterateDirectory
+		if (directory.substr(directory.length() - 2) == ".\\")
+		{
+			return 0;
+		}
+		struct dirent* item;
+		const char* location = directory.c_str();
+		DIR* dir = opendir(location);
+		if (dir != NULL) {
+			item = readdir(dir);
+			while (item != NULL) {
+				if (item->d_type == DT_DIR)
+				{
+					//If we're not at the fifth level yet, go a level deeper
+					if ((level < depth) && (procedure == 0))
+					{
+						std::string newDirectory = directory + item->d_name + "\\";
+						procedure = Reccommend(newDirectory, depth, level++);
+					}
+					//If we are then add the amount of folders to the total count
+					if (level == depth)
+					{
+						return 1;
+					}
+				}
+				item = readdir(dir);
+			}
+		}
+		closedir(dir);
+		return procedure;
+	}
+	
+};
+
+
 class LavaScan
 {
 public:
 	// memburs
-	std::string AntibodyFileLocation = "C:\\test.LavaAnti";
+	std::string AntibodyFileLocation = "test.LavaAnti";
 	int fd, ret, CurrentScanCount;
-	unsigned long int size = 0;
+	unsigned long int size = 0; std::string start_time; std::string finish_time;
 	unsigned int sigs = 0;
 	long double mb;
 	const char* virname;
@@ -17,7 +246,12 @@ public:
 	struct cl_scan_options options;
 	bool isScanDone;
 	struct q_entry;
+	std::string currentScanGoing;
 	std::vector<std::vector<std::string>> PreviousScans;
+	std::set<LavaScan::q_entry> QuarantineContents;
+	int num_found;
+	int num_removed;
+	ProgressMonitor pm;
 	// constructor
 	LavaScan(); // default
 	/* scans */
@@ -25,26 +259,159 @@ public:
 	bool QuickScan();
 	bool AdvanceScan();
 	bool AdvanceScanNow(std::set<std::string> s);
+	std::set<char> get_drive_letters();
 	void eicarTest(std::string path="C:\\test\\eicar.com.txt");
 	std::set<LavaScan::q_entry> read_quarantine_contents();
 	void quarantine_file(std::string filepath, std::string virus_name);
 	bool remove_quarantined_files(std::set<std::string> to_remove);
+	bool postMoveQuarantine(std::set<q_entry> to_remove);
 	bool quarantineIsEmpty();
-	void move_file(std::string file_path, std::string location_directory, std::string final_extension);
+	bool quarantine_contains(std::string file_name);
+	void move_file(std::string file_path, std::string new_location_with_new_filename);
 	void make_quarantine_directory();
-	bool scanDirectory(std::string dirPath, int num_viruses_found);
-	void iterateDirectory(std::string directory, bool clean, int num_viruses_found);
+	bool scanDirectory(std::string dirPath);
+	void iterateDirectory(std::string directory, bool clean);
 	int scanFile(std::string filePath);
+	void SupportPage();
+	int scheduleScanWeekly(int inputDay, int inputHour, int inputMinute);
+	int scheduleScanMonthly(int inputDay, int inputHour, int inputMinute);
+	int rmScheduledScan();
 	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
+	bool reset_QC();
 	std::vector<std::string> ReadAntibody(std::string antibodyfilelocation);
 	int FileCount(std::string dirPath);
 	int TotalSetFileCount(std::set<std::string> p);
 	std::set<std::string> countQuarantineContents();
-	void log_scan(std::string type, std::string start, std::string finish, int found, int removed);
+	void log_scan();
 	std::vector<std::vector<std::string>> read_log();
 	std::string get_time();
 	void UpdatePreviousScans();
+	bool moveQuarantineHome(std::set<q_entry> q);
+	void check_db_folder();
+	void check_config_files();
+	bool update_virus_database();
 };
+
+//Open support page in the default browser
+inline void LavaScan::SupportPage() {
+	//The shell command is marginally slower but will use the default browser. It also requires shellapi.h, which I've included.
+	ShellExecute(0, 0, L"https://github.com/kornfeldm/LAVA/issues", 0, 0, SW_SHOW);
+	//The system command below is faster but cannot use default browser so I commented it out. If performance becomes a problem use this instead.
+	//Because I had to choose a browser I chose the one guaranteed to be installed.
+	//system("start microsoft-edge:https://github.com/kornfeldm/LAVA/issues");
+	
+}
+
+//Make a monthly scan. Parameters -> inputDay: Day of Week (1-7, where 1 is Sunday, 7 is Saturday); inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59);
+//Returns 0 on completion or errors -1, -2 or -3 if there's an issue with the parameters depending on which causes the problem
+inline int LavaScan::scheduleScanWeekly(int inputDay, int inputHour, int inputMinute) {
+	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
+	std::string day = "Sun";
+	std::string time = "00:00";
+	std::string hour = "00";
+	std::string minute = "00";
+	switch (inputDay) {
+	case 1:
+		day = "SUN";
+		break;
+	case 2:
+		day = "MON";
+		break;
+	case 3:
+		day = "TUE";
+		break;
+	case 4:
+		day = "WED";
+		break;
+	case 5:
+		day = "THU";
+		break;
+	case 6:
+		day = "FRI";
+		break;
+	case 7:
+		day = "SAT";
+		break;
+	default:
+		return -1;
+		break;
+	}
+
+	if (inputHour < 0 || inputHour > 23){
+		return -2;
+	}
+	if (inputHour < 10){
+		hour = "0" + std::to_string(inputHour);
+	} else {
+		hour = std::to_string(inputHour);
+	}
+
+	if (inputMinute < 0 || inputMinute > 59) {
+		return -3;
+	}
+	if (inputMinute < 10) {
+		minute = "0" + std::to_string(inputMinute);
+	}
+	else {
+		minute = std::to_string(inputMinute);
+	}
+
+	time = hour + ":" + minute;
+
+	std::string path = "\"C:\\Windows\\System32\\notepad.exe\""; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Weekly /D " + day + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time;
+	system(cmdcpp.c_str());
+	return 0;
+}
+
+//Make a monthly scan. Parameters -> inputDay: Day of Month (1-31); inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59);
+//Returns 0 on completion or errors -1, -2 or -3 if there's an issue with the parameters depending on which causes the problem
+inline int LavaScan::scheduleScanMonthly(int inputDay, int inputHour, int inputMinute) {
+	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
+	std::string day = "1";
+	std::string time = "00:00"; 
+	std::string hour = "00";
+	std::string minute = "00";
+	if (inputDay < 1 || inputDay > 31) {
+		return -1;
+	} else {
+		day = std::to_string(inputDay);
+	}
+
+	if (inputHour < 0 || inputHour > 23) {
+		return -2;
+	}
+
+	if (inputHour < 10) {
+		hour = "0" + std::to_string(inputHour);
+	} else {
+		hour = std::to_string(inputHour);
+	}
+
+	if (inputMinute < 0 || inputMinute > 59) {
+		return -3;
+	}
+
+	if (inputMinute < 10) {
+		minute = "0" + std::to_string(inputMinute);
+	} else {
+		minute = std::to_string(inputMinute);
+	}
+
+	time = hour + ":" + minute;
+
+	std::string path = "\"C:\\Windows\\System32\\notepad.exe\""; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Monthly /D " + day + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time;
+	system(cmdcpp.c_str());
+	return 0;
+}
+
+//Removes the scheduled scan and returns 0 on completion
+inline int LavaScan::rmScheduledScan() {
+	std::string cmdcpp = "SCHTASKS /DELETE /TN \"LAVA\\ScheduleScan\"";
+	system(cmdcpp.c_str());
+	return 0;
+}
 
 inline int LavaScan::scanFile(std::string filePath) {
 	// update scan count
@@ -77,7 +444,7 @@ inline int LavaScan::scanFile(std::string filePath) {
 	return ret; //returns scan output value: either CL_VIRUS, CL_CLEAN or CL_ERROR
 }
 
-inline void LavaScan::iterateDirectory(std::string directory, bool clean, int num_viruses_found)
+inline void LavaScan::iterateDirectory(std::string directory, bool clean)
 {
 	//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
 
@@ -115,7 +482,7 @@ inline void LavaScan::iterateDirectory(std::string directory, bool clean, int nu
 				std::string newDirectory = directory + item->d_name + "\\";
 
 				//std::cout << newDirectory << "\n";
-				iterateDirectory(newDirectory, clean, num_viruses_found);
+				iterateDirectory(newDirectory, clean);
 				//CHECK FOR USER CANCEL GOES HERE
 				//closedir(directory)
 				//return
@@ -131,7 +498,8 @@ inline void LavaScan::iterateDirectory(std::string directory, bool clean, int nu
 
 				if (scanFile(filePath) == CL_VIRUS) {
 					clean = false; //File in direcotry is infected
-					num_viruses_found++;//increase the virus count
+					this->num_found++;//increase the virus count
+					////this->viruses_found++;//increase the virus count
 				}
 				//CHECK FOR USER CANCEL GOES HERE
 				//closedir(directory)
@@ -271,11 +639,23 @@ inline void LavaScan::AddToAntibody(std::string dirPath, std::string antibodyfil
 	WriteAntibody(existing, antibodyfilelocation);
 }
 
-inline bool LavaScan::scanDirectory(std::string dirPath, int num_viruses_found) {
+inline bool LavaScan::reset_QC() { //after a scan just reset quarantine contents
+	this->QuarantineContents.clear();
+	this->QuarantineContents = read_quarantine_contents();
+	CurrentScanCount = 0;
+	currentScanGoing = "";
+	num_found = 0; num_removed = 0;
+	isScanDone = false;
+	start_time = std::string("");
+	finish_time = std::string("");
+	return true;
+}
+
+inline bool LavaScan::scanDirectory(std::string dirPath) {
 	this->CurrentScanCount++; // 
 	bool clean = true; //Setting directory as clean
 	bool cancel = false; //A cancel variable in case the user wants to cancel the scan
-	iterateDirectory(dirPath, clean, num_viruses_found);//call recursive helper funciton
+	iterateDirectory(dirPath, clean);//call recursive helper funciton
 	//if (cancel == true) printf("User canceled scan");
 	//return clean; //returns false if infected and true if clean
 	return true;
@@ -283,10 +663,10 @@ inline bool LavaScan::scanDirectory(std::string dirPath, int num_viruses_found) 
 
 //The engine and options are just passed through to the directory scanner.
 //The first parameter is a path the the antibody file
-inline bool LavaScan::QuickScan()
+bool LavaScan::QuickScan()
 {
-	int num_found = 0; //setting virus counter to 0
-	std::string start_time = get_time();//getting start time for scan
+	this->num_found = 0; //setting virus counter to 0
+	this->start_time = get_time();//getting start time for scan
 	//Keeps track of if malware is detected and where
 	bool clean = true;
 	//Read from the file
@@ -295,12 +675,18 @@ inline bool LavaScan::QuickScan()
 	for (int i = 0; i < directorylist.size(); i++)
 	{
 		//Scan it
-		clean = scanDirectory(directorylist[i], num_found);
+		if (clean == true)
+		{
+			clean = scanDirectory(directorylist[i]);
+		} else {
+			scanDirectory(directorylist[i]);
+		}
 	}
-	std::string finish_time = get_time();//get end time for scan
-	log_scan("Quick",start_time, finish_time, num_found, num_found); //log scan
-	return clean;
+	this->finish_time = get_time();//get end time for scan
+	//log_scan("Quick",start_time, finish_time, num_found, num_found); //log scan
 	isScanDone = true;
+	//this->QuarantineContents = this->read_quarantine_contents();
+	return true;
 }
 
 std::string& replace(std::string& s, const std::string& from, const std::string& to)
@@ -311,11 +697,15 @@ std::string& replace(std::string& s, const std::string& from, const std::string&
 	return s;
 }
 
-inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
+bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 {
 	// set ss is the set of shit we are gonna scan...simple foreach loop for now
-	int num_found = 0;//set the virus count to 0
+	this-> num_found = 0;//set the virus count to 0
+	this-> start_time = get_time(); //get start time for scan
+	//int num_found = 0;//set the virus count to 0
 	std::string start_time = get_time(); //get start time for scan
+	//this->viruses_found = 0;
+	//this->viruses_removed = 0;
 	for (auto path : ss) {
 		//std::cout << "\t" << path << ".\n";
 		struct stat s;
@@ -325,13 +715,21 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 			{
 				//it's a directory, use scandir
 				//std::cout << path << " is a directory.";
-				scanDirectory(std::string(path+"\\"), num_found);
+				scanDirectory(std::string(path+"\\"));
+				if (pm.Reccommend(path) == 1) {
+					pm.CountDirectories(path);
+				}
+				else { // 0. countfiles
+					pm.CountFiles(path);
+				}
 			}
 			else if (s.st_mode & S_IFREG)
 			{
 				//it's a file, use scanfile
 				//std::cout << path << " is a file.";
-				num_found += scanFile(path.c_str()); // if file is infected will be increased by 1, if not infected it won't increase
+				if (scanFile(path.c_str()) == CL_VIRUS) {
+					this->num_found++;
+				}
 			}
 			else
 			{
@@ -345,9 +743,11 @@ inline bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 			return false;
 		}
 	}
-	std::string finish_time = get_time(); //get end time
-	log_scan("Advanced",start_time, finish_time, num_found, num_found); //logging scan
+	this->finish_time = get_time(); //get end time
+	//log_scan("Advanced",start_time, finish_time, num_found, num_found); //logging scan
 	isScanDone = true;
+	//this->QuarantineContents = this->read_quarantine_contents();
+	
 	return true;
 }
 
@@ -422,26 +822,49 @@ inline void LavaScan::quarantine_file(std::string filepath, std::string virus_na
 	quarantineFile.open("quarantine.lava", std::ios::app);
 	int pos = filepath.find_last_of("/\\"); // finding position of last "\"
 	std::string file_name = filepath.substr(pos + 1); //original file name with extension
-	std::string quarantine_file_name = file_name.substr(0, file_name.find(".")) + ".lava"; //new name of the file in quarantine
+	std::string quarantine_file_name = file_name.substr(0, file_name.find(".")); //new name of the file in quarantine
 	std::string file_directory = filepath.substr(0, pos + 1); //original file directory path
+	int repeat_counter = 0;
+	std::string extension = ".lava";
+	//altering the new file extension so that files don't repeat in the quarantine
+	while (quarantine_contains(quarantine_file_name+extension)) { //check to see if a file with that name already exists in the quarantine directory
+		extension = "(" + std::to_string(repeat_counter) + ").lava";
+		repeat_counter++;
+	}
+	quarantine_file_name += extension;
 	quarantineFile << file_name + "," + quarantine_file_name + "," + file_directory + "," + virus_name << std::endl; //adding it to the quarantine info file (quarantine.lava)
 	quarantineFile.close();
-	move_file(filepath, ".\\LAVA_Quarantine\\", ".lava"); //moving file to quarantine folder
+	//move_file(filepath, ".\\LAVA_Quarantine\\", ".lava"); //moving file to quarantine folder
+	q_entry q; q.origin_directory = file_directory; q.new_file_name = quarantine_file_name; q.old_file_name = file_name; q.virus_name = virus_name;
+	this->QuarantineContents.insert(q);
+	move_file(filepath, ".\\LAVA_Quarantine\\" + quarantine_file_name); //moving file to quarantine folder
 }
 
-inline void LavaScan::move_file(std::string file_path, std::string location_directory, std::string final_extension) {
-	int pos = file_path.find_last_of("/\\"); // finding position of last "\"
-	std::string file_name = file_path.substr(pos + 1); //original file name with extension
+inline bool LavaScan::quarantine_contains(std::string file_name) { //function to check if the new file name is already used in the quarantine entry file
+	std::ifstream quarantine_file("quarantine.lava", std::ios::out);
+	std::string line;
+	while(getline(quarantine_file, line)) { //iterate file
+		int pos1 = line.find(",");
+		int pos2 = line.find(",", pos1 + 1);
+		std::string new_name = line.substr(pos1 + 1, pos2-pos1-1); //extract the new file name from quarantine file
+		if (new_name == file_name) return true;
+	}
+	return false;
+}
+
+//function to move file with changing the extension
+inline void LavaScan::move_file(std::string file_path, std::string new_location_with_new_filename) {
 	std::ifstream from(file_path, std::ios::in | std::ios::binary);
-	//changing the file extension to the desired final_extension
-	std::ofstream to(location_directory + file_name.substr(0, file_name.find(".")) + final_extension, std::ios::out | std::ios::binary);
+	std::ofstream to(new_location_with_new_filename, std::ios::out | std::ios::binary);
 	to << from.rdbuf();
 	from.close();
 	to.close();
-	std::remove(file_path.c_str()); //removing the original file
+	_unlink(file_path.c_str()); //removing the original file
 }
 
 inline bool LavaScan::remove_quarantined_files(std::set<std::string> to_remove) { //returns false if errors occurred
+	if (to_remove.size() == 0)
+		return true;
 	bool success = true;
 	std::fstream quarantineFile;
 	std::fstream temp;
@@ -459,26 +882,28 @@ inline bool LavaScan::remove_quarantined_files(std::set<std::string> to_remove) 
 			switch (comma_num)
 			{
 			case 0:
-				file_name = line.substr(prev_found, size); //extract scan start time
+				file_name = line.substr(prev_found, size); //extract file original name
 			case 1:
-				file_quarantine_name = line.substr(prev_found + 1, size - 1); //exctract scan finish time
+				file_quarantine_name = line.substr(prev_found + 1, size - 1); //exctract file quarantine name
 			case 2:
-				file_origin = line.substr(prev_found + 1, size - 1); //extract number of viruses found
-				virus_name = line.substr(found + 1); //extract number of viruses removed
+				file_origin = line.substr(prev_found + 1, size - 1); //extract file origin
+				virus_name = line.substr(found + 1); //extract virus name
 			}
 			comma_num++;
 		}
 		if (to_remove.find(file_name) == to_remove.end()) {
 			//moving file back to its original location
 			//move_file(".\\LAVA_Quarantine\\" + file_quarantine_name, file_origin, file_name.substr(file_name.find(".")));
-			temp << line << std::endl; //keeping it in quarantine
+			//temp << line << std::endl; //keeping it in quarantine //commenting this out for now. no need to write to file after removing.
+			//move_file(".\\LAVA_Quarantine\\" + file_quarantine_name, file_origin + file_name);
+			//temp << line << std::endl; //keeping it in quarantine
 		}
 		else {
-			if (std::remove((".\\LAVA_Quarantine\\" + file_quarantine_name).c_str()) != 0)
+			if (_unlink((".\\LAVA_Quarantine\\" + file_quarantine_name).c_str()) != 0)
 			{
 				//Unable to remove file, keep it in the quarantine folder
 				//error message
-				temp << line << std::endl;
+				//temp << line << std::endl; //again, we dont want to log if we just move back, may be temporary
 				success = false;
 			}
 			else {
@@ -488,9 +913,18 @@ inline bool LavaScan::remove_quarantined_files(std::set<std::string> to_remove) 
 	}
 	temp.close();
 	quarantineFile.close();
-	std::remove("quarantine.lava");
+	_unlink("quarantine.lava");
 	std::rename("temp.lava", "quarantine.lava");
 	return success;
+}
+
+inline bool LavaScan::postMoveQuarantine(std::set<q_entry> to_remove) { //after a file has been moved back, remove from qaurantine.lava
+	if (to_remove.size() == 0)
+		return true;
+	std::ofstream ofs;
+	ofs.open("quarantine.lava", std::ofstream::out | std::ofstream::trunc);
+	ofs.close();
+	return true;
 }
 
 inline void LavaScan::make_quarantine_directory() {
@@ -517,25 +951,54 @@ inline void LavaScan::make_quarantine_directory() {
 	}
 }
 
+inline std::set<char> LavaScan::get_drive_letters() {
+	std::set<char> letters;
+	DWORD drive_mask = GetLogicalDrives();//return a bit mask of the logival drive letters
+	if (drive_mask == 0) // case if unsuccessful
+	{
+		printf("Failed to get drive bitmask!\n");
+	}
+	int index = 0; //index keeps track of the bit position
+	while (drive_mask)
+	{
+		if (drive_mask & 1) {
+			printf("Drive %c found\n", (char)('A' + index));
+			letters.insert((char)('A' + index));
+		}
+		// increment, check next drive
+		index++;
+		// shift the bitmask binary right
+		drive_mask >>= 1;
+	}
+	return letters;
+}
+
 inline bool LavaScan::CompleteScan() {
-	std::string start_time = get_time();
+	this->start_time = get_time();
 	bool clean = true;
-	int num_found = 0;
-	// for now just scan c$
-	//   later get func to get drive letters
-	const char* dirs = "C:\\";
-	clean = this->scanDirectory(dirs,num_found);
-	std::string finish_time = get_time();
-	log_scan("Complete",start_time, finish_time, num_found, num_found);
+	//this->viruses_found = 0;
+	//this->viruses_removed = 0;
+	std::set<char> drive_letters = get_drive_letters(); //get all the drive letters
+	for (char letter : drive_letters) {
+		std::string dirs = "";
+		dirs += letter;
+		dirs += ":\\";
+		std::cout<< "Scanning drive " +  dirs << std::endl;
+		clean = clean && this->scanDirectory(dirs);
+	}
+	this-> finish_time = get_time();
+	//log_scan("Complete",start_time, finish_time, num_found, num_found);
 	isScanDone = true;
+	//this->QuarantineContents = this->read_quarantine_contents();
 	return clean;
 }
 
-inline void LavaScan::log_scan(std::string type, std::string start, std::string finish, int found, int removed) {
+inline void LavaScan::log_scan() {
 	std::fstream log_file;
 	log_file.open("scan_log.lava", std::ios::app);
-	log_file << type + "," + start + "," + finish + "," + std::to_string(found) + "," + std::to_string(removed) + "\n";
+	log_file << this->currentScanGoing + "," + this->start_time + "," + this->finish_time + "," + std::to_string(this->num_found) + "," + std::to_string(this->num_removed) + "\n";
 	log_file.close();
+	this->reset_QC();//reset qc state after logging every scan
 }
 
 inline std::string LavaScan::get_time() {
@@ -615,9 +1078,188 @@ inline void LavaScan::UpdatePreviousScans() {
 	this->PreviousScans = this->read_log();
 }
 
+inline bool LavaScan::moveQuarantineHome(std::set<q_entry> q)
+{
+	for (auto thing : q) {
+		move_file(".\\LAVA_Quarantine\\"+thing.new_file_name, thing.origin_directory+thing.old_file_name); //moving file to quarantine folder
+	}
+	this->postMoveQuarantine(q);
+	return true;
+}
+//function that checks if the db folder exists, if not, creates it
+inline void LavaScan::check_db_folder() {
+	struct stat buf;
+	stat(".\\x64\\Debug\\db", &buf);
+	//check if the db directory exists
+	if (!(buf.st_mode & S_IFDIR)) {
+		//case if it doesn't exist
+		std::cout<<"db directory not found.\n Attempting to make the Database Directory...\n";
+		if (int ret = CreateDirectoryA(cl_retdbdir(), NULL) == 0) {
+			if (ret == ERROR_ALREADY_EXISTS) {
+				//direcotry already exists
+				std::cout<<"Quarantine Direcotory Ready\n";
+			}
+			else if (ret == ERROR_PATH_NOT_FOUND) {
+				std::cout<<"frigg this case";
+			}
+			else {
+				//some other error
+				std::cout << "Error making the quarantine directory, error: " + GetLastError() << std::endl;
+			}
+		}
+		else printf("DB Directory Ready\n");
+	}
+	else { std::cout << "db_dir exists\n"; }
+	
+}
+
+inline void LavaScan::check_config_files() {
+	char buf[256];
+	GetCurrentDirectoryA(256, buf); //gets the current working directory
+	//openning all the files to read
+	std::fstream clamd_file;
+	std::fstream clamd_temp;
+	std::fstream freshclam_file;
+	std::fstream freshclam_temp;
+	clamd_file.open("..\\clam64stuff\\clamd.conf", std::ios::in | std::ios::out);
+	clamd_temp.open("..\\clam64stuff\\clamd_temp.conf", std::ios::out);
+	freshclam_file.open("..\\clam64stuff\\freshclam.conf", std::ios::in | std::ios::out);
+	freshclam_temp.open("..\\clam64stuff\\freshclam_temp.conf", std::ios::out);
+
+	clamd_temp << "";
+	freshclam_temp << "";
+	std::string line;
+	bool line_changed = false;
+	while(getline(clamd_file, line)) { //loops over every line in the clamd.conf file looking for the DatabaseDirectory line
+		//std::cout << line << std::endl;;
+		if (line.find("DatabaseDirectory") != std::string::npos) {
+			clamd_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl; //set the database directory to the full file path of the db folder
+			line_changed = true;
+		}
+		else {
+			clamd_temp << line << std::endl;
+		}
+	}
+	if(!line_changed) clamd_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl; //case if DatabaseDirectory was not set in clamd.conf
+	line_changed = false;
+	while (getline(freshclam_file, line)) {//loops over every line in the freshclam.conf file looking for the DatabaseDirectory line
+		//std::cout << line << std::endl;;
+		if (line.find("DatabaseDirectory") != std::string::npos) {
+			freshclam_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl;//set the database directory to the full file path of the db folder
+			line_changed = true;
+		}
+		else {
+			freshclam_temp << line << std::endl;
+		}
+	}
+	if (!line_changed) freshclam_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl; //case if DatabaseDirectory was not set in freshclam.conf
+	//closing all the files 
+	clamd_file.close();
+	freshclam_file.close();
+	clamd_temp.close();
+	freshclam_temp.close();
+	_unlink("..\\clam64stuff\\clamd.conf");
+	_unlink("..\\clam64stuff\\freshclam.conf");
+	rename("..\\clam64stuff\\clamd_temp.conf", "..\\clam64stuff\\clamd.conf");
+	rename("..\\clam64stuff\\freshclam_temp.conf", "..\\clam64stuff\\freshclam.conf");
+}
+
+std::string GetExeFileName() {
+	char buffer[MAX_PATH] = {};
+	::GetModuleFileNameA(NULL, buffer, MAX_PATH);
+	return std::string(buffer);
+}
+std::string GetExePath()
+{
+	std::string f = GetExeFileName();
+	return f.substr(0, f.find_last_of("\\/"));
+}
+std::string GetLAVAFolder()
+{
+	const unsigned long maxDir = 260;
+	char currentDir[maxDir];
+	GetCurrentDirectoryA(maxDir, currentDir);
+	std::string str = std::string(currentDir);
+	fs::path p = str;
+	/*std::cout << p.parent_path() << std::endl;*/
+	//getch();
+	return p.parent_path().string();
+}
+
+inline bool LavaScan::update_virus_database() {
+	//std::cout << "\n " << GetExePath() << "\nend";
+	
+	
+	try {
+		check_db_folder();//checking the existence (creating) of db folder
+		check_config_files();//checking/updating config files
+
+		//// set the size of the structures
+		//TCHAR ProcessName[256];
+		//STARTUPINFO si;
+		//PROCESS_INFORMATION pi;
+		//std::string pname = GetExePath() + "\\..\\clam64stuff\\freshclam.exe"; std::wstring widestr = std::wstring(pname.begin(), pname.end());
+		//std::cout << "\n\t" << pname << std::endl;
+		//getch();
+		//wcscpy(ProcessName, widestr.c_str());
+		//ZeroMemory(&si, sizeof(si));
+		//si.cb = sizeof(si);
+		//ZeroMemory(&pi, sizeof(pi));
+		//
+		//// start the program up
+		//if (!CreateProcess(
+		//	NULL,   // the path
+		//	ProcessName,			//Command line argument
+		//	NULL,           // Process handle not inheritable
+		//	NULL,           // Thread handle not inheritable
+		//	FALSE,          // Set handle inheritance to FALSE
+		//	0,              // No creation flags
+		//	NULL,           // Use parent's environment block
+		//	NULL,           // Use parent's starting directory 
+		//	&si,            // Pointer to STARTUPINFO structure
+		//	&pi             // Pointer to PROCESS_INFORMATION structure
+		//)) {
+		//	printf("CreateProcess failed (%d).\n", GetLastError());
+		//	return false;
+		//}
+		//
+		//// Wait until child process exits.
+		//WaitForSingleObject(pi.hProcess, INFINITE);
+		//
+		//// Close process and thread handles. 
+		//CloseHandle(pi.hProcess);
+		//CloseHandle(pi.hThread);
+		
+		std::string pname = GetLAVAFolder() + "\\clam64stuff\\freshclam.exe"; std::wstring widestr = std::wstring(pname.begin(), pname.end());
+		//std::cout << "\n\t" << pname << std::endl;
+		pname = "\""+pname+"\"";
+		//getch();
+		system(pname.c_str());
+	}
+	catch (int e) {
+		std::cout << "\nsomething borked up";
+	}
+
+	return true;
+}
+
 inline LavaScan::LavaScan() {
 	CurrentScanCount = 0;
+	currentScanGoing = "";
+	num_found = 0; num_removed = 0;
 	isScanDone = false;
+	start_time = std::string("");
+	finish_time = std::string("");
+
+	printf("Updating virus databse...\n");
+	if (!update_virus_database()) {//checks whether failed to update the database
+		printf("Failed to update the database!\nError: %s\n", GetLastError());
+	}
+	else {
+		printf("Virus database updated!\n");
+	}
+
+
 	if ((ret = cl_init(CL_INIT_DEFAULT)) != CL_SUCCESS) { //Initializing clamav
 		printf("Can't initialize libclamav: %s\n", cl_strerror(ret));//returns the error name in case of error
 		exit(2);
@@ -663,11 +1305,12 @@ inline LavaScan::LavaScan() {
 	make_quarantine_directory();
 
 	//Testing Quarantine Functions
-	//quarantine_file("C:\\Users\\dylan\\Downloads\\not_a_virus.txt", "too cool");
-	//quarantine_file("C:\\Users\\dylan\\Downloads\\a_virus.txt", "trojan");
-	//std::set<std::string> to_remove;
+	//quarantine_file("C:\\Users\\dylan\\Downloads\\a_virus.txt", "too cool");
+	//quarantine_file("C:\\Users\\dylan\\Documents\\a_virus.txt", "trojan");
+	//quarantine_file("C:\\Users\\dylan\\Pictures\\a_virus.txt", "trojan");
+	std::set<std::string> to_remove;
 	//to_remove.insert("a_virus.txt");
-	//remove_quarantined_files(to_remove);
+	remove_quarantined_files(to_remove);
 	//std::set<struct q_entry> entries = read_quarantine_contents();
 	//for (struct q_entry q :entries) {
 		//std::cout << "File name: " + q.old_file_name + ", new name: " + q.new_file_name + ", origin directory: " + q.origin_directory + ", virus name: " + q.virus_name << std::endl;
@@ -684,6 +1327,8 @@ inline LavaScan::LavaScan() {
 	if (clean) printf("Directory is not infected");
 	else printf("Directory is not infected");*/
 
+	//Testing CompleteScan
+	//std::set<char> drive_letters = get_drive_letters();
 	// have a seperate thread load shit into PreviousScans...race condition if many scans on a pc maybe...we will see
 	std::thread t1 = std::thread([this] {this->UpdatePreviousScans(); });
 	t1.detach();

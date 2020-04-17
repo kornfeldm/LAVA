@@ -9,13 +9,16 @@
 #include <ShlObj.h>
 #include <assert.h>
 #include <atlstr.h>
+#include <CommCtrl.h>
 #include <conio.h>
+#include <ctime>
 #include <dirent.h>
 #include <dlgs.h>
 #include <fcntl.h>
 #include <filesystem>
 #include <fstream>
 #include <io.h>
+#include <Lmcons.h>
 #include <limits.h>
 #include <math.h>
 #include <queue>
@@ -34,6 +37,7 @@
 #include <thread>
 #include <vector>
 #include <windows.h>
+#include <shellapi.h>
 #include "LavaScan.h"
 #include <fileapi.h>
 // nuklear includes
