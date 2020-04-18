@@ -292,6 +292,8 @@ public:
 	bool update_virus_database();
 };
 
+std::string GetExePath();
+
 //Open support page in the default browser
 inline void LavaScan::SupportPage() {
 	//The shell command is marginally slower but will use the default browser. It also requires shellapi.h, which I've included.
@@ -515,27 +517,59 @@ inline void LavaScan::iterateDirectory(std::string directory, bool clean)
 	closedir(dir);
 }
 
+//Source: https://stackoverflow.com/questions/2390912/checking-for-an-empty-file-in-c
+bool is_empty(std::istream& pFile)
+{
+	return pFile.peek() == std::ifstream::traits_type::eof();
+}
+
 //Read each line in the specified file and output a string vector containing each directory
 inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilelocation)
 {
+	std::cout << "Antibody file location: " << antibodyfilelocation << std::endl;
 	std::vector<std::string> directorylist;
-	std::ifstream antibody;
+	std::fstream antibody;
+	
 	std::string listedirectory;
-	antibody.open(antibodyfilelocation);
+	antibody.open(antibodyfilelocation, std::fstream::in | std::fstream::out | std::fstream::app);
+
+	if (!antibody) {
+		
+	}
+
 	if (antibody.is_open())
 	{
-		while (!antibody.eof())
+		if (is_empty(antibody))
 		{
-			getline(antibody, listedirectory);
-			directorylist.push_back(listedirectory);
-			std::cout << listedirectory << "\n";
+			std::cout << "Antibody File is Empty" << std::endl;
+			antibody << "%USERPROFILE%\\Documents" << std::endl;
+			antibody << "%USERPROFILE%\\Downloads" << std::endl;
+			antibody.close();
+			directorylist.push_back("%USERPROFILE%\\Documents");
+			directorylist.push_back("%USERPROFILE%\\Documents");
 		}
-		antibody.close();
-		return directorylist;
+		else{
+			std::cout << "Antibody File is not Empty" << std::endl;
+			while (!antibody.eof())
+			{
+				getline(antibody, listedirectory);
+				//The last line is empty, don't count it as a directory
+				if (listedirectory != "")
+				{
+					directorylist.push_back(listedirectory);
+					std::cout << listedirectory << std::endl;
+				}
+			}
+			antibody.close();
+			return directorylist;
+		}
 	}
 	else
 	{
-		//Error opening file
+		std::cout << "Failed to Open Antibody File; Running with Defaults" << std::endl;
+		directorylist.push_back("%USERPROFILE%\\Documents");
+		directorylist.push_back("%USERPROFILE%\\Documents");
+		directorylist.push_back("%USERPROFILE%\\Documents");
 	}
 	return directorylist;
 }
@@ -665,15 +699,19 @@ inline bool LavaScan::scanDirectory(std::string dirPath) {
 //The first parameter is a path the the antibody file
 bool LavaScan::QuickScan()
 {
+	std::string ExePath = GetExePath();
+	std::string AntibodyFile = ExePath + "\\..\\..\\Locations.LavaAnti";
+	AntibodyFileLocation = AntibodyFile;
 	this->num_found = 0; //setting virus counter to 0
 	this->start_time = get_time();//getting start time for scan
 	//Keeps track of if malware is detected and where
 	bool clean = true;
-	//Read from the file
 	std::vector<std::string> directorylist = ReadAntibody(this->AntibodyFileLocation);
 	//For each directory:
 	for (int i = 0; i < directorylist.size(); i++)
 	{
+		std::cout << "Scanning Folder "<< i + 1 << " of " << directorylist.size() << std::endl;
+		std::cout << "Scanning Folder " << directorylist[i] << std::endl;
 		//Scan it
 		if (clean == true)
 		{
