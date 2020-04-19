@@ -73,7 +73,18 @@ static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 				/* User has clicked the "Add Folder" button.
 				 * Add the contents of szLastSelection to your list. */
 				//printf("%s\n", g_Multi.szLastSelection);
-				advancedScanPaths.insert(ToNarrow(g_Multi.szLastSelection));
+#ifndef UNICODE  
+				typedef std::string String;
+#else
+				typedef std::wstring String;
+#endif
+				if (advancedScanPaths.find(ToNarrow(g_Multi.szLastSelection)) == advancedScanPaths.end()) {
+					advancedScanPaths.insert(ToNarrow(g_Multi.szLastSelection));
+					// thread to count that shit carti
+					std::thread t1 = std::thread([] {FileCount(ToNarrow(g_Multi.szLastSelection)); });
+					t1.detach();
+				}
+				
 			}
 			else
 			{
@@ -835,10 +846,9 @@ inline bool FE::DrawInProgressScan()
 	//std::cout << "\n\t cf : " << CurrentScanFile;
 	// grab the top task ,if exists
 	if (!this->scanTasks.empty()) {
+		int scan = this->scanTasks.front();
 		this->maxfiles = 0;
-		std::thread t1([this]() {
-			int scan = this->scanTasks.front();
-			scanTasks.pop();
+		std::thread t1([this,scan]() {
 			switch (scan) {
 			case 1: //complete
 				//this->maxfiles = this->FileCount("C:\\");
@@ -857,7 +867,35 @@ inline bool FE::DrawInProgressScan()
 				break;
 			}
 		});
-		t1.detach();
+		std::thread t2([this,scan]() {
+			std::set<char> drive_letters = get_drive_letters(); //get all the drive letters
+			std::vector<std::string> dirs = ReadAntibody(this->AntibodyFileLocation);
+			switch (scan) {
+			case 1: //complete
+				// count for complete
+				
+				for (char letter : drive_letters) {
+					std::string dirs = "";
+					dirs += letter;
+					dirs += ":\\";
+					//std::cout << "Scanning drive " + dirs << std::endl;
+					countFiles(dirs,"*",true);
+				}
+				break;
+			case 2: //quick
+				// read antibody file
+				
+				// count for quick dirs ...
+				break;
+			case 3: //adv
+				// no count here get out
+				break;
+			default:
+				break;
+			}
+			});
+		scanTasks.pop();
+		t2.detach(); t1.detach();
 	}
 
 
@@ -893,15 +931,18 @@ inline bool FE::DrawInProgressScan()
 
 	/* prog bbar */
 	if (nk_begin(this->ctx, "progbar", nk_rect(traplogo.x-5, traplogo.y+275+traplogo.h, traplogo.w, 65),
-		NK_WINDOW_NO_SCROLLBAR))
+		NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR))
 	{
 		/*nk_size currentValue = this->pm.GetPercentage();*/
-		nk_size currentValue = 69;
-		nk_size maxValue = 100;
+		/*nk_size currentValue = 69;
+		nk_size maxValue = 100;*/
+		long double curcount = current_Count;
+		long double totcount = total_Count;
+		nk_size currentValue = (curcount / totcount)*100;
 		nk_modify modifyable = NK_FIXED;
 		nk_layout_row_dynamic(this->ctx, traplogo.w, 1);
 		nk_progress(ctx, &currentValue, 100, NULL);
-		std::cout << "\n  " << currentValue;
+		//std::cout << "\n  " << currentValue << " " << current_Count << "/" << total_Count;
 	}
 	nk_end(this->ctx);
 
@@ -927,6 +968,9 @@ inline bool FE::DrawInProgressScan()
 					//fprintf(stdout, "testestestest\n");
 					this->view = 5;
 					nk_clear(this->ctx);
+					// reset counters
+					current_Count = 0;
+					total_Count = 0;
 				}
 			}
 			// draw txt 
@@ -1097,7 +1141,7 @@ inline bool FE::ChangeFontSize(float s = 28) {
 	return true;
 }
 
-static int all = 0;
+static int all = 0; static int leave = 0;
 inline bool FE::QuarantineView()
 {
 	//int sel = 0;
@@ -1117,29 +1161,44 @@ inline bool FE::QuarantineView()
 			//fprintf(stdout, "back arrow\n");
 			// move files back
 			advancedScanPaths.clear();
-			std::set<q_entry> q;
-			int i = 0;
-			for (auto thing : this->QuarantineContents) {
-				try {
-					q.insert(thing);
-				}
-				catch (int e) {
-					std::cout << "shoot we messed up quaranting!\n";
-				}
-				i++;
+			if (this->num_found <= 0) {
+				//reset some values and leave
 			}
+			else {
+				std::set<q_entry> q;
+				
+				int i = 0;
+				if (QuarantineContents.size() > 0) {
+					for (auto thing : this->QuarantineContents) {
+						try {
+							q.insert(thing);
+						}
+						catch (int e) {
+							std::cout << "shoot we messed up quaranting!\n";
+						}
+						i++;
+					}
+				}
+				if (q.size() > 0) {
+					this->moveQuarantineHome(q);
+				}
+			}
+			
 			all = 0; //for next scan
 			this->num_removed = 0;
-			//this->remove_quarantined_files(toRemove);
-			this->moveQuarantineHome(q);
 			this->log_scan();
 			this->view = 0;
+			leave = 1;
 			nk_clear(this->ctx);
 		}
 		this->drawImageSubRect(&this->backArrow, &bar);
 		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
+	if (leave == 1) {
+		leave = 0;
+		return true;
+	}
 
 	// text to chose delete shit
 	if (nk_begin(this->ctx, "choseshittodelete", nk_rect(bar.w+50,5,900,30),
@@ -1226,21 +1285,25 @@ inline bool FE::QuarantineView()
 			std::set<std::string>toRemove;
 			std::set<q_entry> q;
 			int i = 0;
-			for (auto thing : this->QuarantineContents) {
-				try {
-					if (array.at(i) == 1)
-						toRemove.insert(thing.old_file_name);
-					else
-						q.insert(thing);
+			if (this->QuarantineContents.size() > 0) {
+				for (auto thing : this->QuarantineContents) {
+					try {
+						if (array.at(i) == 1)
+							toRemove.insert(thing.old_file_name);
+						else
+							q.insert(thing);
+					}
+					catch (int e) {
+						std::cout << "shoot we messed up quaranting!\n";
+					}
+					i++;
 				}
-				catch (int e) {
-					std::cout << "shoot we messed up quaranting!\n";
-				}
-				i++;
+				this->remove_quarantined_files(toRemove);
+				this->num_removed = toRemove.size();
 			}
+			
 			all = 0; //for next scan
-			this->num_removed = toRemove.size();
-			this->remove_quarantined_files(toRemove);
+			this->num_removed = 0;
 			this->moveQuarantineHome(q);
 			this->log_scan();
 			this->view = 0;
@@ -1766,7 +1829,7 @@ inline bool FE::init(sf::Window *win) {
 	}
 
 	struct nk_color table[NK_COLOR_COUNT];
-	table[NK_COLOR_TEXT] = nk_rgba(175, 175, 175, 255);
+	table[NK_COLOR_TEXT] = nk_rgba(200, 200, 200, 255);
 	table[NK_COLOR_WINDOW] = nk_rgba(45, 45, 45, 255);
 	table[NK_COLOR_HEADER] = nk_rgba(40, 40, 40, 255);
 	table[NK_COLOR_BORDER] = nk_rgba(65, 65, 65, 255);
@@ -1778,7 +1841,8 @@ inline bool FE::init(sf::Window *win) {
 	table[NK_COLOR_TOGGLE_CURSOR] = nk_rgba(255, 69, 0, 255);
 	table[NK_COLOR_SELECT] = nk_rgba(45, 45, 45, 255);
 	table[NK_COLOR_SELECT_ACTIVE] = nk_rgba(208, 7, 27, 255);
-	table[NK_COLOR_SLIDER] = nk_rgba(208, 119, 126, 255);
+	/*table[NK_COLOR_SLIDER] = nk_rgba(208, 119, 126, 255);*/
+	table[NK_COLOR_SLIDER] = nk_rgba(45, 45, 45, 255);
 	table[NK_COLOR_SLIDER_CURSOR] = nk_rgba(255, 69, 0, 255);
 	table[NK_COLOR_SLIDER_CURSOR_HOVER] = nk_rgba(255, 69, 0, 255);
 	table[NK_COLOR_SLIDER_CURSOR_ACTIVE] = nk_rgba(255, 69, 0, 255);

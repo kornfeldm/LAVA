@@ -8,6 +8,77 @@ std::string operator"" _quoted(const char* text, std::size_t len) {
 	return "\"" + std::string(text, len) + "\"";
 }
 
+long int current_Count;
+long int total_Count; 
+
+#include <string>
+#include <iostream>
+#include <direct.h>
+#include <windows.h>
+#include <conio.h>
+
+//long int              iCount = 0; // global file countr, replaced with total_count
+
+int countFiles(const std::string& refcstrRootDirectory, const std::string& refcstrExtension, bool bSubdirectories)
+{
+	//int              iCount = 0;
+	std::string      strFilePath;          // Filepath
+	std::string      strPattern;           // Pattern
+	std::string      strExtension;         // Extension
+	HANDLE           hFile;                // Handle to file
+	WIN32_FIND_DATAA FileInformation;      // File information
+
+
+	strPattern = refcstrRootDirectory + "\\*.*";
+	hFile = FindFirstFileA(strPattern.c_str(), &FileInformation);
+	if (hFile != INVALID_HANDLE_VALUE)
+	{
+		do
+		{
+			if (FileInformation.cFileName[0] != '.')
+			{
+				strFilePath.erase();
+				strFilePath = refcstrRootDirectory +
+					"\\" +
+					FileInformation.cFileName;
+
+				if (FileInformation.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+				{
+					if (bSubdirectories)
+					{
+						// Search subdirectory
+						int iRC = countFiles(strFilePath,
+							refcstrExtension,
+							bSubdirectories);
+						if (iRC != -1)
+							total_Count += iRC;
+						else
+							return -1;
+					}
+				}
+				else
+				{
+					// Check extension
+					strExtension = FileInformation.cFileName;
+					strExtension = strExtension.substr(strExtension.rfind(".") + 1);
+
+					if ((refcstrExtension == "*") ||
+						(strExtension == refcstrExtension))
+					{
+						// Increase counter
+						++total_Count;
+					}
+				}
+			}
+		} while (FindNextFileA(hFile, &FileInformation) == TRUE);
+
+		// Close handle
+		FindClose(hFile);
+	}
+
+	return total_Count;
+}
+
 class ProgressMonitor {
 
 	/*
@@ -231,6 +302,66 @@ public:
 	
 };
 
+void FileCount(std::string dirPath)
+{
+	auto dirIter = std::filesystem::recursive_directory_iterator(dirPath, std::filesystem::directory_options::skip_permission_denied);
+	struct stat s;
+	if (stat(dirPath.c_str(), &s) == 0)
+	{
+		if (s.st_mode & S_IFDIR)
+		{
+			for (auto& entry : dirIter)
+			{
+				if (entry.is_regular_file())
+				{
+					/*std::cout << "\n\t\tfile " << entry.path();
+					std::cout << "\n counter : " << total_Count;*/
+					++total_Count;
+				}
+			}
+		}
+		else if (s.st_mode & S_IFREG)
+		{
+			++total_Count;
+		}
+	}
+}
+
+class WorkQueue
+{
+	std::condition_variable work_available;
+	std::mutex work_mutex;
+	std::queue<std::string> work;
+
+public:
+	void push_work(std::string item)
+	{
+		std::unique_lock<std::mutex> lock(work_mutex);
+
+		bool was_empty = work.empty();
+		work.push(item);
+
+		lock.unlock();
+
+		if (was_empty)
+		{
+			work_available.notify_one();
+		}
+	}
+
+	std::string wait_and_pop()
+	{
+		std::unique_lock<std::mutex> lock(work_mutex);
+		while (work.empty())
+		{
+			work_available.wait(lock);
+		}
+
+		std::string tmp = work.front();
+		work.pop();
+		return tmp;
+	}
+};
 
 class LavaScan
 {
@@ -252,6 +383,7 @@ public:
 	int num_found;
 	int num_removed;
 	ProgressMonitor pm;
+	WorkQueue work_queue;
 	// constructor
 	LavaScan(); // default
 	/* scans */
@@ -281,7 +413,7 @@ public:
 	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
 	bool reset_QC();
 	std::vector<std::string> ReadAntibody(std::string antibodyfilelocation);
-	int FileCount(std::string dirPath);
+	//void FileCount(std::string dirPath);
 	int TotalSetFileCount(std::set<std::string> p);
 	std::set<std::string> countQuarantineContents();
 	void log_scan();
@@ -573,7 +705,7 @@ inline int LavaScan::rmScheduledScan() {
 
 inline int LavaScan::scanFile(std::string filePath) {
 	// update scan count
-	CurrentScanCount++;
+	CurrentScanCount++; current_Count++;
 	// update current scan dir for GUI
 	CurrentScanFile = filePath;
 	//std::cout << "\n\tfile:" << filePath;
@@ -587,7 +719,7 @@ inline int LavaScan::scanFile(std::string filePath) {
 		//QUARANTINE FILE IF NOT IN SYSTEM FOLDER
 		if (filePath.substr(3, 7) == "Windows")
 		{
-			printf("VIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!", filePath); //Infected file is in system folder
+			//printf("VIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!", filePath); //Infected file is in system folder
 		}
 		else {
 			quarantine_file(filePath, virname); //Infected file is not in system folder
@@ -596,7 +728,8 @@ inline int LavaScan::scanFile(std::string filePath) {
 	else {
 		//printf("No virus detected.\n");
 		if (ret != CL_CLEAN) {
-			printf("Error: %s\n", cl_strerror(ret)); //In case of scan error
+			//printf("Error: %s\n", cl_strerror(ret)); //In case of scan error
+			// file too large ?
 		}
 	}
 	return ret; //returns scan output value: either CL_VIRUS, CL_CLEAN or CL_ERROR
@@ -735,46 +868,36 @@ inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilel
 
 namespace fs = std::filesystem;
 
-inline int LavaScan::FileCount( std::string dirPath )
-{
-	getch();
-	int count = 0;
-	for (auto& p : fs::recursive_directory_iterator(dirPath))
-		count++;
-	
-	return count;
-}
-
-inline int LavaScan::TotalSetFileCount(std::set<std::string> p) {
-	int count = 0;
-	for (auto path : p) {
-		//std::cout << "\t" << path << ".\n";
-		struct stat s;
-		if (stat(path.c_str(), &s) == 0)
-		{
-			if (s.st_mode & S_IFDIR)
-			{
-				count += FileCount(path);
-			}
-			else if (s.st_mode & S_IFREG)
-			{
-				count++;
-			}
-			else
-			{
-				//something else
-				std::cout << "\n ok wtf is this\n";
-			}
-		}
-		else
-		{
-			//error
-			return -4;
-		}
-	}
-
-	return count;
-}
+//inline int LavaScan::TotalSetFileCount(std::set<std::string> p) {
+//	int count = 0;
+//	for (auto path : p) {
+//		//std::cout << "\t" << path << ".\n";
+		//struct stat s;
+		//if (stat(path.c_str(), &s) == 0)
+		//{
+		//	if (s.st_mode & S_IFDIR)
+		//	{
+		//		/*count += FileCount(path);*/
+		//	}
+		//	else if (s.st_mode & S_IFREG)
+		//	{
+		//		count++;
+		//	}
+//			else
+//			{
+//				//something else
+//				std::cout << "\n ok wtf is this\n";
+//			}
+//		}
+//		else
+//		{
+//			//error
+//			return -4;
+//		}
+//	}
+//
+//	return count;
+//}
 
 //Write new directories to the antibody file. Parameters are <vector containting strings of diretories>, path to antibody file
 void WriteAntibody(std::vector<std::string> directorylist, std::string antibodyfilelocation)
@@ -917,13 +1040,16 @@ bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 			{
 				//it's a directory, use scandir
 				//std::cout << path << " is a directory.";
-				scanDirectory(std::string(path+"\\"));
-				if (pm.Reccommend(path) == 1) {
-					pm.CountDirectories(path);
-				}
-				else { // 0. countfiles
-					pm.CountFiles(path);
-				}
+				//scanDirectory(std::string(path+"\\"));
+				//if (pm.Reccommend(path) == 1) {
+				//	pm.CountDirectories(path);
+				//	pm.FinishedDirectory();
+				//}
+				//else { // 0. countfiles
+				//	pm.CountFiles(path);
+				//	pm.FinishedFile();
+				//}
+				scanDirectory(std::string(path + "\\"));
 			}
 			else if (s.st_mode & S_IFREG)
 			{
@@ -1158,13 +1284,13 @@ inline std::set<char> LavaScan::get_drive_letters() {
 	DWORD drive_mask = GetLogicalDrives();//return a bit mask of the logival drive letters
 	if (drive_mask == 0) // case if unsuccessful
 	{
-		printf("Failed to get drive bitmask!\n");
+		//printf("Failed to get drive bitmask!\n");
 	}
 	int index = 0; //index keeps track of the bit position
 	while (drive_mask)
 	{
 		if (drive_mask & 1) {
-			printf("Drive %c found\n", (char)('A' + index));
+			//printf("Drive %c found\n", (char)('A' + index));
 			letters.insert((char)('A' + index));
 		}
 		// increment, check next drive
@@ -1282,6 +1408,7 @@ inline void LavaScan::UpdatePreviousScans() {
 
 inline bool LavaScan::moveQuarantineHome(std::set<q_entry> q)
 {
+	if (q.size() <= 0) { return true; }
 	for (auto thing : q) {
 		move_file(".\\LAVA_Quarantine\\"+thing.new_file_name, thing.origin_directory+thing.old_file_name); //moving file to quarantine folder
 	}
