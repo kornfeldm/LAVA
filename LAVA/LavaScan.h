@@ -275,6 +275,7 @@ public:
 	void SupportPage();
 	int scheduleScanWeekly(int inputDay, int inputHour, int inputMinute, int inputOften = 1);
 	int scheduleScanMonthly(int inputDay, int inputHour, int inputMinute, int inputOften = 1);
+	int scheduleScanDaily(int inputHour, int inputMinute, int inputOften = 1);
 	int scheduleScanOnce(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute);
 	int rmScheduledScan();
 	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
@@ -305,8 +306,58 @@ inline void LavaScan::SupportPage() {
 	
 }
 
-//Make a monthly scan. Parameters -> inputDay: Day of Week (1-7, where 1 is Sunday, 7 is Saturday); inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59); inputOften: Explained below (1-52)
+//Make a monthly scan. Parameters -> inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59); inputOften: Explained below (1-365)
 //Returns 0 on completion or errors -1, -2 or -3 if there's an issue with the parameters depending on which causes the problem
+//Optional parameter inputOften is how often you want to run it (e.g. setting it to 2 runs every other day; 15 runs every fifteeth day)
+//By default it will run every day
+inline int LavaScan::scheduleScanDaily(int inputHour, int inputMinute, int inputOften = 1) {
+	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
+	std::string often = "1";
+	std::string time = "00:00";
+	std::string hour = "00";
+	std::string minute = "00";
+
+
+	if (inputHour < 0 || inputHour > 23) {
+		return -1;
+	}
+
+	if (inputHour < 10) {
+		hour = "0" + std::to_string(inputHour);
+	}
+	else {
+		hour = std::to_string(inputHour);
+	}
+
+	if (inputMinute < 0 || inputMinute > 59) {
+		return -2;
+	}
+
+	if (inputMinute < 10) {
+		minute = "0" + std::to_string(inputMinute);
+	}
+	else {
+		minute = std::to_string(inputMinute);
+	}
+
+	time = hour + ":" + minute;
+
+
+	if (inputOften < 1 || inputOften > 365) {
+		return -3;
+	}
+	else {
+		often = std::to_string(inputOften);
+	}
+
+	std::string path = "\"C:\\Windows\\System32\\notepad.exe\""; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Daily /mo " + often + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time;
+	system(cmdcpp.c_str());
+	return 0;
+}
+
+//Make a monthly scan. Parameters -> inputDay: Day of Week (1-7, where 1 is Sunday, 7 is Saturday); inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59); inputOften: Explained below (1-52)
+//Returns 0 on completion or errors -1, -2, -3 or -4 if there's an issue with the parameters depending on which causes the problem
 //Optional parameter inputOften is how often you want to run it (e.g. setting it to 2 runs every other week; 15 runs every fifteeth week)
 //By default it will run every week
 inline int LavaScan::scheduleScanWeekly(int inputDay, int inputHour, int inputMinute, int inputOften = 1) {
@@ -380,7 +431,7 @@ inline int LavaScan::scheduleScanWeekly(int inputDay, int inputHour, int inputMi
 }
 
 //Make a monthly scan. Parameters -> inputDay: Day of Month (1-31); inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59); inputOften: Explained below (1-12)
-//Returns 0 on completion or errors -1, -2 or -3 if there's an issue with the parameters depending on which causes the problem
+//Returns 0 on completion or errors -1, -2, -3 or -4 if there's an issue with the parameters depending on which causes the problem
 //Optional parameter inputOften is how often you want to run it (e.g. setting it to 2 runs every other month; 3 runs every third month)
 //By default it will run every month
 inline int LavaScan::scheduleScanMonthly(int inputDay, int inputHour, int inputMinute, int inputOften = 1) {
@@ -430,13 +481,14 @@ inline int LavaScan::scheduleScanMonthly(int inputDay, int inputHour, int inputM
 		often = std::to_string(inputOften);
 	}
 
-	std::cout << "here";
 	std::string path = "\"C:\\Windows\\System32\\notepad.exe\""; //By launching this executable
 	std::string cmdcpp = "SCHTASKS /CREATE /SC Monthly /mo " + often + " /D " + day + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time;
 	system(cmdcpp.c_str());
 	return 0;
 }
 
+//Make a one scan. Parameters -> inputMonth: Month of year (1-12); inputDay: Day of month (1-31);  inputYear: Year (1900-3000); inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59)
+//Returns 0 on completion or errors -1, -2, -3, -4 or -5 if there's an issue with the parameters depending on which causes the problem
 inline int LavaScan::scheduleScanOnce(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute) {
 	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
 	std::string date = "01/01/2000";
