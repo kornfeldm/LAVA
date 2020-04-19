@@ -570,7 +570,8 @@ inline int LavaScan::scanFile(std::string filePath) {
 	else {
 		//printf("No virus detected.\n");
 		if (ret != CL_CLEAN) {
-			printf("Error: %s\n", cl_strerror(ret)); //In case of scan error
+			//printf("Error: %s\n", cl_strerror(ret)); //In case of scan error
+			// file too large ?
 		}
 	}
 	return ret; //returns scan output value: either CL_VIRUS, CL_CLEAN or CL_ERROR
@@ -1205,6 +1206,7 @@ inline void LavaScan::UpdatePreviousScans() {
 
 inline bool LavaScan::moveQuarantineHome(std::set<q_entry> q)
 {
+	if (q.size() <= 0) { return true; }
 	for (auto thing : q) {
 		move_file(".\\LAVA_Quarantine\\"+thing.new_file_name, thing.origin_directory+thing.old_file_name); //moving file to quarantine folder
 	}

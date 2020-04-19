@@ -846,9 +846,9 @@ inline bool FE::DrawInProgressScan()
 	//std::cout << "\n\t cf : " << CurrentScanFile;
 	// grab the top task ,if exists
 	if (!this->scanTasks.empty()) {
+		int scan = this->scanTasks.front();
 		this->maxfiles = 0;
-		std::thread t1([this]() {
-			int scan = this->scanTasks.front();
+		std::thread t1([this,scan]() {
 			switch (scan) {
 			case 1: //complete
 				//this->maxfiles = this->FileCount("C:\\");
@@ -867,9 +867,9 @@ inline bool FE::DrawInProgressScan()
 				break;
 			}
 		});
-		std::thread t2([this]() {
-			int scan = this->scanTasks.front();
+		std::thread t2([this,scan]() {
 			std::set<char> drive_letters = get_drive_letters(); //get all the drive letters
+			std::vector<std::string> dirs = ReadAntibody(this->AntibodyFileLocation);
 			switch (scan) {
 			case 1: //complete
 				// count for complete
@@ -883,7 +883,9 @@ inline bool FE::DrawInProgressScan()
 				}
 				break;
 			case 2: //quick
-				// count for quick
+				// read antibody file
+				
+				// count for quick dirs ...
 				break;
 			case 3: //adv
 				// no count here get out
@@ -893,7 +895,7 @@ inline bool FE::DrawInProgressScan()
 			}
 			});
 		scanTasks.pop();
-		t1.detach(); t2.detach();
+		t2.detach(); t1.detach();
 	}
 
 
@@ -1139,7 +1141,7 @@ inline bool FE::ChangeFontSize(float s = 28) {
 	return true;
 }
 
-static int all = 0;
+static int all = 0; static int leave = 0;
 inline bool FE::QuarantineView()
 {
 	//int sel = 0;
@@ -1159,29 +1161,44 @@ inline bool FE::QuarantineView()
 			//fprintf(stdout, "back arrow\n");
 			// move files back
 			advancedScanPaths.clear();
-			std::set<q_entry> q;
-			int i = 0;
-			for (auto thing : this->QuarantineContents) {
-				try {
-					q.insert(thing);
-				}
-				catch (int e) {
-					std::cout << "shoot we messed up quaranting!\n";
-				}
-				i++;
+			if (this->num_found <= 0) {
+				//reset some values and leave
 			}
+			else {
+				std::set<q_entry> q;
+				
+				int i = 0;
+				if (QuarantineContents.size() > 0) {
+					for (auto thing : this->QuarantineContents) {
+						try {
+							q.insert(thing);
+						}
+						catch (int e) {
+							std::cout << "shoot we messed up quaranting!\n";
+						}
+						i++;
+					}
+				}
+				if (q.size() > 0) {
+					this->moveQuarantineHome(q);
+				}
+			}
+			
 			all = 0; //for next scan
 			this->num_removed = 0;
-			//this->remove_quarantined_files(toRemove);
-			this->moveQuarantineHome(q);
 			this->log_scan();
 			this->view = 0;
+			leave = 1;
 			nk_clear(this->ctx);
 		}
 		this->drawImageSubRect(&this->backArrow, &bar);
 		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
+	if (leave == 1) {
+		leave = 0;
+		return true;
+	}
 
 	// text to chose delete shit
 	if (nk_begin(this->ctx, "choseshittodelete", nk_rect(bar.w+50,5,900,30),
@@ -1268,21 +1285,25 @@ inline bool FE::QuarantineView()
 			std::set<std::string>toRemove;
 			std::set<q_entry> q;
 			int i = 0;
-			for (auto thing : this->QuarantineContents) {
-				try {
-					if (array.at(i) == 1)
-						toRemove.insert(thing.old_file_name);
-					else
-						q.insert(thing);
+			if (this->QuarantineContents.size() > 0) {
+				for (auto thing : this->QuarantineContents) {
+					try {
+						if (array.at(i) == 1)
+							toRemove.insert(thing.old_file_name);
+						else
+							q.insert(thing);
+					}
+					catch (int e) {
+						std::cout << "shoot we messed up quaranting!\n";
+					}
+					i++;
 				}
-				catch (int e) {
-					std::cout << "shoot we messed up quaranting!\n";
-				}
-				i++;
+				this->remove_quarantined_files(toRemove);
+				this->num_removed = toRemove.size();
 			}
+			
 			all = 0; //for next scan
-			this->num_removed = toRemove.size();
-			this->remove_quarantined_files(toRemove);
+			this->num_removed = 0;
 			this->moveQuarantineHome(q);
 			this->log_scan();
 			this->view = 0;
