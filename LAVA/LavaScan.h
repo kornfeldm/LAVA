@@ -541,15 +541,18 @@ inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilel
 	{
 		if (is_empty(antibody))
 		{
-			std::cout << "Antibody File is Empty" << std::endl;
-			antibody << "%USERPROFILE%\\Documents" << std::endl;
-			antibody << "%USERPROFILE%\\Downloads" << std::endl;
 			antibody.close();
+			std::ofstream buildFile(antibodyfilelocation);
+			std::cout << "Antibody File is Empty" << std::endl;
+			buildFile << "%USERPROFILE%\\Documents" << std::endl;
+			buildFile << "%USERPROFILE%\\Downloads" << std::endl;
+			buildFile.close();
 			directorylist.push_back("%USERPROFILE%\\Documents");
 			directorylist.push_back("%USERPROFILE%\\Documents");
 		}
 		else{
 			std::cout << "Antibody File is not Empty" << std::endl;
+			std::cout << "Reading the Antibody File..." << std::endl;
 			while (!antibody.eof())
 			{
 				getline(antibody, listedirectory);
@@ -557,7 +560,7 @@ inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilel
 				if (listedirectory != "")
 				{
 					directorylist.push_back(listedirectory);
-					std::cout << listedirectory << std::endl;
+					std::cout << "Adding Directory: " <<listedirectory << std::endl;
 				}
 			}
 			antibody.close();
@@ -708,18 +711,23 @@ bool LavaScan::QuickScan()
 	bool clean = true;
 	std::vector<std::string> directorylist = ReadAntibody(this->AntibodyFileLocation);
 	//For each directory:
+	std::cout << "ReadyToScan" << std::endl;
 	for (int i = 0; i < directorylist.size(); i++)
 	{
 		std::cout << "Scanning Folder "<< i + 1 << " of " << directorylist.size() << std::endl;
 		std::cout << "Scanning Folder " << directorylist[i] << std::endl;
 		//Scan it
+		//Will only update clean from true to false, but scan either way
 		if (clean == true)
 		{
+			std::cout << "Calling scan function" << std::endl;
 			clean = scanDirectory(directorylist[i]);
 		} else {
+			std::cout << "Calling scan function" << std::endl;
 			scanDirectory(directorylist[i]);
 		}
 	}
+	std::cout << "All Scans called" << std::endl;
 	this->finish_time = get_time();//get end time for scan
 	//log_scan("Quick",start_time, finish_time, num_found, num_found); //log scan
 	isScanDone = true;
