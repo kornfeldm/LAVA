@@ -11,6 +11,74 @@ std::string operator"" _quoted(const char* text, std::size_t len) {
 long int current_Count;
 long int total_Count; 
 
+#include <string>
+#include <iostream>
+#include <direct.h>
+#include <windows.h>
+#include <conio.h>
+
+//long int              iCount = 0; // global file countr, replaced with total_count
+
+int countFiles(const std::string& refcstrRootDirectory, const std::string& refcstrExtension, bool bSubdirectories)
+{
+	//int              iCount = 0;
+	std::string      strFilePath;          // Filepath
+	std::string      strPattern;           // Pattern
+	std::string      strExtension;         // Extension
+	HANDLE           hFile;                // Handle to file
+	WIN32_FIND_DATAA FileInformation;      // File information
+
+
+	strPattern = refcstrRootDirectory + "\\*.*";
+	hFile = FindFirstFileA(strPattern.c_str(), &FileInformation);
+	if (hFile != INVALID_HANDLE_VALUE)
+	{
+		do
+		{
+			if (FileInformation.cFileName[0] != '.')
+			{
+				strFilePath.erase();
+				strFilePath = refcstrRootDirectory +
+					"\\" +
+					FileInformation.cFileName;
+
+				if (FileInformation.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+				{
+					if (bSubdirectories)
+					{
+						// Search subdirectory
+						int iRC = countFiles(strFilePath,
+							refcstrExtension,
+							bSubdirectories);
+						if (iRC != -1)
+							total_Count += iRC;
+						else
+							return -1;
+					}
+				}
+				else
+				{
+					// Check extension
+					strExtension = FileInformation.cFileName;
+					strExtension = strExtension.substr(strExtension.rfind(".") + 1);
+
+					if ((refcstrExtension == "*") ||
+						(strExtension == refcstrExtension))
+					{
+						// Increase counter
+						++total_Count;
+					}
+				}
+			}
+		} while (FindNextFileA(hFile, &FileInformation) == TRUE);
+
+		// Close handle
+		FindClose(hFile);
+	}
+
+	return total_Count;
+}
+
 class ProgressMonitor {
 
 	/*
@@ -236,7 +304,7 @@ public:
 
 void FileCount(std::string dirPath)
 {
-	auto dirIter = std::filesystem::recursive_directory_iterator(dirPath);
+	auto dirIter = std::filesystem::recursive_directory_iterator(dirPath, std::filesystem::directory_options::skip_permission_denied);
 	struct stat s;
 	if (stat(dirPath.c_str(), &s) == 0)
 	{
@@ -259,6 +327,42 @@ void FileCount(std::string dirPath)
 	}
 }
 
+class WorkQueue
+{
+	std::condition_variable work_available;
+	std::mutex work_mutex;
+	std::queue<std::string> work;
+
+public:
+	void push_work(std::string item)
+	{
+		std::unique_lock<std::mutex> lock(work_mutex);
+
+		bool was_empty = work.empty();
+		work.push(item);
+
+		lock.unlock();
+
+		if (was_empty)
+		{
+			work_available.notify_one();
+		}
+	}
+
+	std::string wait_and_pop()
+	{
+		std::unique_lock<std::mutex> lock(work_mutex);
+		while (work.empty())
+		{
+			work_available.wait(lock);
+		}
+
+		std::string tmp = work.front();
+		work.pop();
+		return tmp;
+	}
+};
+
 class LavaScan
 {
 public:
@@ -279,6 +383,7 @@ public:
 	int num_found;
 	int num_removed;
 	ProgressMonitor pm;
+	WorkQueue work_queue;
 	// constructor
 	LavaScan(); // default
 	/* scans */
@@ -456,7 +561,7 @@ inline int LavaScan::scanFile(std::string filePath) {
 		//QUARANTINE FILE IF NOT IN SYSTEM FOLDER
 		if (filePath.substr(3, 7) == "Windows")
 		{
-			printf("VIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!", filePath); //Infected file is in system folder
+			//printf("VIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!", filePath); //Infected file is in system folder
 		}
 		else {
 			quarantine_file(filePath, virname); //Infected file is not in system folder
@@ -976,13 +1081,13 @@ inline std::set<char> LavaScan::get_drive_letters() {
 	DWORD drive_mask = GetLogicalDrives();//return a bit mask of the logival drive letters
 	if (drive_mask == 0) // case if unsuccessful
 	{
-		printf("Failed to get drive bitmask!\n");
+		//printf("Failed to get drive bitmask!\n");
 	}
 	int index = 0; //index keeps track of the bit position
 	while (drive_mask)
 	{
 		if (drive_mask & 1) {
-			printf("Drive %c found\n", (char)('A' + index));
+			//printf("Drive %c found\n", (char)('A' + index));
 			letters.insert((char)('A' + index));
 		}
 		// increment, check next drive

@@ -9,9 +9,12 @@
 #include <ShlObj.h>
 #include <assert.h>
 #include <atlstr.h>
+#include <chrono>
 #include <CommCtrl.h>
+#include <condition_variable>
 #include <conio.h>
 #include <ctime>
+#include <direct.h>
 #include <dirent.h>
 #include <dlgs.h>
 #include <fcntl.h>
@@ -21,6 +24,7 @@
 #include <Lmcons.h>
 #include <limits.h>
 #include <math.h>
+#include <mutex>
 #include <queue>
 #include <regex>
 #include <set>
@@ -68,6 +72,14 @@
 
 int main()
 {
+	// how to use count files f
+	/*iNumberOfFiles = countFiles("c:", "*", true);
+	if (iNumberOfFiles == -1)
+	{
+		std::cout << "Error " << std::endl;
+		return -1;
+	}*/
+
 	std::cout << "Hello World!\n";
 	
 	FE FrontEnd = FE();

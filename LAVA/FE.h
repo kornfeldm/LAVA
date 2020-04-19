@@ -849,7 +849,6 @@ inline bool FE::DrawInProgressScan()
 		this->maxfiles = 0;
 		std::thread t1([this]() {
 			int scan = this->scanTasks.front();
-			scanTasks.pop();
 			switch (scan) {
 			case 1: //complete
 				//this->maxfiles = this->FileCount("C:\\");
@@ -868,7 +867,33 @@ inline bool FE::DrawInProgressScan()
 				break;
 			}
 		});
-		t1.detach();
+		std::thread t2([this]() {
+			int scan = this->scanTasks.front();
+			std::set<char> drive_letters = get_drive_letters(); //get all the drive letters
+			switch (scan) {
+			case 1: //complete
+				// count for complete
+				
+				for (char letter : drive_letters) {
+					std::string dirs = "";
+					dirs += letter;
+					dirs += ":\\";
+					//std::cout << "Scanning drive " + dirs << std::endl;
+					countFiles(dirs,"*",true);
+				}
+				break;
+			case 2: //quick
+				// count for quick
+				break;
+			case 3: //adv
+				// no count here get out
+				break;
+			default:
+				break;
+			}
+			});
+		scanTasks.pop();
+		t1.detach(); t2.detach();
 	}
 
 
@@ -941,6 +966,9 @@ inline bool FE::DrawInProgressScan()
 					//fprintf(stdout, "testestestest\n");
 					this->view = 5;
 					nk_clear(this->ctx);
+					// reset counters
+					current_Count = 0;
+					total_Count = 0;
 				}
 			}
 			// draw txt 
