@@ -357,6 +357,14 @@ public:
 	}
 };
 
+std::string GetExePath();
+
+std::string GetAntibodyPath() {
+	std::string ExePath = GetExePath();
+	std::string AntibodyFile = ExePath + "\\..\\..\\Locations.LavaAnti";
+	return AntibodyFile;
+}
+
 class LavaScan
 {
 public:
@@ -405,9 +413,9 @@ public:
 	int scheduleScanOnce(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute);
 	int rmScheduledScan();
 	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
-	void AddDirectoriesToAntibody(std::vector<std::string> list, std::string antibodyfilelocation = GetAntibodyPath());
+	void AddDirectoriesToAntibody(std::vector<std::string> list, std::string antibodyfilelocation);
 	bool reset_QC();
-	std::set<std::string> ReadAntibody();
+	std::vector<std::string> ReadAntibody(std::string antibodyfilelocation);
 	std::string GetDocumentsFolder();
 	std::string GetDownloadsFolder();
 	//void FileCount(std::string dirPath);
@@ -423,13 +431,6 @@ public:
 	bool update_virus_database();
 };
 
-std::string GetExePath();
-
-std::string GetAntibodyPath() {
-	std::string ExePath = GetExePath();
-	std::string AntibodyFile = ExePath + "\\..\\..\\Locations.LavaAnti";
-	return AntibodyFile;
-}
 
 //Open support page in the default browser
 inline void LavaScan::SupportPage() {
@@ -818,7 +819,7 @@ bool is_empty(std::istream& pFile)
 inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilelocation = GetAntibodyPath())
 {
 	//std::cout << "Antibody file location: " << antibodyfilelocation << std::endl;
-	std::set<std::string> directorylist;
+	std::vector<std::string> directorylist;
 	std::fstream antibody;
 	
 	std::string listedirectory;
@@ -844,8 +845,8 @@ inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilel
 			//directorylist.push_back("%USERPROFILE%\\Documents");
 			//directorylist.push_back("%USERPROFILE%\\Documents");
 			if (this->GetDownloadsFolder() != "")
-				directorylist.insert(this->GetDownloadsFolder());
-			directorylist.insert(this->GetDocumentsFolder());
+				directorylist.push_back(this->GetDownloadsFolder());
+			directorylist.push_back(this->GetDocumentsFolder());
 		}
 		else{
 			//std::cout << "Antibody File is not Empty" << std::endl;
@@ -856,7 +857,7 @@ inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilel
 				//The last line is empty, don't count it as a directory
 				if (listedirectory != "" && listedirectory != std::string(1,'\r'))
 				{
-					directorylist.insert(listedirectory);
+					directorylist.push_back(listedirectory);
 					//std::cout << "Adding Directory: " <<listedirectory << std::endl;
 				}
 			}
@@ -871,8 +872,8 @@ inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilel
 		directorylist.push_back("%USERPROFILE%\\Documents");
 		directorylist.push_back("%USERPROFILE%\\Documents");*/
 		if (this->GetDownloadsFolder() != "")
-			directorylist.insert(this->GetDownloadsFolder());
-		directorylist.insert(this->GetDocumentsFolder());
+			directorylist.push_back(this->GetDownloadsFolder());
+		directorylist.push_back(this->GetDocumentsFolder());
 
 	}
 	return directorylist;
@@ -948,7 +949,7 @@ namespace fs = std::filesystem;
 void WriteAntibody(std::vector<std::string> directorylist, std::string antibodyfilelocation = GetAntibodyPath())
 {
 	std::ofstream antibody;
-	antibody.open(this->AntibodyFileLocation);
+	antibody.open(antibodyfilelocation);
 	if (antibody.is_open())
 	{
 		for (auto s : directorylist) {
@@ -1045,7 +1046,7 @@ bool LavaScan::QuickScan()
 	this->start_time = get_time();//getting start time for scan
 	//Keeps track of if malware is detected and where
 	bool clean = true;
-	std::set<std::string> directorylist = ReadAntibody();
+	std::vector<std::string> directorylist = ReadAntibody();
 	//For each directory:
 	//std::cout << "ReadyToScan" << std::endl;
 	//for (int i = 0; i < directorylist.size(); i++)

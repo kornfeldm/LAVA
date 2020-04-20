@@ -861,7 +861,7 @@ inline bool FE::DrawInProgressScan()
 		scanTasks.pop();
 		std::thread t2([this, scan]() {
 			std::set<char> drive_letters = get_drive_letters(); //get all the drive letters
-			std::set<std::string> dirs = ReadAntibody();
+			std::vector<std::string> dirs = ReadAntibody(GetAntibodyPath());
 			switch (scan) {
 			case 1: //complete
 				// count for complete
