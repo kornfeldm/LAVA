@@ -314,34 +314,34 @@ inline bool FE::drawImage(struct nk_image *img)
 	return true;
 }
 
-inline bool FE::dateInput() {
-	/*
-	char buf[256] = {0};
-	// in window
-	nk_edit_string_zero_terminated (ctx, NK_EDIT_FIELD, buf, sizeof(buf) - 1, nk_filter_default);
-	if (nk_button_label (ctx, "Done"))
-		printf ("%s\n", buf);
-	*/
-	int d;
-	int m;
-	int y;
-	std::cin >> d; // read the day
-	if (std::cin.get() != '/') // make sure there is a slash between DD and MM
-	{
-		std::cout << "expected /\n";
-		return 1;
-	}
-	std::cin >> m; // read the month
-	if (std::cin.get() != '/') // make sure there is a slash between MM and YYYY
-	{
-		std::cout << "expected /\n";
-		return 1;
-	}
-	std::cin >> y; // read the year
-	std::cout << "input date: " << d << "/" << m << "/" << y << "\n";
-
-	return true;
-}
+//inline bool FE::dateInput() {
+//	/*
+//	char buf[256] = {0};
+//	// in window
+//	nk_edit_string_zero_terminated (ctx, NK_EDIT_FIELD, buf, sizeof(buf) - 1, nk_filter_default);
+//	if (nk_button_label (ctx, "Done"))
+//		printf ("%s\n", buf);
+//	*/
+//	int d;
+//	int m;
+//	int y;
+//	std::cin >> d; // read the day
+//	if (std::cin.get() != '/') // make sure there is a slash between DD and MM
+//	{
+//		std::cout << "expected /\n";
+//		return 1;
+//	}
+//	std::cin >> m; // read the month
+//	if (std::cin.get() != '/') // make sure there is a slash between MM and YYYY
+//	{
+//		std::cout << "expected /\n";
+//		return 1;
+//	}
+//	std::cin >> y; // read the year
+//	std::cout << "input date: " << d << "/" << m << "/" << y << "\n";
+//
+//	return true;
+//}
 
 inline bool FE::drawImageSubRect(struct nk_image* img, struct nk_rect *r)
 {
@@ -367,8 +367,8 @@ inline bool FE::Display() {
 	}
 	else if (this->view == 5) //quarentine view
 		this->QuarantineView();
-	else
-		std::cout << "ERRRRRRORRRRR\n";
+	else {}
+		//std::cout << "ERRRRRRORRRRR\n";
 	return true;
 }
 
@@ -901,7 +901,7 @@ inline bool FE::DrawInProgressScan()
 		nk_modify modifyable = NK_FIXED;
 		nk_layout_row_dynamic(this->ctx, traplogo.w, 1);
 		nk_progress(ctx, &currentValue, 100, NULL);
-		std::cout << "\n  " << currentValue;
+		//std::cout << "\n  " << currentValue;
 	}
 	nk_end(this->ctx);
 
@@ -1511,6 +1511,7 @@ inline bool FE::displayScheduleArrows()
 				for (auto s : advancedScanPaths) {
 					std::cout << "\n\t " << s;
 				}*/
+				scheduleScanDaily(sel_date.tm_mon, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
 				break;
 			case 1: // weekly
 				/*std::cout << "\nweekly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " weekz\n";
@@ -1518,15 +1519,20 @@ inline bool FE::displayScheduleArrows()
 				for (auto s : advancedScanPaths) {
 					std::cout << "\n\t " << s;
 				}*/
+				scheduleScanWeekly(sel_date.tm_mon, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
 				break;
 			case 2: //monthly
 				/*std::cout << "\nmonthly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << this->_schedulerInfo.reccuring << " months\n";
-				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";
-				for (auto s : advancedScanPaths) {
+				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";*/
+				/*for (auto s : advancedscanpaths) {
 					std::cout << "\n\t " << s;
 				}*/
+				scheduleScanMonthly(sel_date.tm_mday, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
 				break;
-			default: //3=one time and we done want that so do nothing tyfys
+			default: //3=one time 
+				/*std::cout << "\nmonthly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << this->_schedulerInfo.reccuring << " months\n";
+				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";*/
+				scheduleScanOnce(sel_date.tm_mon, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min);
 				break;
 			}
 			this->view = 0;
@@ -1703,15 +1709,15 @@ inline bool FE::displayCalendar(int x, int y, bool reccurring)
 			switch (this->_schedulerInfo.type) {
 			case 0: //daily
 				nk_layout_row_dynamic(ctx, 30, 1);
-				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Days: ", 0, this->_schedulerInfo.reccuring, 7, 1, 1);
+				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Days: ", 1, this->_schedulerInfo.reccuring, 365, 1, 1);
 				break;
 			case 1: // weekly
 				nk_layout_row_dynamic(ctx, 30, 1);
-				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Weeks: ", 0, this->_schedulerInfo.reccuring, 52, 1, 1);
+				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Weeks: ", 1, this->_schedulerInfo.reccuring, 52, 1, 1);
 				break;
 			case 2: //monthly
 				nk_layout_row_dynamic(ctx, 30, 1);
-				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Months: ", 0, this->_schedulerInfo.reccuring, 12, 1, 1);
+				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Months: ", 1, this->_schedulerInfo.reccuring, 12, 1, 1);
 				break;
 			default: //3=one time and we done want that so do nothing tyfys
 				break;
