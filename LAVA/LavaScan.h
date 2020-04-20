@@ -411,6 +411,7 @@ public:
 	int scheduleScanOnce(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute);
 	int rmScheduledScan();
 	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
+	void AddDirectoriesToAntibody(std::vector<std::string> list, std::string antibodyfilelocation = GetAntibodyPath());
 	bool reset_QC();
 	std::vector<std::string> ReadAntibody(std::string antibodyfilelocation);
 	//void FileCount(std::string dirPath);
@@ -427,6 +428,12 @@ public:
 };
 
 std::string GetExePath();
+
+std::string GetAntibodyPath() {
+	std::string ExePath = GetExePath();
+	std::string AntibodyFile = ExePath + "\\..\\..\\Locations.LavaAnti";
+	return AntibodyFile;
+}
 
 //Open support page in the default browser
 inline void LavaScan::SupportPage() {
@@ -813,7 +820,7 @@ bool is_empty(std::istream& pFile)
 }
 
 //Read each line in the specified file and output a string vector containing each directory
-inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilelocation)
+inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilelocation = GetAntibodyPath())
 {
 	std::cout << "Antibody file location: " << antibodyfilelocation << std::endl;
 	std::vector<std::string> directorylist;
@@ -899,8 +906,9 @@ namespace fs = std::filesystem;
 //	return count;
 //}
 
+//NOTE: Never call this directly. It overwrites antibody file. It's here because AddDirectoriesToAntibody (and AddToAntibody) use it. They do not overwrite - use them instead.
 //Write new directories to the antibody file. Parameters are <vector containting strings of diretories>, path to antibody file
-void WriteAntibody(std::vector<std::string> directorylist, std::string antibodyfilelocation)
+void WriteAntibody(std::vector<std::string> directorylist, std::string antibodyfilelocation = GetAntibodyPath())
 {
 	std::ofstream antibody;
 	antibody.open(antibodyfilelocation);
@@ -914,32 +922,33 @@ void WriteAntibody(std::vector<std::string> directorylist, std::string antibodyf
 	}
 }
 
+
+//NOTE: You're almost always better off using AddDirectoriesToAntibody instead to pass a vector. This is a help function and would rarely be called directly
+//Adds the single directoru passed to the antibody file. Will remove duplicates first. The second optional parameter defaults to the antibody file location.
 //Check if a directory is in the antibody file. Add it if it isn't.
 //Ignore it if it's a subdirectory.
 //Replace any subdirectories
-inline void LavaScan::AddToAntibody(std::string dirPath, std::string antibodyfilelocation)
+void LavaScan::AddToAntibody(std::string dirPath, std::string antibodyfilelocation = GetAntibodyPath())
 {
 	std::vector<std::string> existing = ReadAntibody(antibodyfilelocation);
+	std::vector<std::string> duplicates;
 	bool newDirectory = true;
 	int replace = 0;
-	for (int i = 0; i < existing.size(); i++)
-	{
-		if (strstr(existing[i].c_str(), dirPath.c_str()) != NULL)
-		{
+	for (int i = 0; i < existing.size(); i++) {
+		if (strstr(existing[i].c_str(), dirPath.c_str()) != NULL) {
+			duplicates.push_back(existing[i].c_str());
+		}
+		if (strstr(dirPath.c_str(), existing[i].c_str()) != NULL) {
 			newDirectory = false;
 		}
-		if (strstr(dirPath.c_str(), existing[i].c_str()) != NULL)
-		{
-			existing[i] = dirPath;
-		}
 	}
-	//Check for duplicates --This code should be tested more, it's just a temporary fix.
-	for (int i = 0; i < existing.size(); i++)
-	{
-		for (int j = 0; j < existing.size(); j++)
+
+	for (int i = 0; i < existing.size(); i++) {
+		for (int j = 0; j < duplicates.size(); j++)
 		{
-			if (existing[i] == existing[j])
+			if (existing[i] == duplicates[j])
 			{
+				// Element in vector.
 				existing.erase(existing.begin() + i);
 			}
 		}
@@ -947,12 +956,20 @@ inline void LavaScan::AddToAntibody(std::string dirPath, std::string antibodyfil
 
 	if (newDirectory == true)
 	{
-		std::vector<std::string> directoryToAdd;
-		directoryToAdd.push_back(dirPath);
-		WriteAntibody(directoryToAdd, antibodyfilelocation);
+		existing.push_back(dirPath);
+		WriteAntibody(existing, antibodyfilelocation);
 	}
-	remove(antibodyfilelocation.c_str());
-	WriteAntibody(existing, antibodyfilelocation);
+	return;
+}
+
+//Adds the vector passed to the antibody file. Will remove duplicates first. The second optional parameter defaults to the antibody file location.
+void LavaScan::AddDirectoriesToAntibody(std::vector<std::string> list, std::string antibodyfilelocation = GetAntibodyPath()) {
+
+	for (int i = 0; i < list.size(); i++)
+	{
+		AddToAntibody(list[i], antibodyfilelocation);
+	}
+	return;
 }
 
 inline bool LavaScan::reset_QC() { //after a scan just reset quarantine contents
