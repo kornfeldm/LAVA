@@ -563,7 +563,7 @@ bool FE::QuickScansView() {
 		nk_layout_row_static(ctx, 65, 400, 1);
 		if (nk_button_label(ctx, "")) {
 			//fprintf(stdout, "do quick scan pressed\n");
-			this->currentScanGoing = "Quick Scan";
+			this->currentScanGoing = "Quick";
 			this->view = 3;
 			//this->QuickScan();
 			this->scanTasks.push(2);
@@ -841,13 +841,59 @@ inline bool FE::DrawHistoryPage()
 	return true;
 }
 
+std::string ReplaceString(std::string subject, const std::string& search,
+	const std::string& replace) {
+	size_t pos = 0;
+	while ((pos = subject.find(search, pos)) != std::string::npos) {
+		subject.replace(pos, search.length(), replace);
+		pos += replace.length();
+	}
+	return subject;
+}
+
 inline bool FE::DrawInProgressScan()
 {
 	//std::cout << "\n\t cf : " << CurrentScanFile;
 	// grab the top task ,if exists
 	if (!this->scanTasks.empty()) {
 		int scan = this->scanTasks.front();
-		this->maxfiles = 0;
+		//this->maxfiles = 0;
+		scanTasks.pop();
+		std::thread t2([this, scan]() {
+			std::set<char> drive_letters = get_drive_letters(); //get all the drive letters
+			std::set<std::string> dirs = ReadAntibody();
+			switch (scan) {
+			case 1: //complete
+				// count for complete
+
+				for (char letter : drive_letters) {
+					std::string dirs = "";
+					dirs += letter;
+					dirs += ":\\";
+					//std::cout << "Scanning drive " + dirs << std::endl;
+					countFiles(dirs, "*", true);
+				}
+				break;
+			case 2: //quick
+				// read antibody file
+				total_Count = 0;
+
+				for (auto path : dirs) {
+					//std::string p = ReplaceString(path, "\\", "\\\\");
+					std::replace(path.begin(), path.end(), '\\', '/');
+					//std::cout << "\n\t " << path;
+					countFiles(path, "*", true);
+				}
+				// count for quick dirs ...
+				break;
+			case 3: //adv
+				// no count here get out
+				break;
+			default:
+				break;
+			}
+			}); t2.detach();
+
 		std::thread t1([this,scan]() {
 			switch (scan) {
 			case 1: //complete
@@ -866,36 +912,7 @@ inline bool FE::DrawInProgressScan()
 			default:
 				break;
 			}
-		});
-		std::thread t2([this,scan]() {
-			std::set<char> drive_letters = get_drive_letters(); //get all the drive letters
-			std::vector<std::string> dirs = ReadAntibody(this->AntibodyFileLocation);
-			switch (scan) {
-			case 1: //complete
-				// count for complete
-				
-				for (char letter : drive_letters) {
-					std::string dirs = "";
-					dirs += letter;
-					dirs += ":\\";
-					//std::cout << "Scanning drive " + dirs << std::endl;
-					countFiles(dirs,"*",true);
-				}
-				break;
-			case 2: //quick
-				// read antibody file
-				
-				// count for quick dirs ...
-				break;
-			case 3: //adv
-				// no count here get out
-				break;
-			default:
-				break;
-			}
-			});
-		scanTasks.pop();
-		t2.detach(); t1.detach();
+		}); t1.detach();
 	}
 
 
@@ -936,13 +953,20 @@ inline bool FE::DrawInProgressScan()
 		/*nk_size currentValue = this->pm.GetPercentage();*/
 		/*nk_size currentValue = 69;
 		nk_size maxValue = 100;*/
-		long double curcount = current_Count;
-		long double totcount = total_Count;
-		nk_size currentValue = (curcount / totcount)*100;
+		unsigned long int curcount = current_Count;
+		unsigned long int totcount = total_Count;
+		nk_size currentValue;
+		if (curcount == 0 || totcount ==0) {
+			currentValue = 1;
+		}
+		else {
+			 currentValue = (curcount / totcount) * 100;
+		}
+		
 		nk_modify modifyable = NK_FIXED;
 		nk_layout_row_dynamic(this->ctx, traplogo.w, 1);
 		nk_progress(ctx, &currentValue, 100, NULL);
-		//std::cout << "\n  " << currentValue << " " << current_Count << "/" << total_Count;
+		//std::cout << "\n  " << curcount << "\\" << totcount << " = " << currentValue;
 	}
 	nk_end(this->ctx);
 
@@ -964,7 +988,7 @@ inline bool FE::DrawInProgressScan()
 			nk_layout_row_static(ctx, r.h, r.w, 1);
 			if (nk_button_label(ctx, "")) {
 				// run adv scan now
-				if (advancedScanPaths.size() > 0) {
+				if (isScanDone == true ) {
 					//fprintf(stdout, "testestestest\n");
 					this->view = 5;
 					nk_clear(this->ctx);
@@ -1174,7 +1198,7 @@ inline bool FE::QuarantineView()
 							q.insert(thing);
 						}
 						catch (int e) {
-							std::cout << "shoot we messed up quaranting!\n";
+							//std::cout << "shoot we messed up quaranting!\n";
 						}
 						i++;
 					}
@@ -1294,7 +1318,7 @@ inline bool FE::QuarantineView()
 							q.insert(thing);
 					}
 					catch (int e) {
-						std::cout << "shoot we messed up quaranting!\n";
+						//std::cout << "shoot we messed up quaranting!\n";
 					}
 					i++;
 				}
@@ -1530,7 +1554,7 @@ inline bool FE::ScheduleAdvScanView()
 		break;
 
 	default: 
-		std::cout << "\n  flip";
+		//std::cout << "\n  flip";
 		break;
 	}
 

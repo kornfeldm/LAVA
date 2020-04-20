@@ -8,14 +8,8 @@ std::string operator"" _quoted(const char* text, std::size_t len) {
 	return "\"" + std::string(text, len) + "\"";
 }
 
-long int current_Count;
-long int total_Count; 
-
-#include <string>
-#include <iostream>
-#include <direct.h>
-#include <windows.h>
-#include <conio.h>
+unsigned long int current_Count;
+unsigned long int total_Count;
 
 //long int              iCount = 0; // global file countr, replaced with total_count
 
@@ -28,14 +22,14 @@ int countFiles(const std::string& refcstrRootDirectory, const std::string& refcs
 	HANDLE           hFile;                // Handle to file
 	WIN32_FIND_DATAA FileInformation;      // File information
 
-
 	strPattern = refcstrRootDirectory + "\\*.*";
 	hFile = FindFirstFileA(strPattern.c_str(), &FileInformation);
 	if (hFile != INVALID_HANDLE_VALUE)
 	{
 		do
 		{
-			if (FileInformation.cFileName[0] != '.')
+			//if (FileInformation.cFileName[0] != '.' && FileInformation.cFileName[0] != '\\')
+			if (strcmp(FileInformation.cFileName, ".") && strcmp(FileInformation.cFileName, ".."))
 			{
 				strFilePath.erase();
 				strFilePath = refcstrRootDirectory +
@@ -76,7 +70,7 @@ int countFiles(const std::string& refcstrRootDirectory, const std::string& refcs
 		FindClose(hFile);
 	}
 
-	return total_Count;
+	return 0;
 }
 
 class ProgressMonitor {
@@ -367,7 +361,7 @@ class LavaScan
 {
 public:
 	// memburs
-	std::string AntibodyFileLocation = "test.LavaAnti";
+	std::string AntibodyFileLocation = "";
 	int fd, ret, CurrentScanCount;
 	unsigned long int size = 0; std::string start_time; std::string finish_time;
 	unsigned int sigs = 0;
@@ -410,9 +404,12 @@ public:
 	int scheduleScanDaily(int inputHour, int inputMinute, int inputOften = 1);
 	int scheduleScanOnce(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute);
 	int rmScheduledScan();
-	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
+	void WriteAntibody(std::set<std::string> directorylist);
+	void AddToAntibody(std::string dirPath);
 	bool reset_QC();
-	std::vector<std::string> ReadAntibody(std::string antibodyfilelocation);
+	std::set<std::string> ReadAntibody();
+	std::string GetDocumentsFolder();
+	std::string GetDownloadsFolder();
 	//void FileCount(std::string dirPath);
 	int TotalSetFileCount(std::set<std::string> p);
 	std::set<std::string> countQuarantineContents();
@@ -442,7 +439,7 @@ inline void LavaScan::SupportPage() {
 //Returns 0 on completion or errors -1, -2 or -3 if there's an issue with the parameters depending on which causes the problem
 //Optional parameter inputOften is how often you want to run it (e.g. setting it to 2 runs every other day; 15 runs every fifteeth day)
 //By default it will run every day
-inline int LavaScan::scheduleScanDaily(int inputHour, int inputMinute, int inputOften = 1) {
+inline int LavaScan::scheduleScanDaily(int inputHour, int inputMinute, int inputOften ) {
 	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
 	std::string often = "1";
 	std::string time = "00:00";
@@ -492,7 +489,7 @@ inline int LavaScan::scheduleScanDaily(int inputHour, int inputMinute, int input
 //Returns 0 on completion or errors -1, -2, -3 or -4 if there's an issue with the parameters depending on which causes the problem
 //Optional parameter inputOften is how often you want to run it (e.g. setting it to 2 runs every other week; 15 runs every fifteeth week)
 //By default it will run every week
-inline int LavaScan::scheduleScanWeekly(int inputDay, int inputHour, int inputMinute, int inputOften = 1) {
+inline int LavaScan::scheduleScanWeekly(int inputDay, int inputHour, int inputMinute, int inputOften) {
 	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
 	std::string often = "1";
 	std::string day = "Sun";
@@ -566,7 +563,7 @@ inline int LavaScan::scheduleScanWeekly(int inputDay, int inputHour, int inputMi
 //Returns 0 on completion or errors -1, -2, -3 or -4 if there's an issue with the parameters depending on which causes the problem
 //Optional parameter inputOften is how often you want to run it (e.g. setting it to 2 runs every other month; 3 runs every third month)
 //By default it will run every month
-inline int LavaScan::scheduleScanMonthly(int inputDay, int inputHour, int inputMinute, int inputOften = 1) {
+inline int LavaScan::scheduleScanMonthly(int inputDay, int inputHour, int inputMinute, int inputOften ) {
 	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
 	std::string often = "1";
 	std::string day = "1";
@@ -738,7 +735,6 @@ inline int LavaScan::scanFile(std::string filePath) {
 inline void LavaScan::iterateDirectory(std::string directory, bool clean)
 {
 	//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
-
 	//Prevents an infinite loop since ./ comes up as a folder for each directory
 	if (directory.substr(directory.length() - 2) == ".\\")
 	{
@@ -813,14 +809,14 @@ bool is_empty(std::istream& pFile)
 }
 
 //Read each line in the specified file and output a string vector containing each directory
-inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilelocation)
+inline std::set<std::string> LavaScan::ReadAntibody()
 {
-	std::cout << "Antibody file location: " << antibodyfilelocation << std::endl;
-	std::vector<std::string> directorylist;
+	//std::cout << "Antibody file location: " << antibodyfilelocation << std::endl;
+	std::set<std::string> directorylist;
 	std::fstream antibody;
 	
 	std::string listedirectory;
-	antibody.open(antibodyfilelocation, std::fstream::in | std::fstream::out | std::fstream::app);
+	antibody.open(this->AntibodyFileLocation, std::fstream::in | std::fstream::out | std::fstream::app);
 
 	if (!antibody) {
 		
@@ -831,25 +827,31 @@ inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilel
 		if (is_empty(antibody))
 		{
 			antibody.close();
-			std::ofstream buildFile(antibodyfilelocation);
-			std::cout << "Antibody File is Empty" << std::endl;
-			buildFile << "%USERPROFILE%\\Documents" << std::endl;
-			buildFile << "%USERPROFILE%\\Downloads" << std::endl;
+			std::ofstream buildFile(this->AntibodyFileLocation);
+			//std::cout << "Antibody File is Empty" << std::endl;
+			//buildFile << "%USERPROFILE%\\Documents" << std::endl;
+			//buildFile << "%USERPROFILE%\\Downloads" << std::endl;
+			buildFile << this->GetDocumentsFolder() << std::endl;
+			if (this->GetDownloadsFolder() != "")
+				buildFile << this->GetDownloadsFolder() << std::endl;
 			buildFile.close();
-			directorylist.push_back("%USERPROFILE%\\Documents");
-			directorylist.push_back("%USERPROFILE%\\Documents");
+			//directorylist.push_back("%USERPROFILE%\\Documents");
+			//directorylist.push_back("%USERPROFILE%\\Documents");
+			if (this->GetDownloadsFolder() != "")
+				directorylist.insert(this->GetDownloadsFolder());
+			directorylist.insert(this->GetDocumentsFolder());
 		}
 		else{
-			std::cout << "Antibody File is not Empty" << std::endl;
-			std::cout << "Reading the Antibody File..." << std::endl;
+			//std::cout << "Antibody File is not Empty" << std::endl;
+			//std::cout << "Reading the Antibody File..." << std::endl;
 			while (!antibody.eof())
 			{
 				getline(antibody, listedirectory);
 				//The last line is empty, don't count it as a directory
-				if (listedirectory != "")
+				if (listedirectory != "" && listedirectory != std::string(1,'\r'))
 				{
-					directorylist.push_back(listedirectory);
-					std::cout << "Adding Directory: " <<listedirectory << std::endl;
+					directorylist.insert(listedirectory);
+					//std::cout << "Adding Directory: " <<listedirectory << std::endl;
 				}
 			}
 			antibody.close();
@@ -858,12 +860,48 @@ inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilel
 	}
 	else
 	{
-		std::cout << "Failed to Open Antibody File; Running with Defaults" << std::endl;
+		//std::cout << "Failed to Open Antibody File; Running with Defaults" << std::endl;
+		/*directorylist.push_back("%USERPROFILE%\\Documents");
 		directorylist.push_back("%USERPROFILE%\\Documents");
-		directorylist.push_back("%USERPROFILE%\\Documents");
-		directorylist.push_back("%USERPROFILE%\\Documents");
+		directorylist.push_back("%USERPROFILE%\\Documents");*/
+		if (this->GetDownloadsFolder() != "")
+			directorylist.insert(this->GetDownloadsFolder());
+		directorylist.insert(this->GetDocumentsFolder());
+
 	}
 	return directorylist;
+}
+
+inline std::string LavaScan::GetDocumentsFolder()
+{
+	CHAR my_documents[MAX_PATH];
+	HRESULT result = SHGetFolderPathA(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, my_documents);
+	/*if (result != S_OK)
+		std::cout << "Error: " << result << "\n";
+	else
+		std::cout << "Path: " << my_documents << "\n";*/
+	return std::string(my_documents);
+}
+
+inline std::string LavaScan::GetDownloadsFolder()
+{
+	CHAR my_downloads[MAX_PATH];
+	HRESULT result = SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, my_downloads);
+	/*if (result != S_OK)
+		std::cout << "Error: " << result << "\n";
+	else
+		std::cout << "Path: " << my_documents << "\n";*/
+	std::string ret = std::string(my_downloads) + "\\Downloads";
+	struct stat s;
+	if (stat(ret.c_str(), &s) == 0)
+	{
+		if (s.st_mode & S_IFDIR)
+		{
+			return ret;
+		}
+	}
+	
+	return "";
 }
 
 namespace fs = std::filesystem;
@@ -900,16 +938,19 @@ namespace fs = std::filesystem;
 //}
 
 //Write new directories to the antibody file. Parameters are <vector containting strings of diretories>, path to antibody file
-void WriteAntibody(std::vector<std::string> directorylist, std::string antibodyfilelocation)
+inline void LavaScan::WriteAntibody(std::set<std::string> directorylist)
 {
 	std::ofstream antibody;
-	antibody.open(antibodyfilelocation);
+	antibody.open(this->AntibodyFileLocation);
 	if (antibody.is_open())
 	{
-		for (int i = 0; i < directorylist.size(); i++)
+		for (auto s : directorylist) {
+			antibody << s << std::endl;
+		}
+		/*for (int i = 0; i < directorylist.size(); i++)
 		{
 			antibody << directorylist[i] << std::endl;
-		}
+		}*/
 		antibody.close();
 	}
 }
@@ -917,42 +958,42 @@ void WriteAntibody(std::vector<std::string> directorylist, std::string antibodyf
 //Check if a directory is in the antibody file. Add it if it isn't.
 //Ignore it if it's a subdirectory.
 //Replace any subdirectories
-inline void LavaScan::AddToAntibody(std::string dirPath, std::string antibodyfilelocation)
+inline void LavaScan::AddToAntibody(std::string dirPath)
 {
-	std::vector<std::string> existing = ReadAntibody(antibodyfilelocation);
+	std::set<std::string> existing = ReadAntibody();
 	bool newDirectory = true;
 	int replace = 0;
-	for (int i = 0; i < existing.size(); i++)
-	{
-		if (strstr(existing[i].c_str(), dirPath.c_str()) != NULL)
-		{
-			newDirectory = false;
-		}
-		if (strstr(dirPath.c_str(), existing[i].c_str()) != NULL)
-		{
-			existing[i] = dirPath;
-		}
-	}
-	//Check for duplicates --This code should be tested more, it's just a temporary fix.
-	for (int i = 0; i < existing.size(); i++)
-	{
-		for (int j = 0; j < existing.size(); j++)
-		{
-			if (existing[i] == existing[j])
-			{
-				existing.erase(existing.begin() + i);
-			}
-		}
-	}
+	//for (int i = 0; i < existing.size(); i++)
+	//{
+	//	if (strstr(existing[i].c_str(), dirPath.c_str()) != NULL)
+	//	{
+	//		newDirectory = false;
+	//	}
+	//	if (strstr(dirPath.c_str(), existing[i].c_str()) != NULL)
+	//	{
+	//		existing[i] = dirPath;
+	//	}
+	//}
+	////Check for duplicates --This code should be tested more, it's just a temporary fix.
+	//for (int i = 0; i < existing.size(); i++)
+	//{
+	//	for (int j = 0; j < existing.size(); j++)
+	//	{
+	//		if (existing[i] == existing[j])
+	//		{
+	//			existing.erase(existing.begin() + i);
+	//		}
+	//	}
+	//}
 
 	if (newDirectory == true)
 	{
-		std::vector<std::string> directoryToAdd;
-		directoryToAdd.push_back(dirPath);
-		WriteAntibody(directoryToAdd, antibodyfilelocation);
+		std::set<std::string> directoryToAdd;
+		directoryToAdd.insert(dirPath);
+		WriteAntibody(directoryToAdd);
 	}
-	remove(antibodyfilelocation.c_str());
-	WriteAntibody(existing, antibodyfilelocation);
+	_unlink(this->AntibodyFileLocation.c_str());
+	WriteAntibody(existing);
 }
 
 inline bool LavaScan::reset_QC() { //after a scan just reset quarantine contents
@@ -988,25 +1029,28 @@ bool LavaScan::QuickScan()
 	this->start_time = get_time();//getting start time for scan
 	//Keeps track of if malware is detected and where
 	bool clean = true;
-	std::vector<std::string> directorylist = ReadAntibody(this->AntibodyFileLocation);
+	std::set<std::string> directorylist = ReadAntibody();
 	//For each directory:
-	std::cout << "ReadyToScan" << std::endl;
-	for (int i = 0; i < directorylist.size(); i++)
-	{
-		std::cout << "Scanning Folder "<< i + 1 << " of " << directorylist.size() << std::endl;
-		std::cout << "Scanning Folder " << directorylist[i] << std::endl;
-		//Scan it
-		//Will only update clean from true to false, but scan either way
-		if (clean == true)
-		{
-			std::cout << "Calling scan function" << std::endl;
-			clean = scanDirectory(directorylist[i]);
-		} else {
-			std::cout << "Calling scan function" << std::endl;
-			scanDirectory(directorylist[i]);
-		}
+	//std::cout << "ReadyToScan" << std::endl;
+	//for (int i = 0; i < directorylist.size(); i++)
+	//{
+	//	std::cout << "Scanning Folder "<< i + 1 << " of " << directorylist.size() << std::endl;
+	//	std::cout << "Scanning Folder " << directorylist[i] << std::endl;
+	//	//Scan it
+	//	//Will only update clean from true to false, but scan either way
+	//	if (clean == true)
+	//	{
+	//		std::cout << "Calling scan function" << std::endl;
+	//		clean = scanDirectory(directorylist[i] + "\\");
+	//	} else {
+	//		std::cout << "Calling scan function" << std::endl;
+	//		scanDirectory(directorylist[i] + "\\");
+	//	}
+	//}
+	for (auto path : directorylist) {
+		scanDirectory(path + "\\");
 	}
-	std::cout << "All Scans called" << std::endl;
+	//std::cout << "All Scans called" << std::endl;
 	this->finish_time = get_time();//get end time for scan
 	//log_scan("Quick",start_time, finish_time, num_found, num_found); //log scan
 	isScanDone = true;
@@ -1062,7 +1106,7 @@ bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
 			else
 			{
 				//something else
-				std::cout<<"\n ok wtf is this\n";
+				//std::cout<<"\n ok wtf is this\n";
 			}
 		}
 		else
@@ -1272,7 +1316,7 @@ inline void LavaScan::make_quarantine_directory() {
 			}
 			else {
 				//some other error
-				std::cout << "Error making the quarantine directory, error: " + GetLastError() << std::endl;
+				//std::cout << "Error making the quarantine directory, error: " + GetLastError() << std::endl;
 			}
 		}
 		else printf("Quarantine Directory Ready\n");
@@ -1311,7 +1355,7 @@ inline bool LavaScan::CompleteScan() {
 		std::string dirs = "";
 		dirs += letter;
 		dirs += ":\\";
-		std::cout<< "Scanning drive " +  dirs << std::endl;
+		//std::cout<< "Scanning drive " +  dirs << std::endl;
 		clean = clean && this->scanDirectory(dirs);
 	}
 	this-> finish_time = get_time();
@@ -1422,23 +1466,27 @@ inline void LavaScan::check_db_folder() {
 	//check if the db directory exists
 	if (!(buf.st_mode & S_IFDIR)) {
 		//case if it doesn't exist
-		std::cout<<"db directory not found.\n Attempting to make the Database Directory...\n";
+		//std::cout<<"db directory not found.\n Attempting to make the Database Directory...\n";
 		if (int ret = CreateDirectoryA(cl_retdbdir(), NULL) == 0) {
 			if (ret == ERROR_ALREADY_EXISTS) {
 				//direcotry already exists
-				std::cout<<"Quarantine Direcotory Ready\n";
+				//std::cout<<"Quarantine Direcotory Ready\n";
 			}
 			else if (ret == ERROR_PATH_NOT_FOUND) {
-				std::cout<<"frigg this case";
+				//std::cout<<"frigg this case";
 			}
 			else {
 				//some other error
-				std::cout << "Error making the quarantine directory, error: " + GetLastError() << std::endl;
+				//std::cout << "Error making the quarantine directory, error: " + GetLastError() << std::endl;
 			}
 		}
-		else printf("DB Directory Ready\n");
+		else {
+			//printf("DB Directory Ready\n");
+		}
 	}
-	else { std::cout << "db_dir exists\n"; }
+	else { 
+		//std::cout << "db_dir exists\n"; 
+	}
 	
 }
 
@@ -1579,6 +1627,10 @@ inline LavaScan::LavaScan() {
 	isScanDone = false;
 	start_time = std::string("");
 	finish_time = std::string("");
+
+	std::string ExePath = GetExePath();
+	std::string AntibodyFile = ExePath + "\\..\\..\\Locations.LavaAnti";
+	this->AntibodyFileLocation = AntibodyFile;
 
 	printf("Updating virus databse...\n");
 	if (!update_virus_database()) {//checks whether failed to update the database
