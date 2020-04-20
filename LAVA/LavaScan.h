@@ -407,9 +407,9 @@ public:
 	void iterateDirectory(std::string directory, bool clean);
 	int scanFile(std::string filePath);
 	void SupportPage();
-	int scheduleScanWeekly(int inputDay, int inputHour, int inputMinute, int inputOften = 1);
-	int scheduleScanMonthly(int inputDay, int inputHour, int inputMinute, int inputOften = 1);
-	int scheduleScanDaily(int inputHour, int inputMinute, int inputOften = 1);
+	int scheduleScanWeekly(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften);
+	int scheduleScanMonthly(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften);
+	int scheduleScanDaily(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften);
 	int scheduleScanOnce(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute);
 	int rmScheduledScan();
 	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
@@ -446,7 +446,7 @@ inline void LavaScan::SupportPage() {
 //Returns 0 on completion or errors -1, -2 or -3 if there's an issue with the parameters depending on which causes the problem
 //Optional parameter inputOften is how often you want to run it (e.g. setting it to 2 runs every other day; 15 runs every fifteeth day)
 //By default it will run every day
-inline int LavaScan::scheduleScanDaily(int inputHour, int inputMinute, int inputOften ) {
+inline int LavaScan::scheduleScanDaily(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften = 1) {
 	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
 	std::string often = "1";
 	std::string time = "00:00";
@@ -496,7 +496,7 @@ inline int LavaScan::scheduleScanDaily(int inputHour, int inputMinute, int input
 //Returns 0 on completion or errors -1, -2, -3 or -4 if there's an issue with the parameters depending on which causes the problem
 //Optional parameter inputOften is how often you want to run it (e.g. setting it to 2 runs every other week; 15 runs every fifteeth week)
 //By default it will run every week
-inline int LavaScan::scheduleScanWeekly(int inputDay, int inputHour, int inputMinute, int inputOften) {
+inline int LavaScan::scheduleScanWeekly(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften = 1) {
 	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
 	std::string often = "1";
 	std::string day = "Sun";
@@ -570,7 +570,7 @@ inline int LavaScan::scheduleScanWeekly(int inputDay, int inputHour, int inputMi
 //Returns 0 on completion or errors -1, -2, -3 or -4 if there's an issue with the parameters depending on which causes the problem
 //Optional parameter inputOften is how often you want to run it (e.g. setting it to 2 runs every other month; 3 runs every third month)
 //By default it will run every month
-inline int LavaScan::scheduleScanMonthly(int inputDay, int inputHour, int inputMinute, int inputOften ) {
+inline int LavaScan::scheduleScanMonthly(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften = 1) {
 	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
 	std::string often = "1";
 	std::string day = "1";
