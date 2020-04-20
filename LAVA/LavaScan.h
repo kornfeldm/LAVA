@@ -727,6 +727,13 @@ inline int LavaScan::scanFile(std::string filePath) {
 		}
 		else {
 			quarantine_file(filePath, virname); //Infected file is not in system folder
+			std::string directory;
+			const size_t last_slash_idx = filePath.rfind('\\');
+			if (std::string::npos != last_slash_idx)
+			{
+				directory = filePath.substr(0, last_slash_idx);
+			}
+			AddToAntibody(directory, GetAntibodyPath());
 		}
 	}
 	else {

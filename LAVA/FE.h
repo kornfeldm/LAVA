@@ -960,7 +960,7 @@ inline bool FE::DrawInProgressScan()
 			currentValue = 1;
 		}
 		else {
-			currentValue = (curcount / totcount) * 100;
+			 currentValue = (float)current_Count / total_Count * 100;
 		}
 		
 		nk_modify modifyable = NK_FIXED;
@@ -1328,7 +1328,6 @@ inline bool FE::QuarantineView()
 			}
 			
 			all = 0; //for next scan
-			this->num_removed = 0;
 			this->moveQuarantineHome(q);
 			this->log_scan();
 			this->view = 0;
