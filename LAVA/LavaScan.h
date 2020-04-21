@@ -118,6 +118,15 @@ public:
 		return os;
 	}
 
+	SchedulerObj & operator=(const SchedulerObj& s) {
+		filesToBeScanned = s.filesToBeScanned;
+		manipulatedFiles = s.manipulatedFiles;
+		startedOn = s.startedOn;
+		status_text = s.status_text;
+		type = s.type;
+		return *this;
+	}
+
 	// Extraction operator
 	friend std::istream& operator>>(std::istream& is, SchedulerObj& s)
 	{
@@ -125,7 +134,7 @@ public:
 		std::string line; int num = 0;
 		while (std::getline(is, line)) {
 			// using printf() in all tests for consistency
-		//printf("%s\n", line.c_str());
+			//printf("%s\n", line.c_str());
 			switch (num) {
 			case 0:
 				s.type = line;
@@ -515,6 +524,8 @@ public:
 	std::string PathToSchedulerInfo;
 	ProgressMonitor pm;
 	WorkQueue work_queue;
+	bool IsThereAScheduledTask;
+	SchedulerObj ScheduledObject;
 	// constructor
 	LavaScan(); // default
 	/* scans */
@@ -558,6 +569,10 @@ public:
 	void check_db_folder();
 	void check_config_files();
 	bool update_virus_database();
+	bool CheckIfTaskSchedulerFileExists();
+	bool CreateTaskSchedulerFile();
+	bool IsTaskSchedulerFileEmpty(std::ifstream& pFile); //std::ifstream file("filename"); if (is_empty(file)) { is empty }
+	SchedulerObj LoadTaskSchedulerFile();
 };
 
 
@@ -1773,6 +1788,51 @@ inline bool LavaScan::update_virus_database() {
 	return true;
 }
 
+inline bool LavaScan::CheckIfTaskSchedulerFileExists()
+{
+	std::string SchedulerPath = this->PathToSchedulerInfo;
+	if (fs::exists(SchedulerPath))
+		return true;
+	return false;
+}
+
+inline bool LavaScan::CreateTaskSchedulerFile()
+{
+	try {
+		std::ofstream outfile;
+		outfile.open(this->PathToSchedulerInfo, std::ios::trunc);
+		return true;
+	}
+	catch (int e) {
+		return false;
+	}
+	
+}
+
+inline bool LavaScan::IsTaskSchedulerFileEmpty(std::ifstream& pFile)
+{
+	try {
+			return pFile.peek() == std::ifstream::traits_type::eof();
+	} catch (int e) {
+		return false;
+	}
+}
+
+inline SchedulerObj LavaScan::LoadTaskSchedulerFile()
+{
+	SchedulerObj r;
+	std::ifstream file(this->PathToSchedulerInfo);
+
+	if (fs::exists(this->PathToSchedulerInfo) && !IsTaskSchedulerFileEmpty(file)) {
+		file >> r;
+	}
+
+	file.close();
+	// manipulate r so that its set will be accurate
+	r.returnSet();
+	return r;
+}
+
 inline LavaScan::LavaScan() {
 	CurrentScanCount = 0;
 	currentScanGoing = "";
@@ -1780,7 +1840,7 @@ inline LavaScan::LavaScan() {
 	isScanDone = false;
 	start_time = std::string("");
 	finish_time = std::string("");
-	PathToSchedulerInfo = GetExePath() + "TaskScheduler.Lava";
+	PathToSchedulerInfo = GetExePath() + "\\TaskScheduler.Lava";
 
 	std::string ExePath = GetExePath();
 	std::string AntibodyFile = ExePath + "\\..\\..\\Locations.LavaAnti";
@@ -1867,6 +1927,39 @@ inline LavaScan::LavaScan() {
 	// have a seperate thread load shit into PreviousScans...race condition if many scans on a pc maybe...we will see
 	std::thread t1 = std::thread([this] {this->UpdatePreviousScans(); });
 	t1.detach();
+
+	std::cout << "\n\t" << GetExePath();
+
+	// if task scheduer file doesnt exist create
+	if (!this->CheckIfTaskSchedulerFileExists()) {
+		this->CreateTaskSchedulerFile();
+		std::ifstream file(this->PathToSchedulerInfo); 
+		if (is_empty(file)) { 
+			//std::cout << "\n\n EMPTY AF BRUV \n\n";
+			IsThereAScheduledTask = false;
+		}
+		else { 
+			IsThereAScheduledTask = true; 
+			//std::cout << "\n\n LOAD PLS BRUV \n\n";
+			this->ScheduledObject = this->LoadTaskSchedulerFile();
+		}
+		file.close();
+	}
+	else {
+		std::ifstream file(this->PathToSchedulerInfo);
+		if (is_empty(file)) {
+			//std::cout << "\n\n EMPTY AF BRUV 2\n\n";
+			IsThereAScheduledTask = false;
+		}
+		else { 
+			IsThereAScheduledTask = true;
+			//std::cout << "\n\n LOAD PLS BRUV2 \n\n";
+			this->ScheduledObject = this->LoadTaskSchedulerFile();
+
+		}
+		file.close();
+	}
+
 }
 
 #endif

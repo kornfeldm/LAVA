@@ -182,6 +182,8 @@ struct pics {
 	const char* purpleBack;
 	const char* done;
 	const char* support;
+	const char* home;
+	const char* scanBug;
 };
 
 /* FE CLASS */
@@ -230,6 +232,8 @@ public:
 	struct nk_image purpleBack;
 	struct nk_image done;
 	struct nk_image support;
+	struct nk_image home;
+	struct nk_image scanBug;
 	//std::string currentScanGoing;
 	std::queue<int> scanTasks;
 	std::vector<std::vector<std::string>> scanHistorySet;
@@ -243,6 +247,7 @@ public:
 		3 : Scan in Pro gress!
 		4 : schedule advance scan
 		5 : quarentine // how tf can i spell this holy fucking shit
+		6 : running current schedule task screen
 	*/
 	unsigned int m_scanViews;
 	/*
@@ -295,6 +300,7 @@ public:
 	bool displayScheduleArrows();
 	bool displayScheduleType();
 	bool displayCalendar(int x, int y, bool reccurring);
+	bool CurrentScheduleScanView();
 };
 inline struct nk_image FE::icon_load(const char* filename, bool flip)
 {
@@ -379,6 +385,10 @@ inline bool FE::Display() {
 	}
 	else if (this->view == 5) //quarentine view
 		this->QuarantineView();
+	else if (this->view == 6) {
+		// go runningscheduledscan xD
+		this->CurrentScheduleScanView();
+	}
 	else {}
 		//std::cout << "ERRRRRRORRRRR\n";
 	return true;
@@ -1142,16 +1152,19 @@ inline FE::FE(int i) {
 	this->pp.purpleFwd = "./Assets/cont.png";
 	this->pp.done = "./Assets/done.png";
 	this->pp.support = "./Assets/Support.png";
+	this->pp.home = "./Assets/homeicon.png";
+	this->pp.scanBug = "./Assets/scanBug.png";
 	this->scanHistorySet = read_log();
 
 	if (i <= 1) {
 		// only 1 arg to lava, regularly opening
 		this->OpenType = 0;
-		std::cout << "openend normally\n";
+		//std::cout << "openend normally\n";
 	}
 	else {
 		this->OpenType = 1;
-		std::cout << "opened thru task scheduler\n";
+		//std::cout << "opened thru task scheduler\n";
+		this->view = 6; // view the scheduler task
 	}
 
 }
@@ -1838,6 +1851,114 @@ inline bool FE::displayCalendar(int x, int y, bool reccurring)
 	return true;
 }
 
+inline bool FE::CurrentScheduleScanView()
+{
+	try {
+
+		/* BACK ARROW ICON */
+		struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
+		struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
+		if (nk_begin(this->ctx, "barrow", backArrowAndText,
+			NK_WINDOW_NO_SCROLLBAR)) {
+
+			/* hidden button behind icon to press */
+			nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
+			if (nk_button_label(ctx, "")) {
+				//fprintf(stdout, "back arrow\n");
+				this->view = 0;
+				nk_clear(this->ctx);
+			}
+			this->drawImageSubRect(&this->backArrow, &bar);
+			nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		}
+		nk_end(this->ctx);
+
+		// ICON 
+		/* schedule logo */
+		struct nk_rect schedlogo = nk_rect(225, 25, 145, 145);
+		if (nk_begin(this->ctx, "scanbuglogo", schedlogo,
+			NK_WINDOW_NO_SCROLLBAR)) {
+			this->drawImage(&this->scanBug);
+		}
+		nk_end(this->ctx);
+
+		/* sched text */
+		if (nk_begin(this->ctx, "shecdtext", nk_rect(225 + schedlogo.w + 7, 25 + 10, 720, 95),
+			NK_WINDOW_NO_SCROLLBAR)) {
+			nk_style_set_font(this->ctx, &this->font2->handle);
+			nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(225 + schedlogo.w + 7, 25 + 10, 720, 95), " Scheduled Task", 15,
+				&this->font2->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+			nk_style_set_font(this->ctx, &this->font->handle);
+		}
+		nk_end(this->ctx);
+
+
+		// IF THERE IS NO SCHEDULED TASK JUST SAY IT AND LEAVE BRUH
+		if (!IsThereAScheduledTask) {
+			if (nk_begin(this->ctx, "nothingtoseehere", nk_rect(WINDOW_WIDTH * .5 - 250, 250, 500, 250),
+				NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER)) {
+				nk_layout_row_dynamic(this->ctx, 250, 1);
+				nk_label_wrap(this->ctx, "There are no currently scheduled scans. Please visit the Advanced Scan page to schedule one.");
+			}
+			nk_end(this->ctx);
+		}
+		else {
+			// diplsay it all
+			struct nk_list_view view; //view.count = 2; 
+			if (nk_begin(this->ctx, "Selected Files/Folders...", nk_rect(WINDOW_WIDTH*.5-400, 200, 800, 250), 
+				NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_DYNAMIC))
+			{
+				int h = this->ScheduledObject.filesToBeScanned.size() * DEFAULT_FONT_SIZE + DEFAULT_FONT_SIZE;
+				if (h < 200) { h = 200; }
+				nk_layout_row_dynamic(ctx, h, 1);
+				if (nk_list_view_begin(ctx, &view, "test", NK_WINDOW_BORDER, 25, 2)) {
+					nk_layout_row_dynamic(ctx, 25, 1);
+					UIPrintSet(this->ScheduledObject.filesToBeScanned);
+					//std::cout << this->ScheduledObject.startedOn << "\n";
+					//printset(this->ScheduledObject.filesToBeScanned);
+					/*nk_label(this->ctx, list[0], NK_TEXT_ALIGN_LEFT);
+					nk_label(this->ctx, list[1], NK_TEXT_ALIGN_LEFT);*/
+					nk_list_view_end(&view);
+				}
+			}
+			nk_end(this->ctx);
+
+			if (nk_begin(this->ctx, "statusnshit", nk_rect(WINDOW_WIDTH * .5 - 400, 455, 800, 150),
+				NULL))
+			{
+				
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label_wrap(this->ctx, std::string("Type : " + ScheduledObject.type).c_str());
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label_wrap(this->ctx, std::string("Added On : " + ScheduledObject.startedOn).c_str());
+				nk_layout_row_dynamic(ctx, 60, 1);
+				nk_label_wrap(this->ctx, std::string("Status : " + ScheduledObject.status_text).c_str());
+				
+			}
+			nk_end(this->ctx);
+		}
+
+
+		// SUPPORT PAGE
+		if (nk_begin(this->ctx, "DONEBRUV", nk_rect(WINDOW_WIDTH *.5-175, WINDOW_HEIGHT - 125, 350, 100),
+			NK_WINDOW_NO_SCROLLBAR)) {
+			nk_layout_row_dynamic(this->ctx, 105, 1);
+			if (nk_button_image_label(this->ctx, this->home, "          Return Home", NK_TEXT_ALIGN_RIGHT)) {
+				this->view = 0;
+				std::cout << "\ntype; " << this->ScheduledObject.type;
+				std::cout << "\nstatus; " << this->ScheduledObject.status_text;
+			}
+		}
+		nk_end(this->ctx);
+
+		return true;
+	}
+	catch (int e) {
+		return false;
+	}
+	
+}
+
 inline bool FE::init(sf::Window *win) {
 	glewExperimental = 1;
 	if (glewInit() != GLEW_OK) {
@@ -1936,7 +2057,9 @@ inline bool FE::init(sf::Window *win) {
 	this->purpleFwd = this->icon_load(pp.purpleFwd);
 	this->done = this->icon_load(pp.done);
 	this->support = this->icon_load(pp.support);
-
+	this->home = this->icon_load(pp.home);
+	this->scanBug = this->icon_load(pp.scanBug);
+	
 	return true;
 }
 
