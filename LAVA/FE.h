@@ -1,2021 +1,2111 @@
 #pragma once
-#ifndef FE_H
-#define FE_H
-struct nk_command_buffer* canvas;
-struct nk_rect total_space;
-std::set<std::string> advancedScanPaths;
-#define DEFAULT_FONT_SIZE 28
-//#define NK_INCLUDE_FIXED_TYPES
-//#define NK_INCLUDE_STANDARD_IO
-//#define NK_INCLUDE_STANDARD_VARARGS
-//#define NK_INCLUDE_DEFAULT_ALLOCATOR
-//#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
-//#define NK_INCLUDE_FONT_BAKING
-//#define NK_INCLUDE_DEFAULT_FONT
-//#define NK_IMPLEMENTATION
-//#define NK_SFML_GL2_IMPLEMENTATION
-//
-//#include "nuklear.h"
-//#include "nuklear_sfml_gl2.h"
-//
-//#define STB_IMAGE_IMPLEMENTATION
-//#include "stb_image.h"
-//
-//#define WINDOW_WIDTH 1200
-//#define WINDOW_HEIGHT 800
-//#define IMG_COLOR nk_rgba(255, 255, 255, 255)
-
-static const char* Days[] = { "Sunday","Monday","Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
-
-/* Use this function to allocate space for text below an image. see how the back arrow is displayed in the DisplayScansPage function is used
-*/
-struct nk_rect SubRectTextBelow(struct nk_rect *big, struct nk_rect *sub ) {
-	return nk_rect(sub->x, sub->h, sub->w, big->h-sub->h+sub->x);
+#ifndef LAVASCAN_H
+#define LAVASCAN_H
+#pragma warning(disable : 4996) //_CRT_SECURE_NO_WARNINGS
+extern std::string CurrentScanFile = std::string("");
+int OpenType = 0;
+// Define user defined literal "_quoted" operator.
+std::string operator"" _quoted(const char* text, std::size_t len) {
+	return "\"" + std::string(text, len) + "\"";
 }
 
-/* opening file dialog stuff */
-std::string ToNarrow(const wchar_t* s, char dfault = '?',
-	const std::locale& loc = std::locale())
+unsigned long int current_Count;
+unsigned long int total_Count;
+
+//long int              iCount = 0; // global file countr, replaced with total_count
+
+int countFiles(const std::string& refcstrRootDirectory, const std::string& refcstrExtension, bool bSubdirectories)
 {
-	std::ostringstream stm;
+	//int              iCount = 0;
+	std::string      strFilePath;          // Filepath
+	std::string      strPattern;           // Pattern
+	std::string      strExtension;         // Extension
+	HANDLE           hFile;                // Handle to file
+	WIN32_FIND_DATAA FileInformation;      // File information
 
-	while (*s != L'\0') {
-		stm << std::use_facet< std::ctype<wchar_t> >(loc).narrow(*s++, dfault);
-	}
-	return stm.str();
-}
-
-// global struct. prob shouldnt do this but who will see this, lets be honest
-struct
-{
-	WNDPROC oldWndProc;
-	TCHAR   szLastSelection[MAX_PATH];
-	UINT    cFolders;
-} g_Multi;
-
-
-/*
- * Subclassed window procedure for dialog created by SHBrowseForFolder.
- */
-static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	if (uMsg == WM_COMMAND && HIWORD(wParam) == BN_CLICKED)
+	strPattern = refcstrRootDirectory + "\\*.*";
+	hFile = FindFirstFileA(strPattern.c_str(), &FileInformation);
+	if (hFile != INVALID_HANDLE_VALUE)
 	{
-		TCHAR szText[50];
-
-		if (GetWindowText((HWND)lParam, szText, 50) &&
-			0 == lstrcmp(szText, TEXT("Add File/Dir")))
+		do
 		{
-			if (0 != lstrcmp(g_Multi.szLastSelection, TEXT("")))
+			//if (FileInformation.cFileName[0] != '.' && FileInformation.cFileName[0] != '\\')
+			if (strcmp(FileInformation.cFileName, ".") && strcmp(FileInformation.cFileName, ".."))
 			{
-				g_Multi.cFolders++;
+				strFilePath.erase();
+				strFilePath = refcstrRootDirectory +
+					"\\" +
+					FileInformation.cFileName;
 
-				/* User has clicked the "Add Folder" button.
-				 * Add the contents of szLastSelection to your list. */
-				 //printf("%s\n", g_Multi.szLastSelection);
-				if (advancedScanPaths.find(ToNarrow(g_Multi.szLastSelection)) == advancedScanPaths.end()) {
-					advancedScanPaths.insert(ToNarrow(g_Multi.szLastSelection));
-					// thread to count that shit carti
-					std::thread t1 = std::thread([] { countFiles(ToNarrow(g_Multi.szLastSelection), "*", true); });
-					t1.detach();
+				if (FileInformation.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+				{
+					if (bSubdirectories)
+					{
+						// Search subdirectory
+						int iRC = countFiles(strFilePath,
+							refcstrExtension,
+							bSubdirectories);
+						if (iRC != -1)
+							total_Count += iRC;
+						else
+							return -1;
+					}
+				}
+				else
+				{
+					// Check extension
+					strExtension = FileInformation.cFileName;
+					strExtension = strExtension.substr(strExtension.rfind(".") + 1);
+
+					if ((refcstrExtension == "*") ||
+						(strExtension == refcstrExtension))
+					{
+						// Increase counter
+						++total_Count;
+					}
 				}
 			}
-			else
-			{
-				/* A non-file system folder is selected. eg. Network Neighbourhood. */
-				printf("Please select a valid file folder and try again.\n");
-			}
+		} while (FindNextFileA(hFile, &FileInformation) == TRUE);
 
-			/* Eat the BN_CLICKED message so the dialog is not closed. */
-			return 0;
-		}
-	}
-
-	return CallWindowProc(g_Multi.oldWndProc, hwnd, uMsg, wParam, lParam);
-}
-
-
-/*
- * Callback function for SHBrowseForFolder.
- */
-static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
-{
-	switch (uMsg)
-	{
-	case BFFM_INITIALIZED:
-	{
-		/* Change the text for the OK button and subclass the dialog. */
-		LPCTSTR startFolder = reinterpret_cast<LPCTSTR>(lpData);
-		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, reinterpret_cast<LPARAM>(startFolder));
-		SendMessage(hwnd, BFFM_SETOKTEXT, 0, (LPARAM)L"Add File/Dir");
-		g_Multi.oldWndProc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)SubclassProc);
-		break;
-	}
-
-	case BFFM_SELCHANGED:
-	{
-		/* Record the selection, so we can record it if the user clicks "Add Folder". */
-		if (!SHGetPathFromIDList((LPCITEMIDLIST)lParam, g_Multi.szLastSelection))
-			g_Multi.szLastSelection[0] = TEXT('\0');
-		break;
-	}
+		// Close handle
+		FindClose(hFile);
 	}
 
 	return 0;
 }
 
+namespace fs = std::filesystem;
+std::string GetExeFileName() {
+	char buffer[MAX_PATH] = {};
+	::GetModuleFileNameA(NULL, buffer, MAX_PATH);
+	return std::string(buffer);
+}
+std::string GetExePath()
+{
+	std::string f = GetExeFileName();
+	return f.substr(0, f.find_last_of("\\/"));
+}
+std::string GetLAVAFolder()
+{
+	const unsigned long maxDir = 260;
+	char currentDir[maxDir];
+	GetCurrentDirectoryA(maxDir, currentDir);
+	std::string str = std::string(currentDir);
+	fs::path p = str;
+	/*std::cout << p.parent_path() << std::endl;*/
+	//getch();
+	return p.parent_path().string();
+}
 
 /*
- * Displays a directory selection dialog that allows the user to select
- * multiple folders. CoInitialize must be called before calling this function.
- * hWnd may be NULL. Returns the number of folders that were selected.
- * This function is not thread safe. It must not be called from more than
- * one thread at a time.
- */
-UINT MultiFolderSelect(HWND hWnd, LPCTSTR szTitle, CString folder=L"C:\\")
-{
-	LPITEMIDLIST pidl = NULL;
-	BROWSEINFO   bi = { 0 };
-	TCHAR        buf[MAX_PATH];
+Custom class to handle writting scheduler info to file
+examples on writting and reading this obj :
 
-	bi.hwndOwner = hWnd;
-	bi.pszDisplayName = buf;
-	bi.pidlRoot = 0;
-	bi.lpszTitle = szTitle;
-	bi.ulFlags = BIF_BROWSEFORPRINTER | BIF_BROWSEINCLUDEFILES | BIF_BROWSEINCLUDEURLS | 
-		BIF_NEWDIALOGSTYLE | BIF_SHAREABLE | 
-		BIF_NONEWFOLDERBUTTON | BIF_USENEWUI;
-	bi.lParam = reinterpret_cast<LPARAM>(static_cast<LPCTSTR>(folder));
-	bi.lpfn = BrowseCallbackProc;
-	//bi.lParam = (LPARAM)L"C:\\";
+	// CREATING OBJ
+	SchedulerObj job( "monthly", "Will run every x month starting on tues april 20 at 12:20.",
+	"Wed April 18 14:20", a);
 
-	g_Multi.cFolders = 0;
-	g_Multi.szLastSelection[0] = TEXT('\0');
+	// WRITTING OBJ
+	std::ofstream ofs("ScheduleInfo.Lava");
+	ofs << job;
+	ofs.close();
 
-	if ((pidl = SHBrowseForFolder(&bi)) != NULL)
-		CoTaskMemFree(pidl);
+	// OPENING / READING OBJ
+	std::ifstream ifs("ScheduleInfo.Lava");
+	SchedulerObj in;
+	// read the object back in
+	if (ifs.is_open()) {
+		ifs >> in;
+		for (auto s : in.returnSet()) // will print contents of set
+			std::cout << s << "\n";
+	}
+	ifs.close();
 
-	return g_Multi.cFolders;
-}
-
-
-
-struct pics {
-	const char* squareLogo;
-	const char* rectLogo;
-	const char* trapLogo;
-	const char* scan;
-	const char* history;
-	const char* backArrow;
-	const char* chooseScan;
-	const char* triangleButton;
-	const char* addButton;
-	const char* calendar;
-	const char* trash;
-	const char* purpleFwd;
-	const char* purpleBack;
-	const char* done;
-};
-
-/* FE CLASS */
-class FE : public LavaScan
-{
-private:
+*/
+class SchedulerObj {
 public:
-	/* CONSTRUCTORS */
-	bool init(sf::Window *win);
-	FE();
+	std::string type;
+	std::string status_text;// maybe
+	std::string startedOn; // ok
+	std::set<std::string> filesToBeScanned; // notTAB DELIMITTED
+	std::string manipulatedFiles; // == tab delimited set as str
 
-	/* MEMBER VARS */
-	struct nk_context* ctx;
-	struct nk_command_buffer* canvas;
-	// font stuff
-	struct nk_font_atlas* atlas; //reg
-	struct nk_font_atlas* atlas2; //large
-	struct nk_font_atlas* atlas3; //small
-	struct nk_font_atlas* atlas4; //medium large, size 84
-	struct nk_font_atlas* atlas5; // small medium...less than reg..22
-	struct nk_font* font;
-	struct nk_font* font2;
-	struct nk_font* font3;
-	struct nk_font* font4;
-	struct nk_font* font5;
-	const char* font_path = "../Assets/font.ttf";
-	//struct nk_font_config* fontCFG;// can be null so commenting out for mem
-	struct nk_colorf bg;
-	struct nk_colorf whiteFont;
-	struct nk_rect total_space;
-	// pics to be loaded (pngs)
-	pics pp;
-	struct nk_image scanImage;
-	struct nk_image rectImage; 
-	struct nk_image trapImage; 
-	struct nk_image squareImage; 
-	struct nk_image historyImage;
-	struct nk_image backArrow;
-	struct nk_image chooseScan;
-	struct nk_image triangleLogo;
-	struct nk_image addLogo;
-	struct nk_image calendarLogo;
-	struct nk_image trashIcon;
-	struct nk_image purpleFwd;
-	struct nk_image purpleBack;
-	struct nk_image done;
-	//std::string currentScanGoing;
-	std::queue<int> scanTasks;
-	std::vector<std::vector<std::string>> scanHistorySet;
-	int maxfiles=0;
-	// view screen switch. view ScanViews scanview member for furthger info
-	unsigned int view;
-	/*
-		0 : logo screen
-		1 : scans screen
-		2 : history screen
-		3 : Scan in Pro gress!
-		4 : schedule advance scan
-		5 : quarentine // how tf can i spell this holy fucking shit
-	*/
-	unsigned int m_scanViews;
-	/*
-		0 : plz maam pls choose a scan
-		1 : coimplete scan
-		2 : quick scan
-		3 : advanced scan
-	*/
-
-	// if type=daily or once user startDate startTime and reccuring(0 if one time)
-	// if type=weekly use startDate startTime recurring and daysOfWeek
-	// if type=montly use startdate starttime months then either days OR On
-	struct schedulerInfo {
-		unsigned int type; //0=once, 1=daily, 2=weekly, 3=monthly
-		std::string startDate;
-		std::string startTime;
-		int reccuring; // happen every x days or x weeks or x months
-		std::set<int> daysOfWeek; //what days to do weekly scan. ex: every two weeks occur on mon and fri at 6pm starting 4/20/20 {0->6}
-		std::set<int> months; // if months size =0 include all, else do only whats in the set
-		bool days_on_switch; // false days true on
-		std::set<int> days; //days is 1-31
-		std::set < std::pair<std::string, std::set<std::string>>> on; //on first, second, last friday and monday. set of pairs(first/second/.. , <days to happen>)
-	} _schedulerInfo;
-	//ProgressMonitor pm;
-	struct tm sel_date;
-	
-	/* MEMBER FUNCTIONS */
-	static struct nk_image icon_load(const char* filename, bool flip = false);
-	bool dateInput();
-	bool drawImage(struct nk_image *img);
-	bool drawImageSubRect(struct nk_image* img, struct nk_rect* r);
-	bool DrawMainPage();
-	bool DrawScansPage();
-	bool Display();
-	bool NoScanView();
-	bool CompleteScanView();
-	bool viewSwap();
-	bool QuickScansView();
-	bool AdvancedScanView();
-	bool DrawHistoryPage();
-	bool DrawInProgressScan();
-	bool printset(std::set<std::string> s);
-	/*static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-	static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData);
-	UINT MultiFolderSelect(HWND hWnd, LPCTSTR szTitle);*/
-	void UIPrintSet(std::set<std::string> s);
-	bool ChangeFontSize(float s); //s is size, default is 28.
-	bool QuarantineView();
-	bool ScheduleAdvScanView();
-	bool displayScheduleArrows();
-	bool displayScheduleType();
-	bool displayCalendar(int x, int y, bool reccurring);
-};
-inline struct nk_image FE::icon_load(const char* filename, bool flip)
-{
-	int x, y, n;
-	GLuint tex;
-	if (flip) {
-		stbi_set_flip_vertically_on_load(true);
-	}
-	unsigned char* data = stbi_load(filename, &x, &y, &n, STBI_rgb_alpha);
-	if (!data) std::cerr << "[SDL]: failed to load image\n";
-	glGenTextures(1, &tex);
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-	glGenerateMipmap(GL_TEXTURE_2D);
-	stbi_image_free(data);
-	return nk_image_id((int)tex);
-}
-
-inline bool FE::drawImage(struct nk_image *img)
-{
-	canvas = nk_window_get_canvas(this->ctx);
-	total_space = nk_window_get_content_region(this->ctx);
-	nk_draw_image(canvas, total_space, img, IMG_COLOR);
-	return true;
-}
-
-inline bool FE::dateInput() {
-	/*
-	char buf[256] = {0};
-	// in window
-	nk_edit_string_zero_terminated (ctx, NK_EDIT_FIELD, buf, sizeof(buf) - 1, nk_filter_default);
-	if (nk_button_label (ctx, "Done"))
-		printf ("%s\n", buf);
-	*/
-	int d;
-	int m;
-	int y;
-	std::cin >> d; // read the day
-	if (std::cin.get() != '/') // make sure there is a slash between DD and MM
+	// override insertion
+	friend std::ostream& operator<<(std::ostream& os, const SchedulerObj& s)
 	{
-		std::cout << "expected /\n";
-		return 1;
+		// write out individual members of s with an end of line between each one
+		os << s.type << '\n';
+		os << s.status_text << '\n';
+		os << s.startedOn << '\n';
+		os << s.manipulatedFiles;
+
+		return os;
 	}
-	std::cin >> m; // read the month
-	if (std::cin.get() != '/') // make sure there is a slash between MM and YYYY
+
+	SchedulerObj& operator=(const SchedulerObj& s) {
+		filesToBeScanned = s.filesToBeScanned;
+		manipulatedFiles = s.manipulatedFiles;
+		startedOn = s.startedOn;
+		status_text = s.status_text;
+		type = s.type;
+		return *this;
+	}
+
+	// Extraction operator
+	friend std::istream& operator>>(std::istream& is, SchedulerObj& s)
 	{
-		std::cout << "expected /\n";
-		return 1;
-	}
-	std::cin >> y; // read the year
-	std::cout << "input date: " << d << "/" << m << "/" << y << "\n";
-
-	return true;
-}
-
-inline bool FE::drawImageSubRect(struct nk_image* img, struct nk_rect *r)
-{
-	canvas = nk_window_get_canvas(this->ctx);
-	nk_draw_image(canvas, *r, img, IMG_COLOR);
-	return true;
-}
-
-inline bool FE::Display() {
-	if (this->view == 0) { // logo page
-		this->DrawMainPage();
-		advancedScanPaths.clear();
-	}
-	else if (this->view == 1) // scan page
-		this->DrawScansPage();
-	else if (this->view == 2) // history page
-		this->DrawHistoryPage();
-	else if (this->view == 3) // in-prog scan page
-		this->DrawInProgressScan();
-	else if (this->view == 4) {
-		//adv scan sched pg
-		this->ScheduleAdvScanView();
-	}
-	else if (this->view == 5) //quarentine view
-		this->QuarantineView();
-	else
-		std::cout << "ERRRRRRORRRRR\n";
-	return true;
-}
-
-inline bool FE::DrawMainPage()
-{
-	/* LOGO */
-	struct nk_rect r_logo = nk_rect(25, 25, WINDOW_HEIGHT * .33, WINDOW_HEIGHT * .33);
-	if (nk_begin(this->ctx, "lavalogo",r_logo,
-		NK_WINDOW_NO_SCROLLBAR)) {
-		this->drawImage(&this->squareImage);
-	}
-	nk_end(this->ctx);
-	/* LAVA TEXT TEXT */
-	nk_style_set_font(this->ctx, &this->font4->handle);
-	struct nk_rect LAVATEXT = nk_rect(r_logo.x+ r_logo.w+10, r_logo.y, 600, 84);
-	struct nk_rect LAVATEXT2 = nk_rect(r_logo.x + r_logo.w + 10, r_logo.y+90, 600, 84);
-	struct nk_rect LAVATEXT3 = nk_rect(r_logo.x + r_logo.w + 10, r_logo.y+180, 600, 84);
-	if (nk_begin(this->ctx, "lavatext", LAVATEXT, NK_WINDOW_NO_SCROLLBAR)) {
-		nk_draw_text(nk_window_get_canvas(this->ctx), LAVATEXT, " Lightweight", 12, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
-	if (nk_begin(this->ctx, "lavatext2", LAVATEXT2, NK_WINDOW_NO_SCROLLBAR)) {
-		nk_draw_text(nk_window_get_canvas(this->ctx), LAVATEXT2, " Anti-Virus", 11, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
-	if (nk_begin(this->ctx, "lavatext3", LAVATEXT3, NK_WINDOW_NO_SCROLLBAR)) {
-		nk_draw_text(nk_window_get_canvas(this->ctx), LAVATEXT3, " Application", 12, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
-	nk_style_set_font(this->ctx, &this->font->handle);
-
-
-	///* LAVA TEXT ********************************************************/
-	//if (nk_begin(this->ctx, "Lightweight Anti-Virus Application", nk_rect(400, WINDOW_HEIGHT * .04, 470, 300),
-	//	NK_WINDOW_TITLE | NK_WINDOW_NO_SCROLLBAR))
-	//{
-	//}
-	//nk_end(this->ctx);
-
-	/* SCAN ICON */
-	if (nk_begin(this->ctx, "scan", nk_rect(WINDOW_WIDTH * .2, WINDOW_HEIGHT * .49, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3),
-		NK_WINDOW_NO_SCROLLBAR)) {
-		// hidden button to press behind icon
-		nk_layout_row_static(ctx, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3, 1);
-		if (nk_button_label(ctx, "")) {
-			//fprintf(stdout, "scans pressed\n");
-			this->view = 1; // scans page
-			this->m_scanViews = 0; // choose a scan sub view
-			nk_clear(this->ctx);
-		}
-		this->drawImage(&this->scanImage);
-	}
-	nk_end(this->ctx);
-	/* SCAN TEXT */
-	struct nk_rect SCANTEXT = nk_rect(WINDOW_WIDTH * .2-20, WINDOW_HEIGHT * .49+ WINDOW_HEIGHT * .3+15, 400, 84);
-	if (nk_begin(this->ctx, "SCANTEXT", SCANTEXT, NK_WINDOW_NO_SCROLLBAR)) {
-		nk_draw_text(nk_window_get_canvas(this->ctx), SCANTEXT, " Scans", 6, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
-
-	/* history ICON */
-	if (nk_begin(this->ctx, "history", nk_rect(WINDOW_WIDTH * .6, WINDOW_HEIGHT * .49, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3),
-		NK_WINDOW_NO_SCROLLBAR)) {
-		// hidden button behind icon to press
-		nk_layout_row_static(ctx, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3, 1);
-		if (nk_button_label(ctx, "")) {
-			//fprintf(stdout, "history pressed\n");
-			std::thread t1 = std::thread([this] {this->UpdatePreviousScans(); });
-			t1.detach();
-			this->view = 2;
-			nk_clear(this->ctx);
-		}
-		this->drawImage(&this->historyImage);
-	}
-	nk_end(this->ctx);
-	/* HISTORY TEXT */
-	struct nk_rect HISTTEXT = nk_rect(WINDOW_WIDTH * .6-50, WINDOW_HEIGHT * .49+ WINDOW_HEIGHT * .3+15, 400, 84);
-	if (nk_begin(this->ctx, "HISTTEXT", HISTTEXT, NK_WINDOW_NO_SCROLLBAR)) {
-		nk_draw_text(nk_window_get_canvas(this->ctx), HISTTEXT, " History", 8, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
-
-	return true;
-}
-
-bool FE::NoScanView() {
-	int filled_width = WINDOW_WIDTH * .08 * 2 + WINDOW_WIDTH * .075; // remaining width ofscreen after side menu
-	int delta = WINDOW_WIDTH - filled_width;
-	/* CHOOSE A SCAN */
-	struct nk_rect center = nk_rect(filled_width + delta * .2, WINDOW_HEIGHT * .075, delta * .6, WINDOW_HEIGHT * .7);
-	struct nk_rect centerAndText = nk_rect(center.x+center.w*.2+50, center.h+35, center.w, 150); //36 for font size!
-	if (nk_begin(this->ctx, "ChooseScan", center, NK_WINDOW_NO_SCROLLBAR)) {
-		this->drawImageSubRect(&this->chooseScan, &center);
-	}
-	nk_end(this->ctx);
-	/* TEXT TO CHOOSE A SCAN*/
-	if (nk_begin(this->ctx, "ChooseScantxt", centerAndText, NK_WINDOW_NO_SCROLLBAR))
-	{
-		/*nk_layout_row_dynamic(this->ctx, 40, 1);
-		nk_label_wrap(this->ctx, "                                                        ");
-		nk_layout_row_dynamic(this->ctx, 80, 1);
-		nk_label_wrap(this->ctx, "Chose a Scan, Please!");*/
-		// old way of drawing txt...low level api
-		nk_draw_text(nk_window_get_canvas(this->ctx), centerAndText, "  Choose A Scan, Please!", 24, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
-
-	return true;
-}
-
-bool FE::CompleteScanView() {
-	int filled_width = WINDOW_WIDTH * .08 * 2 + WINDOW_WIDTH * .075; // remaining width ofscreen after side menu
-	int delta = WINDOW_WIDTH - filled_width;
-
-	/* quick scan header and text */
-	if (nk_begin(this->ctx, "Complete Scan", nk_rect(300, WINDOW_HEIGHT * .06, 600, 300),
-		NK_WINDOW_TITLE | NK_WINDOW_NO_SCROLLBAR))
-	{
-		nk_layout_row_dynamic(this->ctx, 40, 1);
-		nk_label_wrap(this->ctx, "                                                        ");
-		nk_layout_row_dynamic(this->ctx, 80, 1);
-		nk_label_wrap(this->ctx, "This scan will traverse all files on the current file-system!");
-	}
-	nk_end(this->ctx);
-
-	/* SCAN NOW BUTTON AND TEXT */
-	struct nk_rect scanButton = nk_rect(delta * .5, WINDOW_HEIGHT * .5, 250, 36);
-	if (nk_begin(this->ctx, "Complete Scan Button", scanButton, NK_WINDOW_NO_SCROLLBAR))
-	{
-		nk_layout_row_static(ctx, 65, 400, 1);
-		if (nk_button_label(ctx, "")) {
-			//fprintf(stdout, "do complete scan pressed\n");
-			this->currentScanGoing = "Complete Scan";
-			this->view = 3;
-			//this->CompleteScan();
-			this->scanTasks.push(1);
-			nk_clear(this->ctx);
-		}
-	    // draw txt 
-		struct nk_rect textArea = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
-		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, " Complete Scan! ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-		// draw triangle
-		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + textArea.w - textArea.h-5, textArea.y, textArea.h, textArea.h));
-	}
-	nk_end(this->ctx);
-
-	return true;
-}
-
-bool FE::QuickScansView() {
-	int filled_width = WINDOW_WIDTH * .08 * 2 + WINDOW_WIDTH * .075; // remaining width ofscreen after side menu
-	int delta = WINDOW_WIDTH - filled_width;
-
-	/* quick scan header and text */
-	if (nk_begin(this->ctx, "Quick Scan", nk_rect(300, WINDOW_HEIGHT * .06, 600, 300),
-		NK_WINDOW_TITLE | NK_WINDOW_NO_SCROLLBAR))
-	{
-		nk_layout_row_dynamic(this->ctx, 40, 1);
-		nk_label_wrap(this->ctx, "                                                        ");
-		nk_layout_row_dynamic(this->ctx, 120, 1);
-		nk_label_wrap(this->ctx, "This scan will traverse the most commonly affected areas on your system.");
-	}
-	nk_end(this->ctx);
-
-	/* SCAN NOW BUTTON AND TEXT */
-	struct nk_rect scanButton = nk_rect(delta * .5, WINDOW_HEIGHT * .5, 200, 36);
-	if (nk_begin(this->ctx, "Quick Scan Button", scanButton, NK_WINDOW_NO_SCROLLBAR))
-	{
-		nk_layout_row_static(ctx, 65, 400, 1);
-		if (nk_button_label(ctx, "")) {
-			//fprintf(stdout, "do quick scan pressed\n");
-			this->currentScanGoing = "Quick Scan";
-			this->view = 3;
-			//this->QuickScan();
-			this->scanTasks.push(2);
-			nk_clear(this->ctx);
-		}
-		// draw txt 
-		struct nk_rect textArea = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
-		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, " Quick Scan! ", 13, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-		// draw triangle
-		this->drawImageSubRect(&this->triangleLogo, &nk_rect(textArea.x + textArea.w - textArea.h -5,  textArea.y, textArea.h, textArea.h));
-	}
-	nk_end(this->ctx);
-
-	return true;
-
-}
-
-inline bool FE::AdvancedScanView() {
-	int filled_width = WINDOW_WIDTH * .08 * 2 + WINDOW_WIDTH * .075; // remaining width ofscreen after side menu
-	int delta = WINDOW_WIDTH - filled_width;
-
-	/* advanced scan header and text */
-	if (nk_begin(this->ctx, "Advanced Scan", nk_rect(300, WINDOW_HEIGHT * .06, 600, 300),
-		NK_WINDOW_TITLE | NK_WINDOW_NO_SCROLLBAR))
-	{
-		nk_layout_row_dynamic(this->ctx, 120, 1);
-		nk_label_wrap(this->ctx, "This scan will allow you to choose where and when to scan!");
-	}
-	nk_end(this->ctx);
-
-	///* checkbox date switch */
-	//if (nk_begin(this->ctx, "Overview", nk_rect(600, 600, 400, 600), NK_WINDOW_DYNAMIC))
-	//{
-	//	static const float ratio[] = { 120, 150 };
-	//	static char field_buffer[64];
-	//	static char text[9][64];
-	//	static int text_len[9];
-	//	static char box_buffer[512];
-	//	static int field_len;
-	//	static int box_len;
-	//	nk_flags active;
-
-	//	//text box and enter
-	//	nk_layout_row(ctx, NK_STATIC, 100, 2, ratio);
-	//	//nk_label(ctx, "test:", NK_TEXT_LEFT);
-	//	nk_edit_string(ctx, NK_EDIT_SIMPLE, text[0], &text_len[0], 64, nk_filter_ascii);
-	//	if (nk_button_label(ctx, "Done")) {
-	//		printf("%s\n", text[0]);
-	//		this->printset(advancedScanPaths);
-	//	}
-	//		
-	//}
-	//nk_end(this->ctx);
-	
-	/* displaying shit */
-	struct nk_list_view view; //view.count = 2; 
-	if (nk_begin(this->ctx, "Selected Files/Folders...", nk_rect(WINDOW_WIDTH - delta + 20, WINDOW_HEIGHT * .235, delta-40, 400), NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_DYNAMIC ))
-	{
-		int h = advancedScanPaths.size() * DEFAULT_FONT_SIZE + DEFAULT_FONT_SIZE;
-		if (h < 400) { h = 400; }
-		nk_layout_row_dynamic(ctx, h, 1);
-		if (nk_list_view_begin(ctx, &view, "test", NK_WINDOW_BORDER, 25, 2)) {
-			nk_layout_row_dynamic(ctx, 25, 1);
-			UIPrintSet(advancedScanPaths);
-			//printset(advancedScanPaths);
-			/*nk_label(this->ctx, list[0], NK_TEXT_ALIGN_LEFT);
-			nk_label(this->ctx, list[1], NK_TEXT_ALIGN_LEFT);*/
-			nk_list_view_end(&view);
-		}
-	}
-	nk_end(this->ctx);
-
-	/* add folders/files button */
-	struct nk_rect AddFoF = nk_rect(WINDOW_WIDTH - delta+10, WINDOW_HEIGHT * .235+405, 17*12+41, 36);
-	if (nk_begin(this->ctx, "add folders", AddFoF, NK_WINDOW_NO_SCROLLBAR))
-	{
-		nk_layout_row_static(ctx, 65, AddFoF.w, 1);
-		if (nk_button_label(ctx, "")) {
-			// openfolderdiag
-			// POGGERS THIS WORKED
-			std::thread t1([this]() {
-				MultiFolderSelect(GetActiveWindow(), TEXT("SELECT SOME FILES/FOLDERS"));
-			});
-			t1.detach();
-			nk_clear(this->ctx);
-		}
-		// draw txt 
-		struct nk_rect textArea = nk_rect(AddFoF.x, AddFoF.y, AddFoF.w, AddFoF.h);
-		nk_draw_text(nk_window_get_canvas(this->ctx), textArea, "  Add Files/Dirs ", 17, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-		// draw add
-		this->drawImageSubRect(&this->addLogo, &nk_rect(AddFoF.x + AddFoF.w - 39, AddFoF.y, AddFoF.h, AddFoF.h));
-	}
-	nk_end(this->ctx);
-
-	/* adv scan now */
-	struct nk_rect scanButton = nk_rect(AddFoF.x+125, AddFoF.y+75, 250, 36);
-	if (nk_begin(this->ctx, "advscannow", scanButton, NK_WINDOW_NO_SCROLLBAR))
-	{
-		nk_layout_row_static(ctx, 65, scanButton.w, 1);
-		if (nk_button_label(ctx, "")) {
-			// run adv scan now
-			if (advancedScanPaths.size() > 0) {
-				this->currentScanGoing = "Advanced";
-				this->view = 3;
-				//this->AdvanceScanNow(advancedScanPaths);
-				this->scanTasks.push(3);
-			}
-			nk_clear(this->ctx);
-		}
-		// draw txt 
-		struct nk_rect textArea2 = nk_rect(scanButton.x, scanButton.y, scanButton.w, scanButton.h);
-		nk_draw_text(nk_window_get_canvas(this->ctx), textArea2, "  Adv. Scan Now ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-		// draw triangle
-		this->drawImageSubRect(&this->triangleLogo, &nk_rect(scanButton.x + scanButton.w - 40, scanButton.y, scanButton.h, scanButton.h));
-	}
-	nk_end(this->ctx);
-
-	/* adv scan LATER */
-	struct nk_rect scanButtonLater = nk_rect(scanButton.x+scanButton.w+50, scanButton.y, 16 * 12 + 60, 36);
-	if (nk_begin(this->ctx, "advscannl8r", scanButtonLater, NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_MOVABLE))
-	{
-		nk_layout_row_static(ctx, 65, scanButtonLater.w, 1);
-		if (nk_button_label(ctx, "")) {
-			if (advancedScanPaths.size() > 0) {
-				// run adv scan l8r
-				this->currentScanGoing = "Scheduled Scan";
-				this->_schedulerInfo = {};
-				this->_schedulerInfo.type = -1;
-				this->view = 4;
-			}
-			nk_clear(this->ctx);
-		}
-		// draw txt 
-		struct nk_rect textArea3 = nk_rect(scanButtonLater.x, scanButtonLater.y, scanButtonLater.w, scanButtonLater.h);
-		nk_draw_text(nk_window_get_canvas(this->ctx), textArea3, "  Schedule Scan ", 16, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-		// draw calendar
-		this->drawImageSubRect(&this->calendarLogo, &nk_rect(scanButtonLater.x + scanButtonLater.w - 40, scanButtonLater.y, scanButtonLater.h, scanButtonLater.h));
-	}
-	nk_end(this->ctx);
-
-	return true;
-}
-
-inline bool FE::DrawHistoryPage()
-{
-	// test cout what we got
-	/*std::vector<std::vector<std::string>> test = read_log();
-	for (auto ss : test) {
-		for (auto s : ss)
-			std::cout << " " << s;
-		std::cout << std::endl;
-	}
-	getch();*/
-
-	/* BACK ARROW ICON */
-	struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
-	struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
-	if (nk_begin(this->ctx, "barrow", backArrowAndText,
-		NK_WINDOW_NO_SCROLLBAR)) {
-
-		/* hidden button behind icon to press */
-		nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
-		if (nk_button_label(ctx, "")) {
-			//fprintf(stdout, "back arrow\n");
-			this->view = 0;
-			advancedScanPaths.clear();
-			nk_clear(this->ctx);
-		}
-		this->drawImageSubRect(&this->backArrow, &bar);
-		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
-
-	/* lava logo */
-	if (nk_begin(this->ctx, "scan", nk_rect(WINDOW_WIDTH*.5-95-95,5,95,95),
-		NK_WINDOW_NO_SCROLLBAR)) {
-		this->drawImage(&this->squareImage);
-	}
-	nk_end(this->ctx);
-
-	/* LAVA HISTORY TEXT */
-	nk_style_set_font(this->ctx, &this->font2->handle);
-	struct nk_rect historyscantxt = nk_rect(WINDOW_WIDTH*.5-95+5,5,375,95);
-	if (nk_begin(this->ctx, "historytextlogo", historyscantxt, NK_WINDOW_NO_SCROLLBAR)) {
-		nk_draw_text(nk_window_get_canvas(this->ctx), historyscantxt, " HISTORY", 8, &this->font2->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
-	nk_style_set_font(this->ctx, &this->font->handle);
-
-	//nk_stroke_line(this->canvas, 10, historyscantxt.h + 15, historyscantxt.w + 15, historyscantxt.h + 15, 2, nk_rgb(255, 255, 255));
-
-	/* LAVA ACTUAL HISTORY SECTION */
-	// make first col a seperate entity and skinnier...might fit rest of text this wway.
-	//struct nk_rect view0 = nk_rect(5, bar.h + 50, 200, WINDOW_HEIGHT - bar.h - 55);
-	//struct nk_rect scanshistory = nk_rect(view0.w,bar.h+50,WINDOW_WIDTH-5-view0.w,WINDOW_HEIGHT-bar.h-55);
-	struct nk_rect biggieCheese = nk_rect(5, bar.h + 50, WINDOW_WIDTH - 10, WINDOW_HEIGHT - bar.h - 55); // total area...i give up on this for now im too tired
-	struct nk_list_view view; //view.count = 2; 	
-
-	if (nk_begin(this->ctx, "testlmao", biggieCheese,
-		NK_WINDOW_SCROLL_AUTO_HIDE ))
-	{
-		/* HORIZANTAL LINE */
-		//nk_stroke_line(this->canvas, 20, biggieCheese.y + 50, WINDOW_WIDTH - 20, biggieCheese.y + 50, 20, nk_rgb(255, 255, 255));
-
-		nk_style_set_font(this->ctx, &this->font5->handle);
-		nk_layout_row_dynamic(ctx, WINDOW_HEIGHT - 10, 5); // wrapping row
-		if (nk_group_begin(ctx, "column1", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 1
-			nk_layout_row_dynamic(ctx, 36, 1); // nested row
-			nk_label(ctx, "Scan Type", NK_TEXT_CENTERED);
-
-			nk_style_set_font(this->ctx, &this->font3->handle);
-			for (int i = 0; i < this->PreviousScans.size(); i++) {
-				nk_layout_row_dynamic(ctx, 30, 1);
-				nk_label(ctx, this->PreviousScans[i][0].c_str(), NK_TEXT_CENTERED);
-			}
-			nk_style_set_font(this->ctx, &this->font5->handle);
-			nk_group_end(ctx);
-		}
-
-		if (nk_group_begin(ctx, "column2", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 2
-			nk_layout_row_dynamic(ctx, 36, 1);
-			nk_label(ctx, "Scan Start", NK_TEXT_CENTERED);
-
-			nk_style_set_font(this->ctx, &this->font3->handle);
-			for (int i = 0; i < this->PreviousScans.size(); i++) {
-				nk_layout_row_dynamic(ctx, 30, 1);
-				nk_label(ctx, this->PreviousScans[i][1].c_str(), NK_TEXT_CENTERED);
-			}
-			nk_style_set_font(this->ctx, &this->font5->handle);
-			nk_group_end(ctx);
-		}
-
-		if (nk_group_begin(ctx, "column3", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 3
-			nk_layout_row_dynamic(ctx, 36, 1); // nested row
-			nk_label(ctx, "Scan End", NK_TEXT_CENTERED);
-
-			nk_style_set_font(this->ctx, &this->font3->handle);
-			for (int i = 0; i < this->PreviousScans.size(); i++) {
-				nk_layout_row_dynamic(ctx, 30, 1);
-				nk_label(ctx, this->PreviousScans[i][2].c_str(), NK_TEXT_CENTERED);
-			}
-			nk_style_set_font(this->ctx, &this->font5->handle);
-			nk_group_end(ctx);
-		}
-
-		if (nk_group_begin(ctx, "column4", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 4
-			nk_layout_row_dynamic(ctx, 36, 1);
-			nk_label(ctx, "Viruses Found", NK_TEXT_CENTERED);
-
-			nk_style_set_font(this->ctx, &this->font3->handle);
-			for (int i = 0; i < this->PreviousScans.size(); i++) {
-				nk_layout_row_dynamic(ctx, 30, 1);
-				nk_label(ctx, this->PreviousScans[i][3].c_str(), NK_TEXT_CENTERED);
-			}
-			nk_style_set_font(this->ctx, &this->font5->handle);
-			nk_group_end(ctx);
-		}
-
-		if (nk_group_begin(ctx, "column5", NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) { // column 5
-			nk_layout_row_dynamic(ctx, 36, 1); // nested row
-			nk_label(ctx, "Viruses Removed", NK_TEXT_CENTERED);
-
-			nk_style_set_font(this->ctx, &this->font3->handle);
-			for (int i = 0; i < this->PreviousScans.size(); i++) {
-				nk_layout_row_dynamic(ctx, 30, 1);
-				nk_label(ctx, this->PreviousScans[i][4].c_str(), NK_TEXT_CENTERED);
-			}
-			nk_style_set_font(this->ctx, &this->font5->handle);
-			nk_group_end(ctx);
-		}
-	}
-	nk_end(this->ctx);
-	nk_style_set_font(this->ctx, &this->font->handle);
-	
-	return true;
-}
-
-inline bool FE::DrawInProgressScan()
-{
-	//std::cout << "\n\t cf : " << CurrentScanFile;
-	// grab the top task ,if exists
-	if (!this->scanTasks.empty()) {
-		this->maxfiles = 0;
-		std::thread t1([this]() {
-			int scan = this->scanTasks.front();
-			scanTasks.pop();
-			switch (scan) {
-			case 1: //complete
-				//this->maxfiles = this->FileCount("C:\\");
-				this->CompleteScan();
+		//std::ifstream ifs("ScheduleInfo.Lava");
+		std::string line; int num = 0;
+		while (std::getline(is, line)) {
+			// using printf() in all tests for consistency
+			//printf("%s\n", line.c_str());
+			switch (num) {
+			case 0:
+				s.type = line;
 				break;
-			case 2: //quick
-				//this->maxfiles = this->TotalSetFileCount(this->countQuarantineContents());
-				this->QuickScan();
+			case 1:
+				s.status_text = line;
 				break;
-			case 3: //adv
-				//this->maxfiles = this->TotalSetFileCount(advancedScanPaths);
-				//pm.Reccommend();
-				this->AdvanceScanNow(advancedScanPaths);
+			case 2:
+				s.startedOn = line;
+				break;
+			case 3:
+				s.manipulatedFiles = line;
 				break;
 			default:
+				//do nothing
 				break;
 			}
-		});
-		t1.detach();
-	}
 
-
-	/* LOGO */
-	struct nk_rect traplogo = nk_rect(WINDOW_WIDTH * .22, WINDOW_HEIGHT * .08, WINDOW_WIDTH * .56, WINDOW_HEIGHT * .28);
-	if (nk_begin(this->ctx, "lavalogo", traplogo,
-		NK_WINDOW_NO_SCROLLBAR)) {
-		this->drawImage(&this->trapImage);
-	}
-	nk_end(this->ctx);
-
-	/* SCAN TYPE TEXT */
-	if (nk_begin(this->ctx, "type", nk_rect(traplogo.x, traplogo.y+25+traplogo.h, 600, 50),
-		NK_WINDOW_NO_SCROLLBAR))
-	{
-		nk_layout_row_dynamic(this->ctx, 120, 1);
-		nk_label_wrap(this->ctx, std::string("Scan Type : "+this->currentScanGoing).c_str());
-	}
-	nk_end(this->ctx);
-
-	/* Current scanning items TEXT */
-	if (nk_begin(this->ctx, "currentscanfile", nk_rect(traplogo.x, traplogo.y + 25 + traplogo.h+75, 800, 150),
-		NK_WINDOW_DYNAMIC| NK_WINDOW_MOVABLE))
-	{
-		nk_layout_row_dynamic(this->ctx, 150, 1);
-		// const char* fn = CurrentScanFile.c_str();
-		auto f = std::string("file: ").append(CurrentScanFile);
-		const char* fn = f.c_str();
-		// std::cout << "file: " << fn;
-		nk_label_wrap(this->ctx, fn);
-	}
-	nk_end(this->ctx);
-
-	/* prog bbar */
-	if (nk_begin(this->ctx, "progbar", nk_rect(traplogo.x-5, traplogo.y+275+traplogo.h, traplogo.w, 65),
-		NK_WINDOW_NO_SCROLLBAR))
-	{
-		/*nk_size currentValue = this->pm.GetPercentage();*/
-		/*nk_size currentValue = 69;
-		nk_size maxValue = 100;*/
-		unsigned long int curcount = current_Count;
-		unsigned long int totcount = total_Count;
-		nk_size currentValue;
-		if (curcount == 0 || totcount ==0) {
-			currentValue = 1;
+			num++;
 		}
-		else {
-			 currentValue = (double)((double)current_Count / (double)total_Count) * 100;
-			 if (isScanDone == true) {
-				 currentValue = 100;
-			 }
-		}
-		
-		nk_modify modifyable = NK_FIXED;
-		nk_layout_row_dynamic(this->ctx, traplogo.w, 1);
-		nk_progress(ctx, &currentValue, 100.00, NK_FIXED);
-		//std::cout << "\n  " << curcount << "\\" << totcount << " = " << (double)currentValue;
-		//std::cout << "\n  " << currentValue;
+		//file.close();
+
+		// old n bad
+		// read in individual members of s
+		//is >> s.type >> s.status_text >> s.startedOn >> s.manipulatedFiles;
+		return is;
 	}
-	nk_end(this->ctx);
 
-	if (this->isScanDone) { // if current scan done display our done button!
-		
-		/* trash icon */
-		/*struct nk_rect traplogo = nk_rect(WINDOW_WIDTH * .4, WINDOW_HEIGHT - WINDOW_WIDTH * .1 - 20, WINDOW_WIDTH * .1, WINDOW_WIDTH * .1);
-		if (nk_begin(this->ctx, "quarentinelogo", traplogo,
-			NK_WINDOW_NO_SCROLLBAR)) {
-			this->drawImage(&this->trashIcon);
-		}
-		nk_end(this->ctx);*/
-
-		int b_w = 680; //width of button for done
-		struct nk_rect r = nk_rect(WINDOW_WIDTH * .5 - b_w / 2, WINDOW_HEIGHT - 110, b_w, 100);
-		if (nk_begin(this->ctx, "donebutton", r,
-			NK_WINDOW_NO_SCROLLBAR))
-		{
-			nk_layout_row_static(ctx, r.h, r.w, 1);
-			if (nk_button_label(ctx, "")) {
-				// run adv scan now
-				if (advancedScanPaths.size() > 0) {
-					//fprintf(stdout, "testestestest\n");
-					this->view = 5;
-					nk_clear(this->ctx);
-				}
+	void Manipulate() {
+		int i = 0;
+		std::string s = "";
+		for (auto path : this->filesToBeScanned) {
+			if (i == this->filesToBeScanned.size() - 1) {
+				s.append(path);
 			}
-			// draw txt 
-			struct nk_rect textArea2 = nk_rect(r.x+110, WINDOW_HEIGHT - 75, r.w, 36);
-			nk_draw_text(nk_window_get_canvas(this->ctx), textArea2, " Click Here to Remove any Viruses Found!", 40, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-			// draw trash shit
-			this->drawImageSubRect(&this->trashIcon, &nk_rect(r.x, r.y, 100, 100));
-		}
-		nk_end(this->ctx);
-	}
-
-	return true;
-}
-
-inline bool FE::printset(std::set<std::string> s)
-{
-	std::cout << "\ncontents: \n";
-	for (std::string const& str : s)
-	{
-		std::cout << "\t" << str << "\n";
-	}
-	return true;
-}
-
-inline bool FE::viewSwap() {
-	if (this->m_scanViews == 0) {
-		//fprintf(stdout, "we is in default scan view bruh\n");
-		NoScanView();
-	}
-	else if (this->m_scanViews == 1) {
-		//fprintf(stdout, "we is in compelte scan view bruh\n");
-		CompleteScanView();
-	}
-	else if (this->m_scanViews == 2) {
-		//fprintf(stdout, "we is in quick scan view bruh\n");
-		QuickScansView();
-	}
-	else if (this->m_scanViews == 3) {
-		//fprintf(stdout, "we is in advanced scan view bruh\n");
-		//advancedScanPaths.clear();
-		AdvancedScanView();
-	}
-	else {
-		fprintf(stderr, "this shouldnt of happened, mr. freeman\n");
-	}
-	return true;
-}
-
-inline bool FE::DrawScansPage()
-{
-	/* BACK ARROW ICON */
-	struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
-	struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
-	if (nk_begin(this->ctx, "barrow", backArrowAndText,
-		NK_WINDOW_NO_SCROLLBAR)) {
-
-		/* hidden button behind icon to press */
-		nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
-		if (nk_button_label(ctx, "")) {
-			//fprintf(stdout, "back arrow\n");
-			this->view = 0;
-			advancedScanPaths.clear();
-			nk_clear(this->ctx);
-		}
-		this->drawImageSubRect(&this->backArrow, &bar);
-		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
-
-	// vertical line
-	nk_stroke_line(this->canvas, bar.w * 2 + WINDOW_WIDTH * .075, WINDOW_HEIGHT - WINDOW_HEIGHT * .06,
-		bar.w * 2 + WINDOW_WIDTH * .075, 0+WINDOW_HEIGHT * .06, 2, nk_rgb(255, 255, 255));
-
-	int w_space = bar.w * 2 + WINDOW_WIDTH * .075;
-	/* COMPLETE SCAN */
-	struct nk_rect completeScanTextRect = nk_rect(.025*w_space, WINDOW_HEIGHT*.30, w_space*.95, 36);
-	if (nk_begin(this->ctx, "CompleteScan", completeScanTextRect, NK_WINDOW_NO_SCROLLBAR)) {
-		nk_layout_row_static(this->ctx, completeScanTextRect.y + completeScanTextRect.h, completeScanTextRect.x + completeScanTextRect.w, 2);
-		if (nk_button_label(this->ctx, "")) {
-			//fprintf(stdout, "Complete Scan\n");
-			this->m_scanViews = 1;
-			nk_clear(this->ctx);
-		}
-		nk_draw_text(nk_window_get_canvas(this->ctx), completeScanTextRect, " Complete Scan", 14, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
-
-	/* QUICK SCAN */
-	struct nk_rect quickScanTextRect = nk_rect(.025 * w_space, WINDOW_HEIGHT * .45, w_space * .95, 36);
-	if (nk_begin(this->ctx, "QuickScan", quickScanTextRect, NK_WINDOW_NO_SCROLLBAR)) {
-		nk_layout_row_static(this->ctx, quickScanTextRect.y + quickScanTextRect.h, quickScanTextRect.x + quickScanTextRect.w, 2);
-		if (nk_button_label(this->ctx, "")) {
-			//fprintf(stdout, "Quick Scan\n");
-			this->m_scanViews = 2;
-			nk_clear(this->ctx);
-		}
-		nk_draw_text(nk_window_get_canvas(this->ctx), quickScanTextRect, " Quick Scan   ", 14, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
-
-	/* ADVANCED SCAN */
-	struct nk_rect advScanTextRect = nk_rect(.025 * w_space, WINDOW_HEIGHT * .60, w_space * .95, 36);
-	if (nk_begin(this->ctx, "AdvancedScan", advScanTextRect, NK_WINDOW_NO_SCROLLBAR)) {
-		nk_layout_row_static(this->ctx, advScanTextRect.y + advScanTextRect.h, advScanTextRect.x + advScanTextRect.w, 2);
-		if (nk_button_label(this->ctx, "")) {
-			//fprintf(stdout, "Advanced Scan\n");
-			this->m_scanViews = 3;
-			nk_clear(this->ctx);
-		}
-		nk_draw_text(nk_window_get_canvas(this->ctx), advScanTextRect, " Advanced Scan", 14, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
-
-	this->viewSwap();
-
-	return true;
-}
-
-inline FE::FE() {
-	//currentScanGoing = "";
-	this->view = 0;
-	this->m_scanViews = 0;
-	this->_schedulerInfo = {};
-	this->_schedulerInfo.type = -1;
-	//static struct tm sel_date;
-	/*time_t now = time(0);
-	this->sel_date = *localtime(&now);
-	sel_date.tm_sec = 0;*/
-	/* INIT IMAGES */
-	this->pp.scan = "../Assets/scan2.png";
-	this->pp.rectLogo = "../Assets/rectLogo.png";
-	this->pp.trapLogo = "../Assets/trapLogo.png";
-	this->pp.squareLogo = "../Assets/squareLogo.png";
-	this->pp.history = "../Assets/historylarger.png";
-	this->pp.backArrow = "../Assets/back_arrow.png";
-	//this->pp.chooseScan = "../Assets/chooseScan.png";
-	this->pp.chooseScan = "../Assets/choosescan2.png";
-	this->pp.triangleButton = "../Assets/triangle.png";
-	this->pp.addButton = "../Assets/add.png";
-	this->pp.calendar = "../Assets/calendar.png";
-	this->pp.trash = "../Assets/trash.png";
-	this->pp.purpleBack = "../Assets/goback.png";
-	this->pp.purpleFwd = "../Assets/cont.png";
-	this->pp.done = "../Assets/done.png";
-	this->scanHistorySet = read_log();
-}
-
-inline void FE::UIPrintSet(std::set<std::string> s)
-{
-	for (auto f : s) {
-		nk_label(this->ctx, f.c_str(), NK_TEXT_ALIGN_LEFT);
-	}
-
-}
-
-inline bool FE::ChangeFontSize(float s = 28) {
-
-	{//struct nk_font_atlas* atlas;
-		nk_sfml_font_stash_begin(&this->atlas);
-		//this->font = nk_font_atlas_add_from_file(this->atlas, this->font_path, 18, NULL);
-		struct nk_font* droid = nk_font_atlas_add_from_file(atlas, "../Assets/font.ttf", s, 0);
-		nk_sfml_font_stash_end();
-		nk_style_set_font(this->ctx, &droid->handle);
-		//nk_init_default(this->ctx, &font->handle);
-	}
-
-	return true;
-}
-
-static int all = 0;
-inline bool FE::QuarantineView()
-{
-	//int sel = 0;
-	// 1. get list of viruses found
-	// 2. checkbox list
-	// 3. delete selected. on done btn
-	
-	/* BACK ARROW ICON */
-	struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
-	struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
-	if (nk_begin(this->ctx, "barrow", backArrowAndText,
-		NK_WINDOW_NO_SCROLLBAR)) {
-
-		/* hidden button behind icon to press */
-		nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
-		if (nk_button_label(ctx, "")) {
-			//fprintf(stdout, "back arrow\n");
-			// move files back
-			advancedScanPaths.clear();
-			std::set<q_entry> q;
-			int i = 0;
-			for (auto thing : this->QuarantineContents) {
-				try {
-					q.insert(thing);
-				}
-				catch (int e) {
-					std::cout << "shoot we messed up quaranting!\n";
-				}
-				i++;
+			else {
+				s.append(path).append("|");
 			}
-			all = 0; //for next scan
-			this->num_removed = 0;
-			//this->remove_quarantined_files(toRemove);
-			this->moveQuarantineHome(q);
-			this->log_scan();
-			this->view = 0;
-			nk_clear(this->ctx);
+			i++;
 		}
-		this->drawImageSubRect(&this->backArrow, &bar);
-		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
-
-	// text to chose delete shit
-	if (nk_begin(this->ctx, "choseshittodelete", nk_rect(bar.w+50,5,900,30),
-		NK_WINDOW_NO_SCROLLBAR)) {
-		nk_layout_row_static(ctx, 30, WINDOW_WIDTH-150, 1);
-		nk_label_wrap(this->ctx, "Please select viruses to remove! Press Done when you're ready!");
-	}
-	nk_end(this->ctx);
-
-	static std::vector<int> array(this->QuarantineContents.size());
-	// CHECK BOXES
-	if (nk_begin(this->ctx, "checkboxes", nk_rect(bar.w+10,45, WINDOW_WIDTH-15-bar.x-bar.w, WINDOW_HEIGHT-150),
-		NK_WINDOW_BORDER | NK_WINDOW_SCROLL_AUTO_HIDE)) {
-		if (this->QuarantineContents.size() > 0) {
-			int i = 0; 
-			// print check boxes
-			for (auto s : this->QuarantineContents) {
-				nk_layout_row_static(ctx, 30, 32*(s.origin_directory.length() + s.old_file_name.length()), 1);
-				nk_checkbox_label(ctx, ("  (" + s.virus_name + "): " + s.origin_directory+s.old_file_name).c_str(), &array[i]);
-				//try {
-				//	if (array.at(i) == 1) {
-				//		//std::cout << s.old_file_name << " checked \n";
-				//		sel++;
-				//	}
-				//	else {
-				//		sel--;
-				//	}
-				//	//std::cout << s.old_file_name << " (" << array[i] << ") \n";
-				//	
-				//}
-				//catch (int e) {
-				//	//std::cout << "\nout of bounds\n";
-				//	
-				//}
-				//std::cout << "()"+s.origin_directory + s.old_file_name <<std::endl;
-				i++;
-			}
-			//sk_layout_row_dynamic(ctx, 15, 1);
-			//nk_label(this->ctx, "                                                                                                                         ", NK_TEXT_ALIGN_LEFT);
-		}
-		else {
-			//std::cout << "no viruses found!\n";
-			nk_layout_row_dynamic(this->ctx, 250, 1);
-			//nk_label_wrap(this->ctx, "No Viruses Found! Either Press the back button or the Done button.");
-			nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(150, 150, 800, 100), " NO VIRUSES FOUND", 17, &this->font2->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-			nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(150, 250, 800, 100), "    Please Hit The Done/Back button", 35, &this->font->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-
-		}
-		
-	}
-	nk_end(this->ctx);
-
-	// SELECT ALL/DONT
-	if (nk_begin(this->ctx, "all", nk_rect(bar.x+bar.w+10, WINDOW_HEIGHT-100+2, 200, 50),
-		NK_WINDOW_NO_SCROLLBAR)) {
-		nk_layout_row_static(ctx, 50, 200, 1);
-		if (all == 0) {
-			//display sel all
-			if (nk_button_label(this->ctx, "Select All")) {
-				//std::cout << "sell pressed" << std::endl;
-				std::fill(array.begin(), array.end(), 1);
-				all = 1;
-			}
-		}
-		else {
-			// all=1
-			// disaply unsel all
-			if (nk_button_label(ctx, "Unselect All")) {
-				//std::cout << "unsel pressed" << std::endl;
-				std::fill(array.begin(), array.end(), 0);
-				all = 0;
-			}
-		}
-	}
-	nk_end(this->ctx);
-	
-	// done button
-	if (nk_begin(this->ctx, "submit", nk_rect(WINDOW_WIDTH-15-200, WINDOW_HEIGHT - 100 + 2, 200, 50),
-		NK_WINDOW_NO_SCROLLBAR)) {
-		nk_layout_row_static(ctx, 50, 200, 1);
-
-		if (nk_button_label(ctx, "Done")) {
-			// loop thru the array and if element is 1, push to a set to ret to our mans
-			std::set<std::string>toRemove;
-			std::set<q_entry> q;
-			int i = 0;
-			for (auto thing : this->QuarantineContents) {
-				try {
-					if (array.at(i) == 1)
-						toRemove.insert(thing.old_file_name);
-					else
-						q.insert(thing);
-				}
-				catch (int e) {
-					std::cout << "shoot we messed up quaranting!\n";
-				}
-				i++;
-			}
-			all = 0; //for next scan
-			this->num_removed = toRemove.size();
-			this->remove_quarantined_files(toRemove);
-			this->moveQuarantineHome(q);
-			this->log_scan();
-			this->view = 0;
-		}
-		
-	}
-	nk_end(this->ctx);
-
-	return true;
-}
-
-int changeHrFormat(int hr, bool am) {
-	if (am) {
-		if (hr == 12) {
-			hr = 0;
-		}
-	}
-	else { // pm
-		if (hr == 12) {
-			hr = 23;
-		}
-		else {
-			hr = hr + 12;
-		}
+		this->manipulatedFiles = s;
+		return;
 	}
 
-	return hr;
-}
+	std::set<std::string> returnSet() {
+		// convert tab delim string to set :)
+		std::set<std::string> res;
+		//std::stringstream ss(this->manipulatedFiles);
 
+		/*for (std::string i; ss >> i;) {
+			res.insert(i);
+			if (ss.peek() == '|')
+				ss.ignore();
+		}*/
 
-inline bool FE::ScheduleAdvScanView()
-{
-	/* BACK ARROW ICON */
-	struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
-	struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
-	if (nk_begin(this->ctx, "barrow", backArrowAndText,
-		NK_WINDOW_NO_SCROLLBAR)) {
-
-		/* hidden button behind icon to press */
-		nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
-		if (nk_button_label(ctx, "")) {
-			//fprintf(stdout, "back arrow\n");
-			this->view = 1;
-			//advancedScanPaths.clear();
-			nk_clear(this->ctx);
+		std::stringstream s_stream(this->manipulatedFiles); //create string stream from the string
+		while (s_stream.good()) {
+			std::string substr;
+			std::getline(s_stream, substr, '|'); //get first string delimited by comma
+			res.insert(substr);
 		}
-		this->drawImageSubRect(&this->backArrow, &bar);
-		nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " EXIT ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-	}
-	nk_end(this->ctx);
 
-	unsigned static short int trigger_type= 3; // init state, make user choose what they want :) but start at one time
+		//for (auto s: res) {    //print all splitted strings
+		//	std::cout << s << std::endl;
+		//}
+
+		this->filesToBeScanned = res;
+		return res;
+	}
+
+	bool DumpSchedulerObj() {
+		std::ofstream ofs(GetExePath() + "\\" + "TaskScheduler.Lava");
+		ofs << *this;
+		ofs.close();
+		return true;
+	}
+
+	SchedulerObj(std::string _type, std::string _status,
+		std::string _startedOn, std::set<std::string> _filesNFolders) {
+		this->type = _type;
+		this->status_text = _status;
+		this->startedOn = _startedOn;
+		this->filesToBeScanned = _filesNFolders;
+		// turn set into tab delim string
+		this->Manipulate();
+		//this->DumpAll();
+	}
+
+	SchedulerObj() {
+		// means we gotta use ifstream
+	}
+
+};
+
+class ProgressMonitor {
+
 	/*
-	0 : daily
-	1 : weekly
-	2 : monthly
-	3 : one time bro
+		How to use this class:
+		A. Declare it before a scan. For each directory you want to scan:
+
+			1. Run the function, Reccommend(std::string directory);
+				- This will return one of the following int values:
+					- 0 if it's reccomended that the progress is monitored by counting files (this includes all files recursively)
+					- 1 if it's reccomended that the progress is moinitored by counting level 5 folders (i.e. directories found at level four recursively if the parent folder is 0)
+
+			2. To determine the total progress necessary, for each directory:
+				- Run either:
+					- CountDirectories(std::string directory);
+					- CountFiles(std::string directory);
+				- Note: while the reccommend function will make a reccommendation, it is only that- a reccommendation.
+						With this in mind, you may choose to ignore it, so ultimately the choice is yours how you'd like to proceed as long as you keep it consistant.
+
+			3. From there every time you finish scanning a file or level 5 folder:
+				- Run the respective function depending on which it was:
+					- FinishedDirectory();
+					- FinishedFile();
+					- FinishedFile();
+				- The internal varibales will automatically update accordingly.
+
+		B.  To return the current progress, you have a few options:
+			- GetPercentage();
+				- Returns a float of the percentage of progress completed (range 0.0 - 100.0)
+			- GetTotal();
+				- Returns a double of the total amount of notable files/folders to scan (both completed and remaining)
+			- GetCompleted();
+				- Returns a double of the total amount of notable files/folders that have already been scanned
+
 	*/
 
-	static const char* items[] = { "Daily","Weekly","Monthly", "One Time" };
+protected:
+	//Internal variables
+	//Folders Scanned
+	double totalFolderCount = 0;
+	double folderCountCompleted = 0;
+	//Files Scanned
+	double totalFileCount = 0;
+	double fileCountCompleted = 0;
+	//Total Progress
+	double totalProgressCount = 0;
+	double totalProgressCompleted = 0;
+	//1-100% value for the progress bar
+	float progessPercentage = 0;
 
-	/* schedule logo */
-	struct nk_rect schedlogo = nk_rect(225,25,115,115);
-	if (nk_begin(this->ctx, "schedlogo", schedlogo,
-		NK_WINDOW_NO_SCROLLBAR)) {
-		this->drawImage(&this->calendarLogo);
+	//Internal function to keep the variables up to date
+	void UpdatePercentage()
+	{
+		totalProgressCompleted = folderCountCompleted + fileCountCompleted;
+		if (totalProgressCount != 0) {
+			progessPercentage = (totalProgressCompleted / totalProgressCount) * 100;
+		}
+		else {
+			progessPercentage = 0;
+		}
+
+		if (progessPercentage > 100) {
+			progessPercentage = 100;
+		}
+		return;
 	}
-	nk_end(this->ctx);
 
-	/* sched text */
-	if (nk_begin(this->ctx, "schedtext", nk_rect(225+schedlogo.w+7, 25+10, 720, 95),
-		NK_WINDOW_NO_SCROLLBAR)) {
-		nk_style_set_font(this->ctx, &this->font2->handle);
-		nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(225 + schedlogo.w + 7, 25 + 10, 720, 95), " Scan Scheduler", 15, 
-			&this->font2->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-		nk_style_set_font(this->ctx, &this->font->handle);
+public:
+	//Return the variables for use outside of the class
+	float GetPercentage() {
+		return progessPercentage;
 	}
-	nk_end(this->ctx);
+	double GetTotal() {
+		return totalProgressCount;
+	}
+	double GetCompleted() {
+		return totalProgressCompleted;
+	}
 
-	switch (this->_schedulerInfo.type) {
-		//std::cout << "\n\tcurrent select: " << this->_schedulerInfo.type;
-	case -1:
-		try {
-			// select trigger type
-			if (nk_begin(this->ctx, "triggertxt", nk_rect(WINDOW_WIDTH * .5 - 150, WINDOW_HEIGHT * .5 - 50, 300, 28),
-				NK_WINDOW_NO_SCROLLBAR)) {
-				nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(WINDOW_WIDTH * .5 - 150, WINDOW_HEIGHT * .5 - 50, 300, 200),
-					" Scheduler Type", 15,
-					&this->font->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-			}
-			nk_end(this->ctx);
+	//Only run this if the scan is finished and the progress monitor falls behind. This cannot be undone.
+	void FinishedEarly() {
+		totalProgressCompleted = totalProgressCount;
+		fileCountCompleted = totalFileCount;
+		folderCountCompleted = totalFolderCount;
+		progessPercentage = 100;
+		return;
+	}
 
-			/* try selectable */
-			if (nk_begin(this->ctx, "triggertype", nk_rect(WINDOW_WIDTH * .5 - 150, WINDOW_HEIGHT * .5, 300, 60),
-				NULL)) {
+	//Resets everything back to default. This cannot be undone.
+	void ResetProgressMonitor() {
+		totalFolderCount = 0;
+		folderCountCompleted = 0;
+		totalFileCount = 0;
+		fileCountCompleted = 0;
+		totalProgressCount = 0;
+		totalProgressCompleted = 0;
+		progessPercentage = 0;
+		return;
+	}
 
-				// default combo box
-				nk_layout_row_static(ctx, 30, 160, 1);
-				trigger_type = nk_combo(ctx, items, 4, trigger_type, 30, nk_vec2(160, 200));
-				/*nk_layout_row_static(ctx, 50, 300, 1);
-				int i = 0;
-				if (nk_combo_begin_label(ctx, items[trigger_type], nk_vec2(200, 200))) {
-					nk_layout_row_dynamic(ctx, 25, 1);
-					for (i = 0; i < 4; ++i)
-						if (nk_combo_item_label(ctx, items[i], NK_TEXT_LEFT))
-							trigger_type = i;
-					nk_combo_end(ctx);
-				}*/
-				//std::cout << "\n\ttype chosen: " << items[trigger_type] << "\n";
-			}
-			nk_end(this->ctx);
+	//Call this every time a level five folder is scanned during a scan
+	void FinishedDirectory() {
+		folderCountCompleted++;
+		UpdatePercentage();
+		return;
+	}
+	//Call this every time a notable file is scanned during a scan
+	void FinishedFile() {
+		fileCountCompleted++;
+		UpdatePercentage();
+		return;
+	}
 
-			/* FORWARD ARROW AT BOTTOM */
-			struct nk_rect bar1 = nk_rect(WINDOW_WIDTH * .5 - 60, 650, 120, 65);
-			//struct nk_rect bar1 = nk_rect(600,600,120,65);
-			if (nk_begin(this->ctx, "purparrowforward", bar1,
-				NK_WINDOW_NO_SCROLLBAR)) {
-				/* hidden button behind icon to press */
-				nk_layout_row_static(ctx, bar1.h, bar1.w, 1);
-				if (nk_button_image(this->ctx, this->purpleFwd)) {
-					//this->view = 1;
-					time_t now = time(0);
-					this->sel_date = *localtime(&now);
-					this->sel_date.tm_sec = 0;
-					this->_schedulerInfo.type = (int)trigger_type;
-					//std::cout << "\n\t " << trigger_type << "   " << this->_schedulerInfo.type ;
+	//Adds a single file to the total to scan. For if the user adds a single file in advanced scan.
+	void AddFile() {
+		totalFileCount++;
+		totalProgressCount++;
+		return;
+	}
+
+	//Call this for each directory added to a scan
+	//Adds the amount of level five directories within a given directory to the total count
+	void CountDirectories(std::string directory, int depth = 4, int level = 0) {
+		//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
+		//This is a modified version of iterateDirectory
+		if (directory.substr(directory.length() - 2) == ".\\")
+		{
+			return;
+		}
+		struct dirent* item;
+		const char* location = directory.c_str();
+		DIR* dir = opendir(location);
+		if (dir != NULL) {
+			item = readdir(dir);
+			while (item != NULL) {
+				if (item->d_type == DT_DIR)
+				{
+					//If we're not at the fifth level yet, go a level deeper
+					if (level < depth)
+					{
+						std::string newDirectory = directory + item->d_name + "\\";
+						CountDirectories(newDirectory, depth, level++);
+					}
+					//If we are then add the amount of folders to the total count
+					if (level == 4)
+					{
+						totalFolderCount++;
+						totalProgressCount++;
+					}
 				}
-				//this->drawImage(&this->purpleFwd);
+				item = readdir(dir);
 			}
-			nk_end(this->ctx);
-			return true;
 		}
-		catch (int e) {
-			fprintf(stdout, "flip we messed up the selectable");
-		}
-		break;
-
-	case 0: // DAILY BRUV
-		try {
-			// type : daily
-			static bool op = true;
-			this->displayScheduleType();
-			// ask for time
-			//nk_clear(this->ctx);
-
-			//if (nk_begin(this->ctx, "hrsstext", nk_rect(125, 180, 100, 30),
-			//	NK_WINDOW_SCROLL_AUTO_HIDE|NK_WINDOW_NO_SCROLLBAR)) {
-			//	// default combo box
-			//	nk_layout_row_dynamic(this->ctx, 30, 1);
-			//	nk_label_wrap(this->ctx, "Hour: ");
-			//}
-			//nk_end(this->ctx);
-			//// AM OR PM
-			//if (nk_begin(this->ctx, "amPM", nk_rect(125 + 100 + 2 + 300, 180, 300, 60),
-			//	NULL)) {
-			//	nk_layout_row_dynamic(this->ctx, 30, 2);
-			//	if (nk_option_label(this->ctx, "AM", op == true)) op = true;
-			//	if (nk_option_label(this->ctx, "PM", op == false)) op = false;
-			//}
-			//nk_end(this->ctx);
-			//unsigned static short int trigger_type = 0; // init state, make user choose what they want :) but start at one time
-			//static const char* hrs[] = { "1","2","3","4","5","6","7","8","9","10","11","12" };
-			///* try selectable */
-			//if (nk_begin(this->ctx, "hrs", nk_rect(125 + 100 + 2, 180, 300, 60),
-			//	NULL)) {
-			//	// default combo box
-			//	nk_layout_row_static(ctx, 30, 160, 1);
-			//	trigger_type = nk_combo(ctx, hrs, 12, trigger_type, 30, nk_vec2(160, 200));
-			//	//std::cout << "\n\t hr : " << changeHrFormat(trigger_type + 1, op);
-			//}
-			//nk_end(this->ctx);
-
-			// day...input?
-			/* date combobox */
-			
-			this->displayCalendar(125, 210,true);
-			this->displayScheduleArrows();
-		}
-		catch (int e) {
-			fprintf(stdout, "flip we messed up the selectable");
-		}
-		break;
-
-	case 1://weekly
-		try {
-			this->displayScheduleType();
-			this->displayCalendar(125, 210, true);
-			this->displayScheduleArrows();
-		}
-		catch (int e) {
-			fprintf(stdout, "flip we messed up the selectable");
-		}
-		break;
-
-	case 2: //mohnhtly
-		try {
-			this->displayScheduleType();
-			this->displayCalendar(125, 210, true);
-			this->displayScheduleArrows();
-		}
-		catch (int e) {
-			fprintf(stdout, "flip we messed up the selectable");
-		}
-		break;
-
-	case 3: //one time
-		try {
-			this->displayScheduleType();
-			this->displayCalendar(125, 210, false);
-			this->displayScheduleArrows();
-		}
-		catch (int e) {
-			fprintf(stdout, "flip we messed up the selectable");
-		}
-		break;
-
-	case 4:
-		try {
-			this->displayScheduleArrows();
-		}
-		catch (int e) {
-			fprintf(stdout, "flip we messed up the selectable");
-		}
-		break;
-
-	default: 
-		std::cout << "\n  flip";
-		break;
+		closedir(dir);
+		return;
 	}
 
-	return true;
-}
-
-inline bool FE::displayScheduleArrows()
-{
-	/* back arrow AT BOTTOM */
-	struct nk_rect bar1 = nk_rect(WINDOW_WIDTH * .5 - 120 - 5, 650, 120, 65);
-	//struct nk_rect bar1 = nk_rect(600,600,120,65);
-	if (nk_begin(this->ctx, "purparrowback", bar1,
-		NK_WINDOW_NO_SCROLLBAR)) {
-		/* hidden button behind icon to press */
-		nk_layout_row_static(ctx, bar1.h, bar1.w, 1);
-		if (nk_button_image(this->ctx, this->purpleBack)) {
-			//std::cout << "\n\t " << trigger_type;
-			//this->view = 1;
-			this->_schedulerInfo = {};
-			this->_schedulerInfo.type = -1;
+	void CountFiles(std::string directory) {
+		//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
+		//This is a modified version of iterateDirectory
+		if (directory.substr(directory.length() - 2) == ".\\")
+		{
+			return;
 		}
-		//this->drawImage(&this->purpleFwd);
-	}
-	nk_end(this->ctx);
-	/* done arrow AT BOTTOM */
-	struct nk_rect bar2 = nk_rect(WINDOW_WIDTH * .5 + 5, 650, 140, 65);
-	//struct nk_rect bar1 = nk_rect(600,600,120,65);
-	if (nk_begin(this->ctx, "donedonedonedone", bar2,
-		NK_WINDOW_NO_SCROLLBAR)) {
-		/* hidden button behind icon to press */
-		nk_layout_row_static(ctx, bar2.h, bar2.w, 1);
-		if (nk_button_image(this->ctx, this->done)) {
-			//std::cout << "\n\t " << trigger_type;
-			//this->view = 1;
-			// print shit based on input L)
-			sel_date.tm_year += 1900;
-			switch (this->_schedulerInfo.type) {
-			case 0: //daily
-				/*std::cout << "\ndaily\n\t" << sel_date.tm_mon <<"/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " days\n";
-				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";
-				for (auto s : advancedScanPaths) {
-					std::cout << "\n\t " << s;
-				}*/
-				break;
-			case 1: // weekly
-				/*std::cout << "\nweekly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " weekz\n";
-				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";
-				for (auto s : advancedScanPaths) {
-					std::cout << "\n\t " << s;
-				}*/
-				break;
-			case 2: //monthly
-				/*std::cout << "\nmonthly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << this->_schedulerInfo.reccuring << " months\n";
-				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";
-				for (auto s : advancedScanPaths) {
-					std::cout << "\n\t " << s;
-				}*/
-				break;
-			default: //3=one time and we done want that so do nothing tyfys
-				break;
+		struct dirent* item;
+		const char* location = directory.c_str();
+		DIR* dir = opendir(location);
+		if (dir != NULL) {
+			item = readdir(dir);
+			while (item != NULL) {
+				if (item->d_type == DT_DIR)
+				{
+					std::string newDirectory = directory + item->d_name + "\\";
+					CountDirectories(newDirectory);
+				}
+				if (item->d_type == DT_REG)
+				{
+					totalFileCount++;
+					totalProgressCount++;
+				}
+				item = readdir(dir);
 			}
-			this->view = 0;
-			this->_schedulerInfo = {};
-			this->_schedulerInfo.type = -1;
 		}
-		//this->drawImage(&this->purpleFwd);
+		closedir(dir);
+		return;
 	}
-	nk_end(this->ctx);
-	return true;
-}
 
-inline bool FE::displayScheduleType()
+	int Reccommend(std::string directory, int depth = 4, int level = 0)
+	{
+		int procedure = 0;
+		//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
+		//This is a modified version of iterateDirectory
+		if (directory.substr(directory.length() - 2) == ".\\")
+		{
+			return 0;
+		}
+		struct dirent* item;
+		const char* location = directory.c_str();
+		DIR* dir = opendir(location);
+		if (dir != NULL) {
+			item = readdir(dir);
+			while (item != NULL) {
+				if (item->d_type == DT_DIR)
+				{
+					//If we're not at the fifth level yet, go a level deeper
+					if ((level < depth) && (procedure == 0))
+					{
+						std::string newDirectory = directory + item->d_name + "\\";
+						procedure = Reccommend(newDirectory, depth, level++);
+					}
+					//If we are then add the amount of folders to the total count
+					if (level == depth)
+					{
+						return 1;
+					}
+				}
+				item = readdir(dir);
+			}
+		}
+		closedir(dir);
+		return procedure;
+	}
+
+};
+
+void FileCount(std::string dirPath)
 {
 	try {
-		// add logo
-		/*if (nk_begin(this->ctx, "lavalogo", r_logo,
-			NK_WINDOW_NO_SCROLLBAR)) {
-			this->drawImage(&this->squareImage);
+		auto dirIter = std::filesystem::recursive_directory_iterator(dirPath, std::filesystem::directory_options::skip_permission_denied);
+		struct stat s;
+		if (stat(dirPath.c_str(), &s) == 0)
+		{
+			if (s.st_mode & S_IFDIR)
+			{
+				for (auto& entry : dirIter)
+				{
+					if (entry.is_regular_file())
+					{
+						/*std::cout << "\n\t\tfile " << entry.path();
+						std::cout << "\n counter : " << total_Count;*/
+						++total_Count;
+					}
+				}
+			}
+			else if (s.st_mode & S_IFREG)
+			{
+				++total_Count;
+			}
 		}
-		nk_end(this->ctx);*/
-
-		std::string typ = "Schedule Type: ";
-		switch (this->_schedulerInfo.type) {
-		case 0:
-			typ.append( "Daily ");
-			break;
-		case 1:
-			typ.append("Weekly ");
-			break;
-		case 2:
-			typ.append("Monthly ");
-			break;
-		case 3:
-			typ.append("One Time ");
-			break;
-		default:
-			typ.append("failed ");
-			break;
-		}
-
-		// text
-		if (nk_begin(this->ctx, "txt", nk_rect(125,150,800, 32),
-			NK_WINDOW_NO_SCROLLBAR)) {
-			/*nk_layout_row_dynamic(this->ctx, 80, 1);
-			nk_label_wrap(this->ctx, "Chose a Scan, Please!");*/
-			nk_layout_row_dynamic(this->ctx,32,1);
-			//std::cout << "\n\t" << typ;
-			nk_label_wrap(this->ctx, typ.c_str());
-		}
-		nk_end(this->ctx);
 	}
 	catch (int e) {
-		std::cout << "failed the sched type bruv" << std::endl;
+		std::cout << "we diehere;";
 	}
-	return true;
+
 }
 
-inline bool FE::displayCalendar(int x, int y, bool reccurring)
+class WorkQueue
 {
-	//nk_rect(r.x, r.y, r.w, r.h); //x 125 y 210 w 125 h 2
-	/*nk_rect(125, 212, 125, 24);
-	nk_rect(125, 210 + 36, 125, 24);
-	nk_rect(125 + 132, 210, 500, 300);*/
-	nk_style_set_font(this->ctx, &this->font5->handle);
-	// labels
-	if (nk_begin(this->ctx, "labelsforcalander", nk_rect(x, y+2, 125, 24) ,
-		NK_WINDOW_NO_SCROLLBAR)) {
-		nk_layout_row_static(ctx, 24, 125, 1);
-		nk_label_wrap(this->ctx, "Start Time: ");
-	} nk_end(this->ctx);
+	std::condition_variable work_available;
+	std::mutex work_mutex;
+	std::queue<std::string> work;
 
-	if (nk_begin(this->ctx, "labelsforcalander2", nk_rect(x, y + 34, 125, 24),
-		NK_WINDOW_NO_SCROLLBAR)) {
-		nk_layout_row_static(ctx, 24, 125, 1);
-		nk_label_wrap(this->ctx, "Start Date: ");
-	} nk_end(this->ctx);
+public:
+	void push_work(std::string item)
+	{
+		std::unique_lock<std::mutex> lock(work_mutex);
 
-	if (nk_begin(this->ctx, "calendarr", nk_rect(x + 132, 210, 230, 65)
-		, NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_NO_SCROLLBAR)) {
-		static int time_selected = 0;
-		static int date_selected = 0;
-		char buffer[64];
-		nk_layout_row_static(ctx, 28, 200, 1);
-		/* time combobox */
-		sprintf(buffer, "%02d:%02d:%02d", sel_date.tm_hour, sel_date.tm_min, sel_date.tm_sec);
-		if (nk_combo_begin_label(ctx, buffer, nk_vec2(200, 250))) {
-			time_selected = 1;
-			nk_layout_row_dynamic(ctx, 25, 1);
-			sel_date.tm_hour = nk_propertyi(ctx, "#Hour:", 0, sel_date.tm_hour, 23, 1, 1);
-			sel_date.tm_min = nk_propertyi(ctx, "#Mins:", 0, sel_date.tm_min, 59, 1, 1);
-			sel_date.tm_sec = nk_propertyi(ctx, "#Secs:", 0, sel_date.tm_sec, 59, 1, 1); // we dont need secs prob
-			nk_combo_end(ctx);
-		}
-		sprintf(buffer, "%02d-%02d-%02d", sel_date.tm_mon + 1, sel_date.tm_mday, sel_date.tm_year + 1900);
-		if (nk_combo_begin_label(ctx, buffer, nk_vec2(350, 400)))
+		bool was_empty = work.empty();
+		work.push(item);
+
+		lock.unlock();
+
+		if (was_empty)
 		{
-			int i = 0;
-			const char* month[] = { "January", "February", "March",
-				"April", "May", "June", "July", "August", "September",
-				"October", "November", "December" };
-			const char* week_days[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
-			const int month_days[] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
-			int year = sel_date.tm_year + 1900;
-			int leap_year = (!(year % 4) && ((year % 100))) || !(year % 400);
-			int days = (sel_date.tm_mon == 1) ?
-				month_days[sel_date.tm_mon] + leap_year :
-				month_days[sel_date.tm_mon];
+			work_available.notify_one();
+		}
+	}
 
-			/* header with month and year */
-			date_selected = 1;
-			nk_layout_row_begin(ctx, NK_DYNAMIC, 20, 3);
-			nk_layout_row_push(ctx, 0.05f);
-			if (nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_LEFT)) {
-				if (sel_date.tm_mon == 0) {
-					sel_date.tm_mon = 11;
-					sel_date.tm_year = NK_MAX(0, sel_date.tm_year - 1);
-				}
-				else sel_date.tm_mon--;
-			}
-			nk_layout_row_push(ctx, 0.9f);
-			sprintf(buffer, "%s %d", month[sel_date.tm_mon], year);
-			nk_label(ctx, buffer, NK_TEXT_CENTERED);
-			nk_layout_row_push(ctx, 0.05f);
-			if (nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_RIGHT)) {
-				if (sel_date.tm_mon == 11) {
-					sel_date.tm_mon = 0;
-					sel_date.tm_year++;
-				}
-				else sel_date.tm_mon++;
-			}
-			nk_layout_row_end(ctx);
-
-			/* good old week day formula (double because precision) */
-			{int year_n = (sel_date.tm_mon < 2) ? year - 1 : year;
-			int y = year_n % 100;
-			int c = year_n / 100;
-			int y4 = (int)((float)y / 4);
-			int c4 = (int)((float)c / 4);
-			int m = (int)(2.6 * (double)(((sel_date.tm_mon + 10) % 12) + 1) - 0.2);
-			int week_day = (((1 + m + y + y4 + c4 - 2 * c) % 7) + 7) % 7;
-
-			/* weekdays  */
-			nk_layout_row_dynamic(ctx, 35, 7);
-			for (i = 0; i < (int)NK_LEN(week_days); ++i)
-				nk_label(ctx, week_days[i], NK_TEXT_CENTERED);
-
-			/* days  */
-			if (week_day > 0) nk_spacing(ctx, week_day);
-			for (i = 1; i <= days; ++i) {
-				sprintf(buffer, "%d", i);
-				if (nk_button_label(ctx, buffer)) {
-					sel_date.tm_mday = i;
-					nk_combo_close(ctx);
-				}
-			}}
-			nk_combo_end(ctx);
+	std::string wait_and_pop()
+	{
+		std::unique_lock<std::mutex> lock(work_mutex);
+		while (work.empty())
+		{
+			work_available.wait(lock);
 		}
 
+		std::string tmp = work.front();
+		work.pop();
+		return tmp;
 	}
-	nk_end(this->ctx);
+};
 
-	// recurring option if not onme time
-	if (reccurring) {
-		if (nk_begin(this->ctx, "recurring", nk_rect(x,y+66,155,26)
-		, NK_WINDOW_NO_SCROLLBAR)) {
-			nk_layout_row_static(ctx, 24, 155, 1);
-			nk_label_wrap(this->ctx, "Recur Every : ");
-		}nk_end(this->ctx);
+std::string GetExePath();
 
-		// property brothers box
-		if (nk_begin(this->ctx, "recurringbox", nk_rect(x+160, y + 66, 170, 30)
-			, NK_WINDOW_NO_SCROLLBAR)) {
-			switch (this->_schedulerInfo.type) {
-			case 0: //daily
-				nk_layout_row_dynamic(ctx, 30, 1);
-				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Days: ", 0, this->_schedulerInfo.reccuring, 7, 1, 1);
-				break;
-			case 1: // weekly
-				nk_layout_row_dynamic(ctx, 30, 1);
-				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Weeks: ", 0, this->_schedulerInfo.reccuring, 52, 1, 1);
-				break;
-			case 2: //monthly
-				nk_layout_row_dynamic(ctx, 30, 1);
-				this->_schedulerInfo.reccuring = nk_propertyi(ctx, "#Months: ", 0, this->_schedulerInfo.reccuring, 12, 1, 1);
-				break;
-			default: //3=one time and we done want that so do nothing tyfys
-				break;
+std::string GetAntibodyPath() {
+	std::string ExePath = GetExePath();
+	std::string AntibodyFile = ExePath + "\\Locations.LavaAnti";
+	return AntibodyFile;
+}
+
+class LavaScan
+{
+public:
+	// memburs
+	std::string AntibodyFileLocation = "";
+	int fd, ret, CurrentScanCount;
+	unsigned long int size = 0; std::string start_time; std::string finish_time;
+	unsigned int sigs = 0;
+	long double mb;
+	const char* virname;
+	struct cl_engine* engine;
+	struct cl_scan_options options;
+	bool isScanDone;
+	struct q_entry;
+	std::string currentScanGoing;
+	std::vector<std::vector<std::string>> PreviousScans;
+	std::set<LavaScan::q_entry> QuarantineContents;
+	int num_found;
+	int num_removed;
+	std::string PathToSchedulerInfo;
+	ProgressMonitor pm;
+	WorkQueue work_queue;
+	bool IsThereAScheduledTask;
+	SchedulerObj ScheduledObject;
+	//int OpenType;
+	// constructor
+	LavaScan(); // default
+	/* scans */
+	bool CompleteScan();
+	bool QuickScan();
+	bool AdvanceScan();
+	bool AdvanceScanNow(std::set<std::string> s);
+	std::set<char> get_drive_letters();
+	void eicarTest(std::string path = "C:\\test\\eicar.com.txt");
+	std::set<LavaScan::q_entry> read_quarantine_contents();
+	void quarantine_file(std::string filepath, std::string virus_name);
+	bool remove_quarantined_files(std::set<std::string> to_remove);
+	bool postMoveQuarantine(std::set<q_entry> to_remove);
+	bool quarantineIsEmpty();
+	bool quarantine_contains(std::string file_name);
+	void move_file(std::string file_path, std::string new_location_with_new_filename);
+	void make_quarantine_directory();
+	bool scanDirectory(std::string dirPath);
+	void iterateDirectory(std::string directory, bool clean);
+	int scanFile(std::string filePath);
+	void SupportPage();
+	int scheduleScanWeekly(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften);
+	int scheduleScanMonthly(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften);
+	int scheduleScanDaily(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften);
+	int scheduleScanOnce(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute);
+	int rmScheduledScan();
+	void AddToAntibody(std::string dirPath, std::string antibodyfilelocation);
+	void AddDirectoriesToAntibody(std::vector<std::string> list, std::string antibodyfilelocation);
+	bool reset_QC();
+	std::vector<std::string> ReadAntibody(std::string antibodyfilelocation);
+	std::string GetDocumentsFolder();
+	std::string GetDownloadsFolder();
+	//void FileCount(std::string dirPath);
+	int TotalSetFileCount(std::set<std::string> p);
+	std::set<std::string> countQuarantineContents();
+	void log_scan();
+	std::vector<std::vector<std::string>> read_log();
+	std::string get_time();
+	void UpdatePreviousScans();
+	bool moveQuarantineHome(std::set<q_entry> q);
+	void check_db_folder();
+	void check_config_files();
+	bool update_virus_database();
+	bool CheckIfTaskSchedulerFileExists();
+	bool CreateTaskSchedulerFile();
+	bool IsTaskSchedulerFileEmpty(std::ifstream& pFile); //std::ifstream file("filename"); if (is_empty(file)) { is empty }
+	SchedulerObj LoadTaskSchedulerFile();
+};
+
+
+//Open support page in the default browser
+inline void LavaScan::SupportPage() {
+	//The shell command is marginally slower but will use the default browser. It also requires shellapi.h, which I've included.
+	ShellExecute(0, 0, L"https://github.com/kornfeldm/LAVA/issues", 0, 0, SW_SHOW);
+	//The system command below is faster but cannot use default browser so I commented it out. If performance becomes a problem use this instead.
+	//Because I had to choose a browser I chose the one guaranteed to be installed.
+	//system("start microsoft-edge:https://github.com/kornfeldm/LAVA/issues");
+
+}
+
+//Make a monthly scan. Parameters -> inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59); inputOften: Explained below (1-365)
+//Returns 0 on completion or errors -1, -2 or -3 if there's an issue with the parameters depending on which causes the problem
+//Optional parameter inputOften is how often you want to run it (e.g. setting it to 2 runs every other day; 15 runs every fifteeth day)
+//By default it will run every day
+inline int LavaScan::scheduleScanDaily(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften = 1) {
+	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
+	std::string often = "1";
+	std::string month = "1";
+	std::string day = "1";
+	std::string year = "2000";
+	std::string date = "01/01/2000";
+	std::string time = "00:00";
+	std::string hour = "00";
+	std::string minute = "00";
+
+	if (inputMonth < 1 || inputMonth > 31) {
+		return -1;
+	}
+	else {
+		if (inputMonth > 10)
+		{
+			month = std::to_string(inputMonth);
+		}
+		else {
+			month = "0" + std::to_string(inputMonth);
+		}
+	}
+	if (inputDay < 1 || inputDay > 31) {
+		return -2;
+	}
+	else {
+		if (inputDay > 10)
+		{
+			day = std::to_string(inputDay);
+		}
+		else {
+			day = "0" + std::to_string(inputDay);
+		}
+	}
+	if (inputYear < 1900 || inputYear > 3000) {
+		return -3;
+	}
+	else {
+		year = std::to_string(inputYear);
+	}
+	date = month + "/" + day + "/" + year;
+	if (inputHour < 0 || inputHour > 23) {
+		return -1;
+	}
+
+	if (inputHour < 10) {
+		hour = "0" + std::to_string(inputHour);
+	}
+	else {
+		hour = std::to_string(inputHour);
+	}
+
+	if (inputMinute < 0 || inputMinute > 59) {
+		return -2;
+	}
+
+	if (inputMinute < 10) {
+		minute = "0" + std::to_string(inputMinute);
+	}
+	else {
+		minute = std::to_string(inputMinute);
+	}
+
+	time = hour + ":" + minute;
+
+
+	if (inputOften < 1 || inputOften > 365) {
+		return -3;
+	}
+	else {
+		often = std::to_string(inputOften);
+	}
+
+	std::string path = GetExePath() + "\\LAVA.exe"; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Daily /mo " + often + " /TN \"LAVA\\ScheduleScan\" /TR " + "\"\'" + path + "\' 1\"" + " /ST " + time + " /SD " + date + " /f > nul 2>&1";
+	//std::cout << cmdcpp << std::endl;
+	system(cmdcpp.c_str());
+	return 0;
+}
+
+//Make a monthly scan. Parameters -> inputDay: Day of Week (1-7, where 1 is Sunday, 7 is Saturday); inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59); inputOften: Explained below (1-52)
+//Returns 0 on completion or errors -1, -2, -3 or -4 if there's an issue with the parameters depending on which causes the problem
+//Optional parameter inputOften is how often you want to run it (e.g. setting it to 2 runs every other week; 15 runs every fifteeth week)
+//By default it will run every week
+inline int LavaScan::scheduleScanWeekly(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften = 1) {
+	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
+	std::string often = "1";
+	std::string weekday = "Sun";
+	std::string month = "1";
+	std::string day = "1";
+	std::string year = "2000";
+	std::string date = "01/01/2000";
+	std::string time = "00:00";
+	std::string hour = "00";
+	std::string minute = "00";
+
+	//Source: https://stackoverflow.com/questions/11972368/c-get-which-day-by-input-date/26307023
+	tm timeStruct = {};
+	timeStruct.tm_year = inputYear - 1900;
+	timeStruct.tm_mon = inputMonth - 1;
+	timeStruct.tm_mday = inputDay;
+	timeStruct.tm_hour = inputHour;    //  To avoid any doubts about summer time, etc.
+	mktime(&timeStruct);
+	int weekDay = timeStruct.tm_wday + 1;  //  0...6 for Sunday...Saturday
+
+	switch (weekDay) {
+	case 1:
+		weekday = "SUN";
+		break;
+	case 2:
+		weekday = "MON";
+		break;
+	case 3:
+		weekday = "TUE";
+		break;
+	case 4:
+		weekday = "WED";
+		break;
+	case 5:
+		weekday = "THU";
+		break;
+	case 6:
+		weekday = "FRI";
+		break;
+	case 7:
+		weekday = "SAT";
+		break;
+	default:
+		return -1;
+		break;
+	}
+
+	if (inputMonth < 1 || inputMonth > 31) {
+		return -1;
+	}
+	else {
+		if (inputMonth > 10)
+		{
+			month = std::to_string(inputMonth);
+		}
+		else {
+			month = "0" + std::to_string(inputMonth);
+		}
+	}
+	if (inputDay < 1 || inputDay > 31) {
+		return -2;
+	}
+	else {
+		if (inputDay > 10)
+		{
+			day = std::to_string(inputDay);
+		}
+		else {
+			day = "0" + std::to_string(inputDay);
+		}
+	}
+	if (inputYear < 1900 || inputYear > 3000) {
+		return -3;
+	}
+	else {
+		year = std::to_string(inputYear);
+	}
+	date = month + "/" + day + "/" + year;
+
+	if (inputHour < 0 || inputHour > 23) {
+		return -2;
+	}
+	if (inputHour < 10) {
+		hour = "0" + std::to_string(inputHour);
+	}
+	else {
+		hour = std::to_string(inputHour);
+	}
+
+	if (inputMinute < 0 || inputMinute > 59) {
+		return -3;
+	}
+	if (inputMinute < 10) {
+		minute = "0" + std::to_string(inputMinute);
+	}
+	else {
+		minute = std::to_string(inputMinute);
+	}
+
+	time = hour + ":" + minute;
+
+	if (inputOften < 1 || inputOften > 52) {
+		return -4;
+	}
+	else {
+		often = std::to_string(inputOften);
+	}
+
+	std::string path = GetExePath() + "\\LAVA.exe"; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Weekly /mo " + often + " /D " + weekday + " /TN \"LAVA\\ScheduleScan\" /TR " + "\"\'" + path + "\' 1\"" + " /ST " + time + " /SD " + date + " /f > nul 2>&1";
+	system(cmdcpp.c_str());
+	return 0;
+}
+
+//Make a monthly scan. Parameters -> inputDay: Day of Month (1-31); inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59); inputOften: Explained below (1-12)
+//Returns 0 on completion or errors -1, -2, -3 or -4 if there's an issue with the parameters depending on which causes the problem
+//Optional parameter inputOften is how often you want to run it (e.g. setting it to 2 runs every other month; 3 runs every third month)
+//By default it will run every month
+inline int LavaScan::scheduleScanMonthly(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften = 1) {
+	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
+	std::string often = "1";
+	std::string month = "1";
+	std::string day = "1";
+	std::string year = "2000";
+	std::string date = "01/01/2000";
+	std::string time = "00:00";
+	std::string hour = "00";
+	std::string minute = "00";
+
+
+
+	if (inputMonth < 1 || inputMonth > 31) {
+		return -1;
+	}
+	else {
+		if (inputMonth > 10)
+		{
+			month = std::to_string(inputMonth);
+		}
+		else {
+			month = "0" + std::to_string(inputMonth);
+		}
+	}
+	if (inputDay < 1 || inputDay > 31) {
+		return -2;
+	}
+	else {
+		if (inputDay > 10)
+		{
+			day = std::to_string(inputDay);
+		}
+		else {
+			day = "0" + std::to_string(inputDay);
+		}
+	}
+	if (inputYear < 1900 || inputYear > 3000) {
+		return -3;
+	}
+	else {
+		year = std::to_string(inputYear);
+	}
+	date = month + "/" + day + "/" + year;
+
+	if (inputHour < 0 || inputHour > 23) {
+		return -3;
+	}
+
+	if (inputHour < 10) {
+		hour = "0" + std::to_string(inputHour);
+	}
+	else {
+		hour = std::to_string(inputHour);
+	}
+
+	if (inputMinute < 0 || inputMinute > 59) {
+		return -4;
+	}
+
+	if (inputMinute < 10) {
+		minute = "0" + std::to_string(inputMinute);
+	}
+	else {
+		minute = std::to_string(inputMinute);
+	}
+
+	time = hour + ":" + minute;
+
+
+	if (inputOften < 1 || inputOften > 12) {
+		return -4;
+	}
+	else {
+		often = std::to_string(inputOften);
+	}
+
+	std::string path = GetExePath() + "\\LAVA.exe"; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Monthly /mo " + often + " /D " + day + " /TN \"LAVA\\ScheduleScan\" /TR " + "\"\'" + path + "\' 1\"" + " /ST " + time + " /SD " + date + " /f > nul 2>&1";
+	//std::cout << cmdcpp << std::endl;
+	system(cmdcpp.c_str());
+	return 0;
+}
+
+//Make a one scan. Parameters -> inputMonth: Month of year (1-12); inputDay: Day of month (1-31);  inputYear: Year (1900-3000); inputHour: Hour of Day (0-23); inputMinute: Minute of Hour (0-59)
+//Returns 0 on completion or errors -1, -2, -3, -4 or -5 if there's an issue with the parameters depending on which causes the problem
+inline int LavaScan::scheduleScanOnce(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute) {
+	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
+	std::string date = "01/01/2000";
+	std::string month = "1";
+	std::string day = "1";
+	std::string year = "1";
+	std::string time = "00:00";
+	std::string hour = "00";
+	std::string minute = "00";
+
+	//Build the day to run the scan
+	if (inputMonth < 1 || inputMonth > 31) {
+		return -1;
+	}
+	else {
+		if (inputMonth > 10)
+		{
+			month = std::to_string(inputMonth);
+		}
+		else {
+			month = "0" + std::to_string(inputMonth);
+		}
+	}
+	if (inputDay < 1 || inputDay > 31) {
+		return -2;
+	}
+	else {
+		if (inputDay > 10)
+		{
+			day = std::to_string(inputDay);
+		}
+		else {
+			day = "0" + std::to_string(inputDay);
+		}
+	}
+	if (inputYear < 1900 || inputYear > 3000) {
+		return -3;
+	}
+	else {
+		year = std::to_string(inputYear);
+	}
+	date = month + "/" + day + "/" + year;
+
+
+	//Build the time to run the scan
+	if (inputHour < 0 || inputHour > 23) {
+		return -4;
+	}
+
+	if (inputHour < 10) {
+		hour = "0" + std::to_string(inputHour);
+	}
+	else {
+		hour = std::to_string(inputHour);
+	}
+
+	if (inputMinute < 0 || inputMinute > 59) {
+		return -5;
+	}
+
+	if (inputMinute < 10) {
+		minute = "0" + std::to_string(inputMinute);
+	}
+	else {
+		minute = std::to_string(inputMinute);
+	}
+
+	time = hour + ":" + minute;
+
+	std::string path = GetExePath() + "\\LAVA.exe"; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Once /SD " + date + " /TN \"LAVA\\ScheduleScan\" /TR " + "\"\'" + path + "\' 1\"" + " /ST " + time + " /f > nul 2>&1";
+	//std::cout << cmdcpp << std::endl;
+	system(cmdcpp.c_str());
+	return 0;
+}
+
+//Removes the scheduled scan and returns 0 on completion
+inline int LavaScan::rmScheduledScan() {
+	std::string cmdcpp = "(SCHTASKS /DELETE /TN \"LAVA\\ScheduleScan\" /F ) > nul 2>&1";
+	std::cout << cmdcpp << std::endl;
+	system(cmdcpp.c_str());
+	return 0;
+}
+
+inline int LavaScan::scanFile(std::string filePath) {
+	// update scan count
+	CurrentScanCount++; current_Count++;
+	// update current scan dir for GUI
+	CurrentScanFile = filePath;
+	//std::cout << "\n\tfile:" << filePath;
+	const char* virname;
+	int ret = cl_scanfile(filePath.c_str(), &virname, NULL, engine, &options); //scanning file using clamAV
+	if (ret == CL_VIRUS) {
+		/*printf("--------------------------------------------------------------------------------------\n");
+		printf("virus detected: %s\n", virname);
+		getch();
+		printf("--------------------------------------------------------------------------------------\n");*/
+		//QUARANTINE FILE IF NOT IN SYSTEM FOLDER
+		if (filePath.substr(3, 7) == "Windows")
+		{
+			//printf("VIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!", filePath); //Infected file is in system folder
+		}
+		else {
+			quarantine_file(filePath, virname); //Infected file is not in system folder
+			std::string directory;
+			const size_t last_slash_idx = filePath.rfind('\\');
+			if (std::string::npos != last_slash_idx)
+			{
+				directory = filePath.substr(0, last_slash_idx);
 			}
-		}nk_end(this->ctx);
+			AddToAntibody(directory, GetAntibodyPath());
+		}
+	}
+	else {
+		//printf("No virus detected.\n");
+		if (ret != CL_CLEAN) {
+			//printf("Error: %s\n", cl_strerror(ret)); //In case of scan error
+			// file too large ?
+		}
+	}
+	return ret; //returns scan output value: either CL_VIRUS, CL_CLEAN or CL_ERROR
+}
+
+inline void LavaScan::iterateDirectory(std::string directory, bool clean)
+{
+	//Source used: https://github.com/tronkko/dirent/blob/master/examples/ls.c
+	//Prevents an infinite loop since ./ comes up as a folder for each directory
+	if (directory.substr(directory.length() - 2) == ".\\")
+	{
+		return;
+	}
+
+
+	//If this is a subdirectory of C:/Windows then eleveate the mode to 1
+	//if (directory.substr(3, 7) == "Windows")
+	//{
+	//    mode = 1;
+	//}
+
+
+	//Initilize the dirent class
+	struct dirent* item;
+	const char* location = directory.c_str();
+	DIR* dir = opendir(location);
+
+	//If the directory is value
+	if (dir != NULL)
+	{
+		//Set "item" to the first item in the directory
+		item = readdir(dir);
+		//It it's valid (i.e. not the end of the directory)
+		while (item != NULL)
+		{
+			//If the item is a folder
+			if (item->d_type == DT_DIR)
+			{
+				//Check all the subdirectories in it
+				std::string newDirectory = directory + item->d_name + "\\";
+
+				//std::cout << newDirectory << "\n";
+				iterateDirectory(newDirectory, clean);
+				//CHECK FOR USER CANCEL GOES HERE
+				//closedir(directory)
+				//return
+
+			}
+			//If the item is a file
+			if (item->d_type == DT_REG)
+			{
+				std::string filePath = directory + item->d_name; // generate filepath
+
+				//std::cout << filePath << "\n";
+				//scan the file using clamAV
+
+				if (scanFile(filePath) == CL_VIRUS) {
+					clean = false; //File in direcotry is infected
+					this->num_found++;//increase the virus count
+					////this->viruses_found++;//increase the virus count
+				}
+				//CHECK FOR USER CANCEL GOES HERE
+				//closedir(directory)
+				//return
+			}
+			//Shift the item to look at the next item
+			item = readdir(dir);
+
+		}
+	}
+	//Close the directory. Will cause temporary write issues if this does not happen.
+	//In its current state, do not interrupt the process. We will need to fix this before release
+	closedir(dir);
+}
+
+//Source: https://stackoverflow.com/questions/2390912/checking-for-an-empty-file-in-c
+bool is_empty(std::istream& pFile)
+{
+	return pFile.peek() == std::ifstream::traits_type::eof();
+}
+
+//Read each line in the specified file and output a string vector containing each directory
+inline std::vector<std::string> LavaScan::ReadAntibody(std::string antibodyfilelocation = GetAntibodyPath())
+{
+	//std::cout << "Antibody file location: " << antibodyfilelocation << std::endl;
+	std::vector<std::string> directorylist;
+	std::fstream antibody;
+
+	std::string listedirectory;
+	antibody.open(this->AntibodyFileLocation, std::fstream::in | std::fstream::out | std::fstream::app);
+
+	if (!antibody) {
 
 	}
 
-	nk_style_set_font(this->ctx, &this->font->handle);
+	if (antibody.is_open())
+	{
+		if (is_empty(antibody))
+		{
+			antibody.close();
+			std::ofstream buildFile(this->AntibodyFileLocation);
+			//std::cout << "Antibody File is Empty" << std::endl;
+			//buildFile << "%USERPROFILE%\\Documents" << std::endl;
+			//buildFile << "%USERPROFILE%\\Downloads" << std::endl;
+			buildFile << this->GetDocumentsFolder() << std::endl;
+			if (this->GetDownloadsFolder() != "")
+				buildFile << this->GetDownloadsFolder() << std::endl;
+			buildFile.close();
+			//directorylist.push_back("%USERPROFILE%\\Documents");
+			//directorylist.push_back("%USERPROFILE%\\Documents");
+			if (this->GetDownloadsFolder() != "")
+				directorylist.push_back(this->GetDownloadsFolder());
+			directorylist.push_back(this->GetDocumentsFolder());
+		}
+		else {
+			//std::cout << "Antibody File is not Empty" << std::endl;
+			//std::cout << "Reading the Antibody File..." << std::endl;
+			while (!antibody.eof())
+			{
+				getline(antibody, listedirectory);
+				//The last line is empty, don't count it as a directory
+				if (listedirectory != "" && listedirectory != std::string(1, '\r'))
+				{
+					directorylist.push_back(listedirectory);
+					//std::cout << "Adding Directory: " <<listedirectory << std::endl;
+				}
+			}
+			antibody.close();
+			return directorylist;
+		}
+	}
+	else
+	{
+		//std::cout << "Failed to Open Antibody File; Running with Defaults" << std::endl;
+		/*directorylist.push_back("%USERPROFILE%\\Documents");
+		directorylist.push_back("%USERPROFILE%\\Documents");
+		directorylist.push_back("%USERPROFILE%\\Documents");*/
+		if (this->GetDownloadsFolder() != "")
+			directorylist.push_back(this->GetDownloadsFolder());
+		directorylist.push_back(this->GetDocumentsFolder());
+
+	}
+	return directorylist;
+}
+
+inline std::string LavaScan::GetDocumentsFolder()
+{
+	CHAR my_documents[MAX_PATH];
+	HRESULT result = SHGetFolderPathA(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, my_documents);
+	/*if (result != S_OK)
+		std::cout << "Error: " << result << "\n";
+	else
+		std::cout << "Path: " << my_documents << "\n";*/
+	return std::string(my_documents);
+}
+
+inline std::string LavaScan::GetDownloadsFolder()
+{
+	CHAR my_downloads[MAX_PATH];
+	HRESULT result = SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, my_downloads);
+	/*if (result != S_OK)
+		std::cout << "Error: " << result << "\n";
+	else
+		std::cout << "Path: " << my_documents << "\n";*/
+	std::string ret = std::string(my_downloads) + "\\Downloads";
+	struct stat s;
+	if (stat(ret.c_str(), &s) == 0)
+	{
+		if (s.st_mode & S_IFDIR)
+		{
+			return ret;
+		}
+	}
+
+	return "";
+}
+
+//inline int LavaScan::TotalSetFileCount(std::set<std::string> p) {
+//	int count = 0;
+//	for (auto path : p) {
+//		//std::cout << "\t" << path << ".\n";
+		//struct stat s;
+		//if (stat(path.c_str(), &s) == 0)
+		//{
+		//	if (s.st_mode & S_IFDIR)
+		//	{
+		//		/*count += FileCount(path);*/
+		//	}
+		//	else if (s.st_mode & S_IFREG)
+		//	{
+		//		count++;
+		//	}
+//			else
+//			{
+//				//something else
+//				std::cout << "\n ok wtf is this\n";
+//			}
+//		}
+//		else
+//		{
+//			//error
+//			return -4;
+//		}
+//	}
+//
+//	return count;
+//}
+
+//NOTE: Never call this directly. It overwrites antibody file. It's here because AddDirectoriesToAntibody (and AddToAntibody) use it. They do not overwrite - use them instead.
+//Write new directories to the antibody file. Parameters are <vector containting strings of diretories>, path to antibody file
+void WriteAntibody(std::vector<std::string> directorylist, std::string antibodyfilelocation = GetAntibodyPath())
+{
+	std::ofstream antibody;
+	antibody.open(antibodyfilelocation);
+	if (antibody.is_open())
+	{
+		for (auto s : directorylist) {
+			antibody << s << std::endl;
+		}
+		/*for (int i = 0; i < directorylist.size(); i++)
+		{
+			antibody << directorylist[i] << std::endl;
+		}*/
+		antibody.close();
+	}
+}
+
+
+//NOTE: You're almost always better off using AddDirectoriesToAntibody instead to pass a vector. This is a help function and would rarely be called directly
+//Adds the single directoru passed to the antibody file. Will remove duplicates first. The second optional parameter defaults to the antibody file location.
+//Check if a directory is in the antibody file. Add it if it isn't.
+//Ignore it if it's a subdirectory.
+//Replace any subdirectories
+void LavaScan::AddToAntibody(std::string dirPath, std::string antibodyfilelocation = GetAntibodyPath())
+{
+	std::vector<std::string> existing = ReadAntibody(antibodyfilelocation);
+	std::vector<std::string> duplicates;
+	bool newDirectory = true;
+	int replace = 0;
+	for (int i = 0; i < existing.size(); i++) {
+		if (strstr(existing[i].c_str(), dirPath.c_str()) != NULL) {
+			duplicates.push_back(existing[i].c_str());
+		}
+		if (strstr(dirPath.c_str(), existing[i].c_str()) != NULL) {
+			newDirectory = false;
+		}
+	}
+
+	for (int i = 0; i < existing.size(); i++) {
+		for (int j = 0; j < duplicates.size(); j++)
+		{
+			if (existing[i] == duplicates[j])
+			{
+				// Element in vector.
+				existing.erase(existing.begin() + i);
+			}
+		}
+	}
+
+	if (newDirectory == true)
+	{
+		existing.push_back(dirPath);
+		WriteAntibody(existing, antibodyfilelocation);
+	}
+	return;
+}
+
+//Adds the vector passed to the antibody file. Will remove duplicates first. The second optional parameter defaults to the antibody file location.
+void LavaScan::AddDirectoriesToAntibody(std::vector<std::string> list, std::string antibodyfilelocation = GetAntibodyPath()) {
+
+	for (int i = 0; i < list.size(); i++)
+	{
+		AddToAntibody(list[i], antibodyfilelocation);
+	}
+	return;
+}
+
+inline bool LavaScan::reset_QC() { //after a scan just reset quarantine contents
+	this->QuarantineContents.clear();
+	this->QuarantineContents = read_quarantine_contents();
+	CurrentScanCount = 0;
+	currentScanGoing = "";
+	num_found = 0; num_removed = 0;
+	isScanDone = false;
+	start_time = std::string("");
+	finish_time = std::string("");
 	return true;
 }
 
-inline bool FE::CurrentScheduleScanView()
+inline bool LavaScan::scanDirectory(std::string dirPath) {
+	this->CurrentScanCount++; // 
+	bool clean = true; //Setting directory as clean
+	bool cancel = false; //A cancel variable in case the user wants to cancel the scan
+	iterateDirectory(dirPath, clean);//call recursive helper funciton
+	//if (cancel == true) printf("User canceled scan");
+	//return clean; //returns false if infected and true if clean
+	return true;
+}
+
+//The engine and options are just passed through to the directory scanner.
+//The first parameter is a path the the antibody file
+bool LavaScan::QuickScan()
+{
+	std::string ExePath = GetExePath();
+	std::string AntibodyFile = ExePath + "\\Locations.LavaAnti";
+	AntibodyFileLocation = AntibodyFile;
+	this->num_found = 0; //setting virus counter to 0
+	this->start_time = get_time();//getting start time for scan
+	//Keeps track of if malware is detected and where
+	bool clean = true;
+	std::vector<std::string> directorylist = ReadAntibody();
+	//For each directory:
+	//std::cout << "ReadyToScan" << std::endl;
+	//for (int i = 0; i < directorylist.size(); i++)
+	//{
+	//	std::cout << "Scanning Folder "<< i + 1 << " of " << directorylist.size() << std::endl;
+	//	std::cout << "Scanning Folder " << directorylist[i] << std::endl;
+	//	//Scan it
+	//	//Will only update clean from true to false, but scan either way
+	//	if (clean == true)
+	//	{
+	//		std::cout << "Calling scan function" << std::endl;
+	//		clean = scanDirectory(directorylist[i] + "\\");
+	//	} else {
+	//		std::cout << "Calling scan function" << std::endl;
+	//		scanDirectory(directorylist[i] + "\\");
+	//	}
+	//}
+	for (auto path : directorylist) {
+		scanDirectory(path + "\\");
+	}
+	//std::cout << "All Scans called" << std::endl;
+	this->finish_time = get_time();//get end time for scan
+	//log_scan("Quick",start_time, finish_time, num_found, num_found); //log scan
+	isScanDone = true;
+	//this->QuarantineContents = this->read_quarantine_contents();
+	return true;
+}
+
+std::string& replace(std::string& s, const std::string& from, const std::string& to)
+{
+	if (!from.empty())
+		for (size_t pos = 0; (pos = s.find(from, pos)) != std::string::npos; pos += to.size())
+			s.replace(pos, from.size(), to);
+	return s;
+}
+
+bool LavaScan::AdvanceScanNow(std::set<std::string> ss)
+{
+	// set ss is the set of shit we are gonna scan...simple foreach loop for now
+	this->num_found = 0;//set the virus count to 0
+	this->start_time = get_time(); //get start time for scan
+	//int num_found = 0;//set the virus count to 0
+	std::string start_time = get_time(); //get start time for scan
+	//this->viruses_found = 0;
+	//this->viruses_removed = 0;
+	for (auto path : ss) {
+		//std::cout << "\t" << path << ".\n";
+		struct stat s;
+		if (stat(path.c_str(), &s) == 0)
+		{
+			if (s.st_mode & S_IFDIR)
+			{
+				//it's a directory, use scandir
+				//std::cout << path << " is a directory.";
+				//scanDirectory(std::string(path+"\\"));
+				//if (pm.Reccommend(path) == 1) {
+				//	pm.CountDirectories(path);
+				//	pm.FinishedDirectory();
+				//}
+				//else { // 0. countfiles
+				//	pm.CountFiles(path);
+				//	pm.FinishedFile();
+				//}
+				scanDirectory(std::string(path + "\\"));
+			}
+			else if (s.st_mode & S_IFREG)
+			{
+				//it's a file, use scanfile
+				//std::cout << path << " is a file.";
+				if (scanFile(path.c_str()) == CL_VIRUS) {
+					this->num_found++;
+				}
+			}
+			else
+			{
+				//something else
+				//std::cout<<"\n ok wtf is this\n";
+			}
+		}
+		else
+		{
+			//error
+			return false;
+		}
+	}
+	this->finish_time = get_time(); //get end time
+	//log_scan("Advanced",start_time, finish_time, num_found, num_found); //logging scan
+	isScanDone = true;
+	//this->QuarantineContents = this->read_quarantine_contents();
+
+	return true;
+}
+
+inline bool LavaScan::quarantineIsEmpty() { //checks whether quarantined file is empty
+	std::fstream q_file;
+	q_file.open("quarantine.lava", std::ios::in | std::ios::out);
+	return q_file.peek() == std::ifstream::traits_type::eof();
+}
+
+inline void LavaScan::eicarTest(std::string path)
+{
+	scanFile(path);
+	return;
+}
+
+inline std::set<std::string> LavaScan::countQuarantineContents() { //prints the contents of the quarantine file
+	std::set<std::string> s;
+	std::fstream quarantineFile;
+	quarantineFile.open("quarantine.lava", std::ios::in | std::ios::out);
+	std::string line;
+	while (getline(quarantineFile, line)) {
+		//std::cout << line << std::endl;
+		s.insert(line);
+	}
+	quarantineFile.close();
+	return s;
+}
+
+inline struct LavaScan::q_entry {
+	std::string old_file_name;
+	std::string new_file_name;
+	std::string origin_directory;
+	std::string virus_name;
+	bool operator <(const q_entry& q) const
+	{
+		return (origin_directory + new_file_name) < (q.origin_directory + q.new_file_name);
+	}
+};
+
+inline std::set<LavaScan::q_entry> LavaScan::read_quarantine_contents() { //prints the contents of the quarantine file
+	std::fstream quarantineFile;
+	quarantineFile.open("quarantine.lava", std::ios::in | std::ios::out);
+	std::set<struct q_entry> entries;
+	std::string line;
+	while (getline(quarantineFile, line)) {
+		struct q_entry q;
+		int found = 0, prev_found = 0, comma_num = 0;
+		while (found != std::string::npos) { //extracting quarantined file info from quarantine entry
+			prev_found = found;
+			found = line.find(",", found + 1, 1);
+			int size = found - prev_found;
+			switch (comma_num)
+			{
+			case 0:
+				q.old_file_name = line.substr(prev_found, size); //extract scan start time
+			case 1:
+				q.new_file_name = line.substr(prev_found + 1, size - 1); //exctract scan finish time
+			case 2:
+				q.origin_directory = line.substr(prev_found + 1, size - 1); //extract number of viruses found
+				q.virus_name = line.substr(found + 1); //extract number of viruses removed
+			}
+			comma_num++;
+		}
+		entries.insert(q);
+	}
+	quarantineFile.close();
+	return entries;
+}
+
+inline void LavaScan::quarantine_file(std::string filepath, std::string virus_name) { //quarantine file given filepath
+	std::fstream quarantineFile;
+	quarantineFile.open("quarantine.lava", std::ios::app);
+	int pos = filepath.find_last_of("/\\"); // finding position of last "\"
+	std::string file_name = filepath.substr(pos + 1); //original file name with extension
+	std::string quarantine_file_name = file_name.substr(0, file_name.find(".")); //new name of the file in quarantine
+	std::string file_directory = filepath.substr(0, pos + 1); //original file directory path
+	int repeat_counter = 0;
+	std::string extension = ".lava";
+	//altering the new file extension so that files don't repeat in the quarantine
+	while (quarantine_contains(quarantine_file_name + extension)) { //check to see if a file with that name already exists in the quarantine directory
+		extension = "(" + std::to_string(repeat_counter) + ").lava";
+		repeat_counter++;
+	}
+	quarantine_file_name += extension;
+	quarantineFile << file_name + "," + quarantine_file_name + "," + file_directory + "," + virus_name << std::endl; //adding it to the quarantine info file (quarantine.lava)
+	quarantineFile.close();
+	//move_file(filepath, ".\\LAVA_Quarantine\\", ".lava"); //moving file to quarantine folder
+	q_entry q; q.origin_directory = file_directory; q.new_file_name = quarantine_file_name; q.old_file_name = file_name; q.virus_name = virus_name;
+	this->QuarantineContents.insert(q);
+	move_file(filepath, ".\\LAVA_Quarantine\\" + quarantine_file_name); //moving file to quarantine folder
+}
+
+inline bool LavaScan::quarantine_contains(std::string file_name) { //function to check if the new file name is already used in the quarantine entry file
+	std::ifstream quarantine_file("quarantine.lava", std::ios::out);
+	std::string line;
+	while (getline(quarantine_file, line)) { //iterate file
+		int pos1 = line.find(",");
+		int pos2 = line.find(",", pos1 + 1);
+		std::string new_name = line.substr(pos1 + 1, pos2 - pos1 - 1); //extract the new file name from quarantine file
+		if (new_name == file_name) return true;
+	}
+	return false;
+}
+
+//function to move file with changing the extension
+inline void LavaScan::move_file(std::string file_path, std::string new_location_with_new_filename) {
+	std::ifstream from(file_path, std::ios::in | std::ios::binary);
+	std::ofstream to(new_location_with_new_filename, std::ios::out | std::ios::binary);
+	to << from.rdbuf();
+	from.close();
+	to.close();
+	_unlink(file_path.c_str()); //removing the original file
+}
+
+inline bool LavaScan::remove_quarantined_files(std::set<std::string> to_remove) { //returns false if errors occurred
+	if (to_remove.size() == 0)
+		return true;
+	bool success = true;
+	std::fstream quarantineFile;
+	std::fstream temp;
+	temp.open("temp.lava", std::fstream::out); //creating a temporary file to store the undeleted files
+	quarantineFile.open("quarantine.lava", std::ios::in | std::ios::out); //opening the quarantine file
+	temp << "";
+	std::string line;
+	while (getline(quarantineFile, line)) {
+		int found = 0, prev_found = 0, comma_num = 0;
+		std::string file_name, file_quarantine_name, file_origin, virus_name;
+		while (found != std::string::npos) { //extracting quarantined file info from quarantine entry
+			prev_found = found;
+			found = line.find(",", found + 1, 1);
+			int size = found - prev_found;
+			switch (comma_num)
+			{
+			case 0:
+				file_name = line.substr(prev_found, size); //extract file original name
+			case 1:
+				file_quarantine_name = line.substr(prev_found + 1, size - 1); //exctract file quarantine name
+			case 2:
+				file_origin = line.substr(prev_found + 1, size - 1); //extract file origin
+				virus_name = line.substr(found + 1); //extract virus name
+			}
+			comma_num++;
+		}
+		if (to_remove.find(file_name) == to_remove.end()) {
+			//moving file back to its original location
+			//move_file(".\\LAVA_Quarantine\\" + file_quarantine_name, file_origin, file_name.substr(file_name.find(".")));
+			//temp << line << std::endl; //keeping it in quarantine //commenting this out for now. no need to write to file after removing.
+			//move_file(".\\LAVA_Quarantine\\" + file_quarantine_name, file_origin + file_name);
+			//temp << line << std::endl; //keeping it in quarantine
+		}
+		else {
+			if (_unlink((".\\LAVA_Quarantine\\" + file_quarantine_name).c_str()) != 0)
+			{
+				//Unable to remove file, keep it in the quarantine folder
+				//error message
+				//temp << line << std::endl; //again, we dont want to log if we just move back, may be temporary
+				success = false;
+			}
+			else {
+				//removal successful
+			}
+		}
+	}
+	temp.close();
+	quarantineFile.close();
+	_unlink("quarantine.lava");
+	std::rename("temp.lava", "quarantine.lava");
+	return success;
+}
+
+inline bool LavaScan::postMoveQuarantine(std::set<q_entry> to_remove) { //after a file has been moved back, remove from qaurantine.lava
+	if (to_remove.size() == 0)
+		return true;
+	std::ofstream ofs;
+	ofs.open("quarantine.lava", std::ofstream::out | std::ofstream::trunc);
+	ofs.close();
+	return true;
+}
+
+inline void LavaScan::make_quarantine_directory() {
+	struct stat buf;
+	stat(".\\LAVA_Quarantine", &buf);
+	//check if the quarantine directory exists
+	if (!(buf.st_mode & S_IFDIR)) {
+		//case if it doesn't exist
+		printf("Quarantine directory not found.\n Attempting to make the Quarantine Directory...\n");
+		if (int ret = CreateDirectoryA(".\\LAVA_Quarantine", NULL) == 0) {
+			if (ret == ERROR_ALREADY_EXISTS) {
+				//direcotry already exists
+				printf("Quarantine Direcotory Ready\n");
+			}
+			else if (ret == ERROR_PATH_NOT_FOUND) {
+				//idk how this could happen
+			}
+			else {
+				//some other error
+				//std::cout << "Error making the quarantine directory, error: " + GetLastError() << std::endl;
+			}
+		}
+		else printf("Quarantine Directory Ready\n");
+	}
+}
+
+inline std::set<char> LavaScan::get_drive_letters() {
+	std::set<char> letters;
+	DWORD drive_mask = GetLogicalDrives();//return a bit mask of the logival drive letters
+	if (drive_mask == 0) // case if unsuccessful
+	{
+		//printf("Failed to get drive bitmask!\n");
+	}
+	int index = 0; //index keeps track of the bit position
+	while (drive_mask)
+	{
+		if (drive_mask & 1) {
+			//printf("Drive %c found\n", (char)('A' + index));
+			letters.insert((char)('A' + index));
+		}
+		// increment, check next drive
+		index++;
+		// shift the bitmask binary right
+		drive_mask >>= 1;
+	}
+	return letters;
+}
+
+inline bool LavaScan::CompleteScan() {
+	this->start_time = get_time();
+	bool clean = true;
+	//this->viruses_found = 0;
+	//this->viruses_removed = 0;
+	std::set<char> drive_letters = get_drive_letters(); //get all the drive letters
+	for (char letter : drive_letters) {
+		std::string dirs = "";
+		dirs += letter;
+		dirs += ":\\";
+		//std::cout<< "Scanning drive " +  dirs << std::endl;
+		clean = clean && this->scanDirectory(dirs);
+	}
+	this->finish_time = get_time();
+	//log_scan("Complete",start_time, finish_time, num_found, num_found);
+	isScanDone = true;
+	//this->QuarantineContents = this->read_quarantine_contents();
+	return clean;
+}
+
+inline void LavaScan::log_scan() {
+	std::fstream log_file;
+	log_file.open("scan_log.lava", std::ios::app);
+	log_file << this->currentScanGoing + "," + this->start_time + "," + this->finish_time + "," + std::to_string(this->num_found) + "," + std::to_string(this->num_removed) + "\n";
+	log_file.close();
+	this->reset_QC();//reset qc state after logging every scan
+}
+
+inline std::string LavaScan::get_time() {
+	time_t rawtime;
+	struct tm timeinfo;
+	char buffer[40];
+
+	time(&rawtime);
+	localtime_s(&timeinfo, &rawtime);
+
+	strftime(buffer, 40, "%c", &timeinfo);
+	return (std::string)buffer;
+}
+
+inline std::vector<std::vector<std::string>> LavaScan::read_log() {
+	std::vector<std::vector<std::string>> ret;
+
+	std::fstream log_file;
+	std::stack<std::string> log_order; // using stack to get chronological log order
+	log_file.open("scan_log.lava");
+	std::string line; //string to store line charaacters
+	while (getline(log_file, line)) {
+		log_order.push(line); //filling the stack oldest in first, last out
+	}
+	std::string scan_type, scan_strt, scan_fin, num_found, num_removed; // variable to store the virus info
+	while (!log_order.empty()) {
+		line = log_order.top(); //get value from log stack
+		log_order.pop();//remove value from top
+		int found = 0, prev_found = 0, comma_num = 0;
+		while (found != std::string::npos) {
+			prev_found = found;
+			found = line.find(",", found + 1, 1);
+			int size = found - prev_found;
+			switch (comma_num)
+			{
+			case 0:
+				scan_type = line.substr(prev_found, size); //extract the scan type
+			case 1:
+				scan_strt = line.substr(prev_found + 1, size - 1); //extract scan start time
+			case 2:
+				scan_fin = line.substr(prev_found + 1, size - 1); //exctract scan finish time
+			case 3:
+				num_found = line.substr(prev_found + 1, size - 1); //extract number of viruses found
+				num_removed = line.substr(found + 1); //extract number of viruses removed
+			}
+			comma_num++;
+		}
+		//values of line are extracted (USE THEM FOR GUI HERE)
+		//std::cout << "Type of scan: " + scan_type + ", Start time: " + scan_strt + ", End time: " + scan_fin + ", Number of viruses found: " + num_found + ", Number of viruses removed: " + num_removed + "\n" << std::endl;
+		if (scan_type != "") {
+			// only add to ret if there is content
+			std::vector<std::string> temp; temp.push_back(scan_type); temp.push_back(scan_strt);
+			temp.push_back(scan_fin); temp.push_back(num_found); temp.push_back(num_removed);
+			ret.push_back(temp);
+			temp.clear();
+		}
+	}
+	return ret;
+}
+
+//inline bool LavaScan::QuickScan() {
+//	// for now just scan docs and downloads 
+//	//return this->scanDirectory(dirs, this->engine, this->options);
+//	TCHAR my_profile[MAX_PATH];
+//	SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, my_profile);
+//	//std::wcout << "\nscanning " << my_profile << " and \n" << my_profile << "\\..\\Downloads\\\n";
+//	char home[MAX_PATH];
+//	wcstombs(home, my_profile, MAX_PATH);
+//	// convert to string..
+//	std::string s_home = std::string(home); std::string docs = s_home + "\\Documents"; std::string dl = s_home + "\\Downloads";
+//	scanDirectory(docs, this->engine, this->options);
+//	scanDirectory(dl, this->engine, this->options);
+//	return true;
+//}
+
+inline void LavaScan::UpdatePreviousScans() {
+	this->PreviousScans = this->read_log();
+}
+
+inline bool LavaScan::moveQuarantineHome(std::set<q_entry> q)
+{
+	if (q.size() <= 0) { return true; }
+	for (auto thing : q) {
+		move_file(".\\LAVA_Quarantine\\" + thing.new_file_name, thing.origin_directory + thing.old_file_name); //moving file to quarantine folder
+	}
+	this->postMoveQuarantine(q);
+	return true;
+}
+//function that checks if the db folder exists, if not, creates it
+inline void LavaScan::check_db_folder() {
+	struct stat buf;
+	stat(".\\db", &buf);
+	//check if the db directory exists
+	if (!(buf.st_mode & S_IFDIR)) {
+		//case if it doesn't exist
+		//std::cout<<"db directory not found.\n Attempting to make the Database Directory...\n";
+		if (int ret = CreateDirectoryA(cl_retdbdir(), NULL) == 0) {
+			if (ret == ERROR_ALREADY_EXISTS) {
+				//direcotry already exists
+				//std::cout<<"Quarantine Direcotory Ready\n";
+			}
+			else if (ret == ERROR_PATH_NOT_FOUND) {
+				//std::cout<<"frigg this case";
+			}
+			else {
+				//some other error
+				//std::cout << "Error making the quarantine directory, error: " + GetLastError() << std::endl;
+			}
+		}
+		else {
+			//printf("DB Directory Ready\n");
+		}
+	}
+	else {
+		//std::cout << "db_dir exists\n"; 
+	}
+
+}
+
+inline void LavaScan::check_config_files() {
+	char buf[256];
+	GetCurrentDirectoryA(256, buf); //gets the current working directory
+	//openning all the files to read
+	std::fstream clamd_file;
+	std::fstream clamd_temp;
+	std::fstream freshclam_file;
+	std::fstream freshclam_temp;
+	clamd_file.open(".\\clam64stuff\\clamd.conf", std::ios::in | std::ios::out);
+	clamd_temp.open(".\\clam64stuff\\clamd_temp.conf", std::ios::out);
+	freshclam_file.open(".\\clam64stuff\\freshclam.conf", std::ios::in | std::ios::out);
+	freshclam_temp.open(".\\clam64stuff\\freshclam_temp.conf", std::ios::out);
+
+	clamd_temp << "";
+	freshclam_temp << "";
+	std::string line;
+	bool line_changed = false;
+	while (getline(clamd_file, line)) { //loops over every line in the clamd.conf file looking for the DatabaseDirectory line
+		//std::cout << line << std::endl;;
+		if (line.find("DatabaseDirectory") != std::string::npos) {
+			clamd_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl; //set the database directory to the full file path of the db folder
+			line_changed = true;
+		}
+		else {
+			clamd_temp << line << std::endl;
+		}
+	}
+	if (!line_changed) clamd_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl; //case if DatabaseDirectory was not set in clamd.conf
+	line_changed = false;
+	while (getline(freshclam_file, line)) {//loops over every line in the freshclam.conf file looking for the DatabaseDirectory line
+		//std::cout << line << std::endl;;
+		if (line.find("DatabaseDirectory") != std::string::npos) {
+			freshclam_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl;//set the database directory to the full file path of the db folder
+			line_changed = true;
+		}
+		else {
+			freshclam_temp << line << std::endl;
+		}
+	}
+	if (!line_changed) freshclam_temp << "DatabaseDirectory " + std::string(cl_retdbdir()) << std::endl; //case if DatabaseDirectory was not set in freshclam.conf
+	//closing all the files 
+	clamd_file.close();
+	freshclam_file.close();
+	clamd_temp.close();
+	freshclam_temp.close();
+	_unlink(".\\clam64stuff\\clamd.conf");
+	_unlink(".\\clam64stuff\\freshclam.conf");
+	rename(".\\clam64stuff\\clamd_temp.conf", ".\\clam64stuff\\clamd.conf");
+	rename(".\\clam64stuff\\freshclam_temp.conf", ".\\clam64stuff\\freshclam.conf");
+}
+
+inline bool LavaScan::update_virus_database() {
+	//std::cout << "\n " << GetExePath() << "\nend";
+
+
+	try {
+		check_db_folder();//checking the existence (creating) of db folder
+		check_config_files();//checking/updating config files
+
+		//// set the size of the structures
+		//TCHAR ProcessName[256];
+		//STARTUPINFO si;
+		//PROCESS_INFORMATION pi;
+		//std::string pname = GetExePath() + "\\..\\clam64stuff\\freshclam.exe"; std::wstring widestr = std::wstring(pname.begin(), pname.end());
+		//std::cout << "\n\t" << pname << std::endl;
+		//getch();
+		//wcscpy(ProcessName, widestr.c_str());
+		//ZeroMemory(&si, sizeof(si));
+		//si.cb = sizeof(si);
+		//ZeroMemory(&pi, sizeof(pi));
+		//
+		//// start the program up
+		//if (!CreateProcess(
+		//	NULL,   // the path
+		//	ProcessName,			//Command line argument
+		//	NULL,           // Process handle not inheritable
+		//	NULL,           // Thread handle not inheritable
+		//	FALSE,          // Set handle inheritance to FALSE
+		//	0,              // No creation flags
+		//	NULL,           // Use parent's environment block
+		//	NULL,           // Use parent's starting directory 
+		//	&si,            // Pointer to STARTUPINFO structure
+		//	&pi             // Pointer to PROCESS_INFORMATION structure
+		//)) {
+		//	printf("CreateProcess failed (%d).\n", GetLastError());
+		//	return false;
+		//}
+		//
+		//// Wait until child process exits.
+		//WaitForSingleObject(pi.hProcess, INFINITE);
+		//
+		//// Close process and thread handles. 
+		//CloseHandle(pi.hProcess);
+		//CloseHandle(pi.hThread);
+
+		std::string pname = GetLAVAFolder() + "\\clam64stuff\\freshclam.exe"; std::wstring widestr = std::wstring(pname.begin(), pname.end());
+		//std::cout << "\n\t" << pname << std::endl;
+		pname = "\"" + pname + "\"";
+		//getch();
+		system(pname.c_str());
+	}
+	catch (int e) {
+		std::cout << "\nsomething borked up";
+	}
+
+	return true;
+}
+
+inline bool LavaScan::CheckIfTaskSchedulerFileExists()
+{
+	std::string SchedulerPath = this->PathToSchedulerInfo;
+	if (fs::exists(SchedulerPath))
+		return true;
+	return false;
+}
+
+inline bool LavaScan::CreateTaskSchedulerFile()
 {
 	try {
-
-		/* BACK ARROW ICON */
-		struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
-		struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
-		if (nk_begin(this->ctx, "barrow", backArrowAndText,
-			NK_WINDOW_NO_SCROLLBAR)) {
-
-			/* hidden button behind icon to press */
-			nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
-			if (nk_button_label(ctx, "")) {
-				//fprintf(stdout, "back arrow\n");
-				this->view = 0;
-				nk_clear(this->ctx);
-			}
-			this->drawImageSubRect(&this->backArrow, &bar);
-			nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-		}
-		nk_end(this->ctx);
-
-		// ICON 
-		/* schedule logo */
-		struct nk_rect schedlogo = nk_rect(225, 25, 145, 145);
-		if (nk_begin(this->ctx, "scanbuglogo", schedlogo,
-			NK_WINDOW_NO_SCROLLBAR)) {
-			this->drawImage(&this->scanBug);
-		}
-		nk_end(this->ctx);
-
-		/* sched text */
-		if (nk_begin(this->ctx, "shecdtext", nk_rect(225 + schedlogo.w + 7, 25 + 10, 720, 95),
-			NK_WINDOW_NO_SCROLLBAR)) {
-			nk_style_set_font(this->ctx, &this->font2->handle);
-			nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(225 + schedlogo.w + 7, 25 + 10, 720, 95), " Scheduled Task", 15,
-				&this->font2->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
-			nk_style_set_font(this->ctx, &this->font->handle);
-		}
-		nk_end(this->ctx);
-
-
-		// IF THERE IS NO SCHEDULED TASK JUST SAY IT AND LEAVE BRUH
-		if (!IsThereAScheduledTask) {
-			if (nk_begin(this->ctx, "nothingtoseehere", nk_rect(WINDOW_WIDTH * .5 - 250, 250, 500, 250),
-				NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER)) {
-				nk_layout_row_dynamic(this->ctx, 250, 1);
-				nk_label_wrap(this->ctx, "There are no currently scheduled scans. Please visit the Advanced Scan page to schedule one.");
-			}
-			nk_end(this->ctx);
-		}
-		else {
-			// diplsay it all
-			struct nk_list_view view; //view.count = 2; 
-			if (nk_begin(this->ctx, "Selected Files/Folders...", nk_rect(WINDOW_WIDTH*.5-400, 200, 800, 250), 
-				NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_DYNAMIC))
-			{
-				int h = this->ScheduledObject.filesToBeScanned.size() * DEFAULT_FONT_SIZE + DEFAULT_FONT_SIZE;
-				if (h < 180) { h = 180; }
-				nk_layout_row_dynamic(ctx, h, 1);
-				if (nk_list_view_begin(ctx, &view, "test", NK_WINDOW_BORDER, 25, 2)) {
-					//nk_layout_row_dynamic(ctx, 25, 1);
-					//UIPrintSet(this->ScheduledObject.filesToBeScanned);
-					for (auto s : this->ScheduledObject.filesToBeScanned) {
-						nk_layout_row_static(ctx, 25, 16 * s.length(), 1);
-						nk_label(this->ctx, s.c_str(), NK_TEXT_ALIGN_LEFT);
-					}
-					nk_list_view_end(&view);
-				}
-			}
-			nk_end(this->ctx);
-
-			if (nk_begin(this->ctx, "statusnshit", nk_rect(WINDOW_WIDTH * .5 - 400, 455, 800, 150),
-				NULL))
-			{
-				
-				nk_layout_row_dynamic(ctx, 30, 1);
-				nk_label_wrap(this->ctx, std::string("Type : " + ScheduledObject.type).c_str());
-				nk_layout_row_dynamic(ctx, 30, 1);
-				nk_label_wrap(this->ctx, std::string("Added On : " + ScheduledObject.startedOn).c_str());
-				nk_layout_row_dynamic(ctx, 60, 1);
-				nk_label_wrap(this->ctx, std::string("Status : " + ScheduledObject.status_text + "   ").c_str());
-				
-			}
-			nk_end(this->ctx);
-		}
-
-		if (IsThereAScheduledTask) { // display both btns
-			// GO HOME FROM SCHEDULE VIEW
-			if (nk_begin(this->ctx, "DONEBRUV", nk_rect(WINDOW_WIDTH * .5 - 415, WINDOW_HEIGHT - 125, 410, 105),
-				NK_WINDOW_NO_SCROLLBAR)) {
-				nk_layout_row_dynamic(this->ctx, 105, 1);
-				if (nk_button_image_label(this->ctx, this->home, "              Return Home", NK_TEXT_ALIGN_RIGHT)) {
-					this->view = 0;
-					/*std::cout << "\ntype; " << this->ScheduledObject.type;
-					std::cout << "\nstatus; " << this->ScheduledObject.status_text;*/
-				}
-			}
-			nk_end(this->ctx);
-
-			// DELETE SCHED SCAN IF U WANT
-			if (nk_begin(this->ctx, "DELSCHEDSCANREEEE", nk_rect(WINDOW_WIDTH * .5 + 5, WINDOW_HEIGHT - 125, 410, 105),
-				NK_WINDOW_NO_SCROLLBAR)) {
-				nk_layout_row_dynamic(this->ctx, 105, 1);
-				if (nk_button_image_label(this->ctx, this->deleteSched,
-					"            Remove Sheduled Scan", NK_TEXT_ALIGN_RIGHT)) {
-					this->view = 0;
-					// remove the file for now -- if file does not exist lava kills it self RIP PEDRO
-					this->CreateTaskSchedulerFile(); // just overwrites file wit nothin
-					this->ScheduledObject = SchedulerObj(); // cls
-					IsThereAScheduledTask = false;
-					this->rmScheduledScan(); //try removing
-
-				}
-			}
-			nk_end(this->ctx);
-		}
-		else {
-			// GO HOME FROM SCHEDULE VIEW
-			if (nk_begin(this->ctx, "DONEBRUV", nk_rect(WINDOW_WIDTH * .5 - 205, WINDOW_HEIGHT - 125, 410, 105),
-				NK_WINDOW_NO_SCROLLBAR)) {
-				nk_layout_row_dynamic(this->ctx, 105, 1);
-				if (nk_button_image_label(this->ctx, this->home, "              Return Home", NK_TEXT_ALIGN_RIGHT)) {
-					this->view = 0;
-					/*std::cout << "\ntype; " << this->ScheduledObject.type;
-					std::cout << "\nstatus; " << this->ScheduledObject.status_text;*/
-				}
-			}
-			nk_end(this->ctx);
-		}
-
-		
-
+		std::ofstream outfile;
+		outfile.open(this->PathToSchedulerInfo, std::ios::trunc);
 		return true;
 	}
 	catch (int e) {
 		return false;
 	}
-	
+
 }
 
-inline bool FE::init(sf::Window *win) {
-	glewExperimental = 1;
-	if (glewInit() != GLEW_OK) {
-		fprintf(stderr, "Failed to setup GLEW\n");
-		std::cout << glewGetErrorString(glewInit());
+inline bool LavaScan::IsTaskSchedulerFileEmpty(std::ifstream& pFile)
+{
+	try {
+		return pFile.peek() == std::ifstream::traits_type::eof();
+	}
+	catch (int e) {
+		return false;
+	}
+}
+
+inline SchedulerObj LavaScan::LoadTaskSchedulerFile()
+{
+	SchedulerObj r;
+	std::ifstream file(this->PathToSchedulerInfo);
+
+	if (fs::exists(this->PathToSchedulerInfo) && !IsTaskSchedulerFileEmpty(file)) {
+		file >> r;
+	}
+
+	file.close();
+	// manipulate r so that its set will be accurate
+	r.returnSet();
+	return r;
+}
+
+inline LavaScan::LavaScan() {
+	CurrentScanCount = 0;
+	currentScanGoing = "";
+	num_found = 0; num_removed = 0;
+	isScanDone = false;
+	start_time = std::string("");
+	finish_time = std::string("");
+	PathToSchedulerInfo = GetExePath() + "\\TaskScheduler.Lava";
+
+	std::string ExePath = GetExePath();
+	std::string AntibodyFile = ExePath + "\\Locations.LavaAnti";
+	this->AntibodyFileLocation = AntibodyFile;
+
+	printf("Updating virus databse...\n");
+	if (!update_virus_database()) {//checks whether failed to update the database
+		printf("Failed to update the database!\nError: %s\n", GetLastError());
+	}
+	else {
+		printf("Virus database updated!\n");
+	}
+
+
+	if ((ret = cl_init(CL_INIT_DEFAULT)) != CL_SUCCESS) { //Initializing clamav
+		printf("Can't initialize libclamav: %s\n", cl_strerror(ret));//returns the error name in case of error
+		exit(2);
+	}
+	else {
+		printf("initialization successful\n");
+	}
+
+	if (!(engine = cl_engine_new())) { //Creating new engine instance
+		printf("Can't create new engine\n");
 		exit(1);
 	}
-	/* GUI */
-	//struct nk_context* ctx;
-	this->ctx = nk_sfml_init(win);
-	// ihstory header font
-	{
-		nk_sfml_font_stash_begin(&this->atlas2);
-		this->font2 = nk_font_atlas_add_from_file(this->atlas2, "../Assets/font.ttf", 95, 0);
-		nk_sfml_font_stash_end();
-	}
-	// smaller text
-	{
-		nk_sfml_font_stash_begin(&this->atlas3);
-		this->font3 = nk_font_atlas_add_from_file(this->atlas3, "../Assets/font.ttf", 18, 0);
-		nk_sfml_font_stash_end();
-	}
-	{//logo text size 88;
-		nk_sfml_font_stash_begin(&this->atlas4);
-		this->font4 = nk_font_atlas_add_from_file(this->atlas4, "../Assets/font.ttf", 84, 0);
-		nk_sfml_font_stash_end();
-	}
-	{//logo text size 22;
-		nk_sfml_font_stash_begin(&this->atlas5);
-		this->font5 = nk_font_atlas_add_from_file(this->atlas5, "../Assets/font.ttf", 22, 0);
-		nk_sfml_font_stash_end();
-	}
-	{//struct nk_font_atlas* atlas;
-		nk_sfml_font_stash_begin(&this->atlas);
-		//this->font = nk_font_atlas_add_from_file(this->atlas, this->font_path, 18, NULL);
-		this->font= nk_font_atlas_add_from_file(this->atlas, "../Assets/font.ttf", DEFAULT_FONT_SIZE, 0);
-		nk_sfml_font_stash_end();
-		nk_style_set_font(this->ctx, &this->font->handle);
-		//nk_init_default(this->ctx, &font->handle);
+	else {
+		printf("ClamAV engine initialized\n");
 	}
 
-	struct nk_color table[NK_COLOR_COUNT];
-	table[NK_COLOR_TEXT] = nk_rgba(175, 175, 175, 255);
-	table[NK_COLOR_WINDOW] = nk_rgba(45, 45, 45, 255);
-	table[NK_COLOR_HEADER] = nk_rgba(40, 40, 40, 255);
-	table[NK_COLOR_BORDER] = nk_rgba(65, 65, 65, 255);
-	table[NK_COLOR_BUTTON] = nk_rgba(50, 50, 50, 255);
-	table[NK_COLOR_BUTTON_HOVER] = nk_rgba(40, 40, 40, 255);
-	table[NK_COLOR_BUTTON_ACTIVE] = nk_rgba(35, 35, 35, 255);
-	table[NK_COLOR_TOGGLE] = nk_rgba(100, 100, 100, 255);
-	table[NK_COLOR_TOGGLE_HOVER] = nk_rgba(140,138,128, 255);
-	table[NK_COLOR_TOGGLE_CURSOR] = nk_rgba(255, 69, 0, 255);
-	table[NK_COLOR_SELECT] = nk_rgba(45, 45, 45, 255);
-	table[NK_COLOR_SELECT_ACTIVE] = nk_rgba(208, 7, 27, 255);
-	table[NK_COLOR_SLIDER] = nk_rgba(208, 119, 126, 255);
-	table[NK_COLOR_SLIDER_CURSOR] = nk_rgba(255, 69, 0, 255);
-	table[NK_COLOR_SLIDER_CURSOR_HOVER] = nk_rgba(255, 69, 0, 255);
-	table[NK_COLOR_SLIDER_CURSOR_ACTIVE] = nk_rgba(255, 69, 0, 255);
-	table[NK_COLOR_PROPERTY] = nk_rgba(38, 38, 38, 255);
-	table[NK_COLOR_EDIT] = nk_rgba(38, 38, 38, 255);
-	table[NK_COLOR_EDIT_CURSOR] = nk_rgba(175, 175, 175, 255);
-	table[NK_COLOR_COMBO] = nk_rgba(45, 45, 45, 255);
-	table[NK_COLOR_CHART] = nk_rgba(120, 120, 120, 255);
-	table[NK_COLOR_CHART_COLOR] = nk_rgba(45, 45, 45, 255);
-	table[NK_COLOR_CHART_COLOR_HIGHLIGHT] = nk_rgba(255, 0, 0, 255);
-	table[NK_COLOR_SCROLLBAR] = nk_rgba(40, 40, 40, 255);
-	table[NK_COLOR_SCROLLBAR_CURSOR] = nk_rgba(100, 100, 100, 255);
-	table[NK_COLOR_SCROLLBAR_CURSOR_HOVER] =nk_rgba(120, 120, 120, 255);
-	table[NK_COLOR_SCROLLBAR_CURSOR_ACTIVE] = nk_rgba(150, 150, 150, 255);
-	table[NK_COLOR_TAB_HEADER] = nk_rgba(40, 40, 40, 255);
-	nk_style_from_table(ctx, table);
+	printf("Inititalizing signature database...\n");
+	printf("Default database path: %s\n", cl_retdbdir());
 
-	// load some image stuff
-	//struct nk_buffer cmds;
-	////nk_buffer_init_default(&cmds);
-	glEnable(GL_TEXTURE_2D);
+	if ((ret = cl_load(cl_retdbdir(), engine, &sigs, CL_DB_STDOPT)) != CL_SUCCESS) { //Loads the database file from the default db folder
+		printf("Can't initialize signature database: %s\n", cl_strerror(ret)); //returns the error name in case of error
+		exit(2);
+	}
+	else {
+		printf("Signature database initialization successful\n %u Signatures loaded\n", sigs);
+	}
 
-	// bg color
-	this->bg.r = 45 / 255.0f; this->bg.g = 45 / 255.0f; this->bg.b = 45 / 255.0f; this->bg.a = 1.0f;
-	// white txt color
-	this->whiteFont.r = 0; this->whiteFont.g =0; this->whiteFont.b = 0; this->whiteFont.a = 1;
-	
-	// load pngs 
-	this->scanImage = this->icon_load(pp.scan);
-	this->squareImage = this->icon_load(pp.squareLogo);
-	this->historyImage = this->icon_load(pp.history);
-	this->backArrow = this->icon_load(pp.backArrow);
-	this->chooseScan = this->icon_load(pp.chooseScan);
-	this->triangleLogo = this->icon_load(pp.triangleButton);
-	this->addLogo = this->icon_load(pp.addButton);
-	this->trapImage = this->icon_load(pp.trapLogo);
-	this->calendarLogo = this->icon_load(pp.calendar);
-	this->trashIcon = this->icon_load(pp.trash);
-	this->purpleBack = this->icon_load(pp.purpleBack);
-	this->purpleFwd = this->icon_load(pp.purpleFwd);
-	this->done = this->icon_load(pp.done);
-	this->support = this->icon_load(pp.support);
-	this->home = this->icon_load(pp.home);
-	this->scanBug = this->icon_load(pp.scanBug);
-	this->deleteSched = this->icon_load(pp.deleteSched);
-	
-	if (OpenType >= 1) {
-		//std::cout << "opened thru task scheduler\n";
-		//this->view = 6; // view the scheduler task
-		// load the scheduled obj file into advancescannow.
-		// set type to scheduled
-		// load current scan page
-		if (this->CheckIfTaskSchedulerFileExists()) {
-			std::ifstream file(this->PathToSchedulerInfo);
-			if (is_empty(file)) {
-				//std::cout << "\n\n EMPTY AF BRUV 2\n\n";
-				IsThereAScheduledTask = false;
+	if ((ret = cl_engine_compile(engine)) != CL_SUCCESS) { //Compiles the ClamAV engine
+		printf("cl_engine_compile() error: %s\n", cl_strerror(ret));//returns the error name in case of error
+		cl_engine_free(engine);
+		exit(1);
+	}
+	else {
+		printf("ClamAV engine ready!\n");
+	}
 
+	//printf("\n\n Testing scanFile and scanDirectory functions:\n\n");
+	//Testing scanFile function
+
+	this->options.general = CL_SCAN_GENERAL_ALLMATCHES;
+
+	//create the quarantine direcory if it doesn't exist
+	make_quarantine_directory();
+
+	//Testing Quarantine Functions
+	//quarantine_file("C:\\Users\\dylan\\Downloads\\a_virus.txt", "too cool");
+	//quarantine_file("C:\\Users\\dylan\\Documents\\a_virus.txt", "trojan");
+	//quarantine_file("C:\\Users\\dylan\\Pictures\\a_virus.txt", "trojan");
+	std::set<std::string> to_remove;
+	//to_remove.insert("a_virus.txt");
+	remove_quarantined_files(to_remove);
+	//std::set<struct q_entry> entries = read_quarantine_contents();
+	//for (struct q_entry q :entries) {
+		//std::cout << "File name: " + q.old_file_name + ", new name: " + q.new_file_name + ", origin directory: " + q.origin_directory + ", virus name: " + q.virus_name << std::endl;
+	//}
+
+	//std::string AntibodyFileLocation = "C:\\test.LavaAnti";
+	////Testing scanDirectory function
+	//bool clean = scanDirectory("C:\\Users\\tom\\Documents\\", engine, options, AntibodyFileLocation);
+	//if (clean) printf("Directory is not infected");
+	//else printf("Directory is not infected");
+
+	//Testing quickScan function
+	/*clean = quickScan(AntibodyFileLocation, engine, options);
+	if (clean) printf("Directory is not infected");
+	else printf("Directory is not infected");*/
+
+	//Testing CompleteScan
+	//std::set<char> drive_letters = get_drive_letters();
+	// have a seperate thread load shit into PreviousScans...race condition if many scans on a pc maybe...we will see
+	std::thread t1 = std::thread([this] {this->UpdatePreviousScans(); });
+	t1.detach();
+
+	//std::cout << "\n\t" << GetExePath();
+
+	// if task scheduer file doesnt exist create
+	if (!this->CheckIfTaskSchedulerFileExists()) {
+		this->CreateTaskSchedulerFile();
+		std::ifstream file(this->PathToSchedulerInfo);
+		if (is_empty(file)) {
+			//std::cout << "\n\n EMPTY AF BRUV \n\n";
+			IsThereAScheduledTask = false;
+		}
+		else {
+			IsThereAScheduledTask = true;
+			//std::cout << "\n\n LOAD PLS BRUV \n\n";
+			this->ScheduledObject = this->LoadTaskSchedulerFile();
+		}
+		file.close();
+	}
+	else { // file exists
+		std::ifstream file(this->PathToSchedulerInfo);
+		if (is_empty(file)) {
+			//std::cout << "\n\n EMPTY AF BRUV 2\n\n";
+			IsThereAScheduledTask = false;
+			if (OpenType >= 1) {
 				// launched from scheduler...just exit and take ur losses :(
 				file.close();
 				exit(10);
-				
 			}
 		}
-		advancedScanPaths.clear(); advancedScanPaths = this->ScheduledObject.filesToBeScanned;
-		this->currentScanGoing = "Scheduled";
-		this->scanTasks.push(4); //4=scheduled
-		// make thread to count
-		std::thread t1 = std::thread([this] { 
-			for (auto ss : advancedScanPaths) {
-				struct stat s;
-				if (stat(ss.c_str(), &s) == 0)
-				{
-					if (s.st_mode & S_IFDIR)
-					{
-						countFiles(ss.c_str(), "*", true);
-					}
-					else if (s.st_mode & S_IFREG)
-					{
-						++total_Count;
-					}
-				}
-				
-			}
-			 
-			});
-		t1.detach();
-		this->view = 3;
+		else {
+			IsThereAScheduledTask = true;
+			//std::cout << "\n\n LOAD PLS BRUV2 \n\n";
+			this->ScheduledObject = this->LoadTaskSchedulerFile();
+
+		}
+		file.close();
 	}
-	
-	//std::cout << "\n\topentype : " << OpenType;
-	return true;
+	//sstd::cout << "\n\topentype : " << OpenType;
 }
 
 #endif
