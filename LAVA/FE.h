@@ -636,17 +636,23 @@ inline bool FE::AdvancedScanView() {
 	
 	/* displaying shit */
 	struct nk_list_view view; //view.count = 2; 
-	if (nk_begin(this->ctx, "Selected Files/Folders...", nk_rect(WINDOW_WIDTH - delta + 20, WINDOW_HEIGHT * .235, delta-40, 400), NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_DYNAMIC ))
+	if (nk_begin(this->ctx, "Selected Files/Folders...", nk_rect(WINDOW_WIDTH - delta + 20, WINDOW_HEIGHT * .235, delta-40, 400),
+		NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_DYNAMIC ))
 	{
 		int h = advancedScanPaths.size() * DEFAULT_FONT_SIZE + DEFAULT_FONT_SIZE;
-		if (h < 400) { h = 400; }
+		if (h < 360) { h = 360; }
 		nk_layout_row_dynamic(ctx, h, 1);
 		if (nk_list_view_begin(ctx, &view, "test", NK_WINDOW_BORDER, 25, 2)) {
-			nk_layout_row_dynamic(ctx, 25, 1);
-			UIPrintSet(advancedScanPaths);
+			// UIPrintSet(advancedScanPaths);
+			for (auto s : advancedScanPaths) {
+				nk_layout_row_static(ctx, 25,16*s.length(), 1);
+				nk_label(this->ctx, s.c_str(), NK_TEXT_ALIGN_LEFT);
+			}
 			//printset(advancedScanPaths);
 			/*nk_label(this->ctx, list[0], NK_TEXT_ALIGN_LEFT);
 			nk_label(this->ctx, list[1], NK_TEXT_ALIGN_LEFT);*/
+			//nk_layout_row_dynamic(ctx, 25, 1);
+			//nk_edit_string();
 			nk_list_view_end(&view);
 		}
 	}
@@ -1187,7 +1193,7 @@ inline FE::FE(int i) {
 inline void FE::UIPrintSet(std::set<std::string> s)
 {
 	for (auto f : s) {
-		nk_label(this->ctx, f.c_str(), NK_TEXT_ALIGN_LEFT);
+		nk_label(this->ctx, f.c_str(), NK_TEXT_ALIGN_CENTERED);
 	}
 
 }
@@ -1978,7 +1984,7 @@ inline bool FE::CurrentScheduleScanView()
 			// diplsay it all
 			struct nk_list_view view; //view.count = 2; 
 			if (nk_begin(this->ctx, "Selected Files/Folders...", nk_rect(WINDOW_WIDTH*.5-400, 200, 800, 250), 
-				NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_DYNAMIC))
+				NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_DYNAMIC))
 			{
 				int h = this->ScheduledObject.filesToBeScanned.size() * DEFAULT_FONT_SIZE + DEFAULT_FONT_SIZE;
 				if (h < 200) { h = 200; }
