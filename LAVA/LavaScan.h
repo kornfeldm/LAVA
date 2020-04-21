@@ -231,6 +231,80 @@ public:
 	
 };
 
+void FileCount(std::string dirPath)
+{
+	try {
+		auto dirIter = std::filesystem::recursive_directory_iterator(dirPath, std::filesystem::directory_options::skip_permission_denied);
+		struct stat s;
+		if (stat(dirPath.c_str(), &s) == 0)
+		{
+			if (s.st_mode & S_IFDIR)
+			{
+				for (auto& entry : dirIter)
+				{
+					if (entry.is_regular_file())
+					{
+						/*std::cout << "\n\t\tfile " << entry.path();
+						std::cout << "\n counter : " << total_Count;*/
+						++total_Count;
+					}
+				}
+			}
+			else if (s.st_mode & S_IFREG)
+			{
+				++total_Count;
+			}
+		}
+	}
+	catch (int e) {
+		std::cout << "we diehere;";
+	}
+	
+}
+
+class WorkQueue
+{
+	std::condition_variable work_available;
+	std::mutex work_mutex;
+	std::queue<std::string> work;
+
+public:
+	void push_work(std::string item)
+	{
+		std::unique_lock<std::mutex> lock(work_mutex);
+
+		bool was_empty = work.empty();
+		work.push(item);
+
+		lock.unlock();
+
+		if (was_empty)
+		{
+			work_available.notify_one();
+		}
+	}
+
+	std::string wait_and_pop()
+	{
+		std::unique_lock<std::mutex> lock(work_mutex);
+		while (work.empty())
+		{
+			work_available.wait(lock);
+		}
+
+		std::string tmp = work.front();
+		work.pop();
+		return tmp;
+	}
+};
+
+std::string GetExePath();
+
+std::string GetAntibodyPath() {
+	std::string ExePath = GetExePath();
+	std::string AntibodyFile = ExePath + "\\Locations.LavaAnti";
+	return AntibodyFile;
+}
 
 class LavaScan
 {
@@ -665,6 +739,9 @@ inline bool LavaScan::scanDirectory(std::string dirPath) {
 //The first parameter is a path the the antibody file
 bool LavaScan::QuickScan()
 {
+	std::string ExePath = GetExePath();
+	std::string AntibodyFile = ExePath + "\\Locations.LavaAnti";
+	AntibodyFileLocation = AntibodyFile;
 	this->num_found = 0; //setting virus counter to 0
 	this->start_time = get_time();//getting start time for scan
 	//Keeps track of if malware is detected and where
@@ -1089,7 +1166,7 @@ inline bool LavaScan::moveQuarantineHome(std::set<q_entry> q)
 //function that checks if the db folder exists, if not, creates it
 inline void LavaScan::check_db_folder() {
 	struct stat buf;
-	stat(".\\x64\\Debug\\db", &buf);
+	stat(".\\db", &buf);
 	//check if the db directory exists
 	if (!(buf.st_mode & S_IFDIR)) {
 		//case if it doesn't exist
@@ -1121,10 +1198,10 @@ inline void LavaScan::check_config_files() {
 	std::fstream clamd_temp;
 	std::fstream freshclam_file;
 	std::fstream freshclam_temp;
-	clamd_file.open("..\\clam64stuff\\clamd.conf", std::ios::in | std::ios::out);
-	clamd_temp.open("..\\clam64stuff\\clamd_temp.conf", std::ios::out);
-	freshclam_file.open("..\\clam64stuff\\freshclam.conf", std::ios::in | std::ios::out);
-	freshclam_temp.open("..\\clam64stuff\\freshclam_temp.conf", std::ios::out);
+	clamd_file.open(".\\clam64stuff\\clamd.conf", std::ios::in | std::ios::out);
+	clamd_temp.open(".\\clam64stuff\\clamd_temp.conf", std::ios::out);
+	freshclam_file.open(".\\clam64stuff\\freshclam.conf", std::ios::in | std::ios::out);
+	freshclam_temp.open(".\\clam64stuff\\freshclam_temp.conf", std::ios::out);
 
 	clamd_temp << "";
 	freshclam_temp << "";
@@ -1158,10 +1235,10 @@ inline void LavaScan::check_config_files() {
 	freshclam_file.close();
 	clamd_temp.close();
 	freshclam_temp.close();
-	_unlink("..\\clam64stuff\\clamd.conf");
-	_unlink("..\\clam64stuff\\freshclam.conf");
-	rename("..\\clam64stuff\\clamd_temp.conf", "..\\clam64stuff\\clamd.conf");
-	rename("..\\clam64stuff\\freshclam_temp.conf", "..\\clam64stuff\\freshclam.conf");
+	_unlink(".\\clam64stuff\\clamd.conf");
+	_unlink(".\\clam64stuff\\freshclam.conf");
+	rename(".\\clam64stuff\\clamd_temp.conf", ".\\clam64stuff\\clamd.conf");
+	rename(".\\clam64stuff\\freshclam_temp.conf", ".\\clam64stuff\\freshclam.conf");
 }
 
 std::string GetExeFileName() {
@@ -1250,6 +1327,11 @@ inline LavaScan::LavaScan() {
 	isScanDone = false;
 	start_time = std::string("");
 	finish_time = std::string("");
+	PathToSchedulerInfo = GetExePath() + "\\TaskScheduler.Lava";
+
+	std::string ExePath = GetExePath();
+	std::string AntibodyFile = ExePath + "\\Locations.LavaAnti";
+	this->AntibodyFileLocation = AntibodyFile;
 
 	printf("Updating virus databse...\n");
 	if (!update_virus_database()) {//checks whether failed to update the database

@@ -72,8 +72,13 @@ static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 
 				/* User has clicked the "Add Folder" button.
 				 * Add the contents of szLastSelection to your list. */
-				//printf("%s\n", g_Multi.szLastSelection);
-				advancedScanPaths.insert(ToNarrow(g_Multi.szLastSelection));
+				 //printf("%s\n", g_Multi.szLastSelection);
+				if (advancedScanPaths.find(ToNarrow(g_Multi.szLastSelection)) == advancedScanPaths.end()) {
+					advancedScanPaths.insert(ToNarrow(g_Multi.szLastSelection));
+					// thread to count that shit carti
+					std::thread t1 = std::thread([] { countFiles(ToNarrow(g_Multi.szLastSelection), "*", true); });
+					t1.detach();
+				}
 			}
 			else
 			{
@@ -882,12 +887,26 @@ inline bool FE::DrawInProgressScan()
 		NK_WINDOW_NO_SCROLLBAR))
 	{
 		/*nk_size currentValue = this->pm.GetPercentage();*/
-		nk_size currentValue = 69;
-		nk_size maxValue = 100;
+		/*nk_size currentValue = 69;
+		nk_size maxValue = 100;*/
+		unsigned long int curcount = current_Count;
+		unsigned long int totcount = total_Count;
+		nk_size currentValue;
+		if (curcount == 0 || totcount ==0) {
+			currentValue = 1;
+		}
+		else {
+			 currentValue = (double)((double)current_Count / (double)total_Count) * 100;
+			 if (isScanDone == true) {
+				 currentValue = 100;
+			 }
+		}
+		
 		nk_modify modifyable = NK_FIXED;
 		nk_layout_row_dynamic(this->ctx, traplogo.w, 1);
-		nk_progress(ctx, &currentValue, 100, NULL);
-		std::cout << "\n  " << currentValue;
+		nk_progress(ctx, &currentValue, 100.00, NK_FIXED);
+		//std::cout << "\n  " << curcount << "\\" << totcount << " = " << (double)currentValue;
+		//std::cout << "\n  " << currentValue;
 	}
 	nk_end(this->ctx);
 
@@ -1709,6 +1728,147 @@ inline bool FE::displayCalendar(int x, int y, bool reccurring)
 	return true;
 }
 
+inline bool FE::CurrentScheduleScanView()
+{
+	try {
+
+		/* BACK ARROW ICON */
+		struct nk_rect bar = nk_rect(0, 0, WINDOW_WIDTH * .08, WINDOW_HEIGHT * .08);
+		struct nk_rect backArrowAndText = nk_rect(bar.x, bar.y, bar.w, bar.h + 36); //36 for font size!
+		if (nk_begin(this->ctx, "barrow", backArrowAndText,
+			NK_WINDOW_NO_SCROLLBAR)) {
+
+			/* hidden button behind icon to press */
+			nk_layout_row_static(ctx, bar.y + bar.h + 36, bar.x + bar.w, 2);
+			if (nk_button_label(ctx, "")) {
+				//fprintf(stdout, "back arrow\n");
+				this->view = 0;
+				nk_clear(this->ctx);
+			}
+			this->drawImageSubRect(&this->backArrow, &bar);
+			nk_draw_text(nk_window_get_canvas(this->ctx), SubRectTextBelow(&backArrowAndText, &bar), " BACK ", 6, &this->atlas->fonts->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+		}
+		nk_end(this->ctx);
+
+		// ICON 
+		/* schedule logo */
+		struct nk_rect schedlogo = nk_rect(225, 25, 145, 145);
+		if (nk_begin(this->ctx, "scanbuglogo", schedlogo,
+			NK_WINDOW_NO_SCROLLBAR)) {
+			this->drawImage(&this->scanBug);
+		}
+		nk_end(this->ctx);
+
+		/* sched text */
+		if (nk_begin(this->ctx, "shecdtext", nk_rect(225 + schedlogo.w + 7, 25 + 10, 720, 95),
+			NK_WINDOW_NO_SCROLLBAR)) {
+			nk_style_set_font(this->ctx, &this->font2->handle);
+			nk_draw_text(nk_window_get_canvas(this->ctx), nk_rect(225 + schedlogo.w + 7, 25 + 10, 720, 95), " Scheduled Task", 15,
+				&this->font2->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
+			nk_style_set_font(this->ctx, &this->font->handle);
+		}
+		nk_end(this->ctx);
+
+
+		// IF THERE IS NO SCHEDULED TASK JUST SAY IT AND LEAVE BRUH
+		if (!IsThereAScheduledTask) {
+			if (nk_begin(this->ctx, "nothingtoseehere", nk_rect(WINDOW_WIDTH * .5 - 250, 250, 500, 250),
+				NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER)) {
+				nk_layout_row_dynamic(this->ctx, 250, 1);
+				nk_label_wrap(this->ctx, "There are no currently scheduled scans. Please visit the Advanced Scan page to schedule one.");
+			}
+			nk_end(this->ctx);
+		}
+		else {
+			// diplsay it all
+			struct nk_list_view view; //view.count = 2; 
+			if (nk_begin(this->ctx, "Selected Files/Folders...", nk_rect(WINDOW_WIDTH*.5-400, 200, 800, 250), 
+				NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_DYNAMIC))
+			{
+				int h = this->ScheduledObject.filesToBeScanned.size() * DEFAULT_FONT_SIZE + DEFAULT_FONT_SIZE;
+				if (h < 180) { h = 180; }
+				nk_layout_row_dynamic(ctx, h, 1);
+				if (nk_list_view_begin(ctx, &view, "test", NK_WINDOW_BORDER, 25, 2)) {
+					//nk_layout_row_dynamic(ctx, 25, 1);
+					//UIPrintSet(this->ScheduledObject.filesToBeScanned);
+					for (auto s : this->ScheduledObject.filesToBeScanned) {
+						nk_layout_row_static(ctx, 25, 16 * s.length(), 1);
+						nk_label(this->ctx, s.c_str(), NK_TEXT_ALIGN_LEFT);
+					}
+					nk_list_view_end(&view);
+				}
+			}
+			nk_end(this->ctx);
+
+			if (nk_begin(this->ctx, "statusnshit", nk_rect(WINDOW_WIDTH * .5 - 400, 455, 800, 150),
+				NULL))
+			{
+				
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label_wrap(this->ctx, std::string("Type : " + ScheduledObject.type).c_str());
+				nk_layout_row_dynamic(ctx, 30, 1);
+				nk_label_wrap(this->ctx, std::string("Added On : " + ScheduledObject.startedOn).c_str());
+				nk_layout_row_dynamic(ctx, 60, 1);
+				nk_label_wrap(this->ctx, std::string("Status : " + ScheduledObject.status_text + "   ").c_str());
+				
+			}
+			nk_end(this->ctx);
+		}
+
+		if (IsThereAScheduledTask) { // display both btns
+			// GO HOME FROM SCHEDULE VIEW
+			if (nk_begin(this->ctx, "DONEBRUV", nk_rect(WINDOW_WIDTH * .5 - 415, WINDOW_HEIGHT - 125, 410, 105),
+				NK_WINDOW_NO_SCROLLBAR)) {
+				nk_layout_row_dynamic(this->ctx, 105, 1);
+				if (nk_button_image_label(this->ctx, this->home, "              Return Home", NK_TEXT_ALIGN_RIGHT)) {
+					this->view = 0;
+					/*std::cout << "\ntype; " << this->ScheduledObject.type;
+					std::cout << "\nstatus; " << this->ScheduledObject.status_text;*/
+				}
+			}
+			nk_end(this->ctx);
+
+			// DELETE SCHED SCAN IF U WANT
+			if (nk_begin(this->ctx, "DELSCHEDSCANREEEE", nk_rect(WINDOW_WIDTH * .5 + 5, WINDOW_HEIGHT - 125, 410, 105),
+				NK_WINDOW_NO_SCROLLBAR)) {
+				nk_layout_row_dynamic(this->ctx, 105, 1);
+				if (nk_button_image_label(this->ctx, this->deleteSched,
+					"            Remove Sheduled Scan", NK_TEXT_ALIGN_RIGHT)) {
+					this->view = 0;
+					// remove the file for now -- if file does not exist lava kills it self RIP PEDRO
+					this->CreateTaskSchedulerFile(); // just overwrites file wit nothin
+					this->ScheduledObject = SchedulerObj(); // cls
+					IsThereAScheduledTask = false;
+					this->rmScheduledScan(); //try removing
+
+				}
+			}
+			nk_end(this->ctx);
+		}
+		else {
+			// GO HOME FROM SCHEDULE VIEW
+			if (nk_begin(this->ctx, "DONEBRUV", nk_rect(WINDOW_WIDTH * .5 - 205, WINDOW_HEIGHT - 125, 410, 105),
+				NK_WINDOW_NO_SCROLLBAR)) {
+				nk_layout_row_dynamic(this->ctx, 105, 1);
+				if (nk_button_image_label(this->ctx, this->home, "              Return Home", NK_TEXT_ALIGN_RIGHT)) {
+					this->view = 0;
+					/*std::cout << "\ntype; " << this->ScheduledObject.type;
+					std::cout << "\nstatus; " << this->ScheduledObject.status_text;*/
+				}
+			}
+			nk_end(this->ctx);
+		}
+
+		
+
+		return true;
+	}
+	catch (int e) {
+		return false;
+	}
+	
+}
+
 inline bool FE::init(sf::Window *win) {
 	glewExperimental = 1;
 	if (glewInit() != GLEW_OK) {
@@ -1805,6 +1965,56 @@ inline bool FE::init(sf::Window *win) {
 	this->purpleBack = this->icon_load(pp.purpleBack);
 	this->purpleFwd = this->icon_load(pp.purpleFwd);
 	this->done = this->icon_load(pp.done);
+	this->support = this->icon_load(pp.support);
+	this->home = this->icon_load(pp.home);
+	this->scanBug = this->icon_load(pp.scanBug);
+	this->deleteSched = this->icon_load(pp.deleteSched);
+	
+	if (OpenType >= 1) {
+		//std::cout << "opened thru task scheduler\n";
+		//this->view = 6; // view the scheduler task
+		// load the scheduled obj file into advancescannow.
+		// set type to scheduled
+		// load current scan page
+		if (this->CheckIfTaskSchedulerFileExists()) {
+			std::ifstream file(this->PathToSchedulerInfo);
+			if (is_empty(file)) {
+				//std::cout << "\n\n EMPTY AF BRUV 2\n\n";
+				IsThereAScheduledTask = false;
+
+				// launched from scheduler...just exit and take ur losses :(
+				file.close();
+				exit(10);
+				
+			}
+		}
+		advancedScanPaths.clear(); advancedScanPaths = this->ScheduledObject.filesToBeScanned;
+		this->currentScanGoing = "Scheduled";
+		this->scanTasks.push(4); //4=scheduled
+		// make thread to count
+		std::thread t1 = std::thread([this] { 
+			for (auto ss : advancedScanPaths) {
+				struct stat s;
+				if (stat(ss.c_str(), &s) == 0)
+				{
+					if (s.st_mode & S_IFDIR)
+					{
+						countFiles(ss.c_str(), "*", true);
+					}
+					else if (s.st_mode & S_IFREG)
+					{
+						++total_Count;
+					}
+				}
+				
+			}
+			 
+			});
+		t1.detach();
+		this->view = 3;
+	}
+	
+	//std::cout << "\n\topentype : " << OpenType;
 	return true;
 }
 
