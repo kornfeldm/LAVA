@@ -502,7 +502,7 @@ void FileCount(std::string dirPath)
 		}
 	}
 	catch (int e) {
-		std::cout << "we diehere;";
+		//std::cout << "we diehere;";
 	}
 	
 }
@@ -1795,11 +1795,11 @@ inline void LavaScan::check_db_folder() {
 	//check if the db directory exists
 	if (!(buf.st_mode & S_IFDIR)) {
 		//case if it doesn't exist
-		//std::cout<<"db directory not found.\n Attempting to make the Database Directory...\n";
+		std::cout<<"db directory not found.\n Attempting to make the Database Directory...\n";
 		if (int ret = CreateDirectoryA(cl_retdbdir(), NULL) == 0) {
 			if (ret == ERROR_ALREADY_EXISTS) {
 				//direcotry already exists
-				std::cout<<"db folder Ready\n";
+				//std::cout<<"db folder Ready\n";
 			}
 			else if (ret == ERROR_PATH_NOT_FOUND) {
 				//std::cout<<"frigg this case";
@@ -1913,14 +1913,14 @@ inline bool LavaScan::update_virus_database() {
 		//CloseHandle(pi.hProcess);
 		//CloseHandle(pi.hThread);
 		
-		std::string pname = GetLAVAFolder() + "\\Debug\\clam64stuff\\freshclam.exe"; std::wstring widestr = std::wstring(pname.begin(), pname.end());
+		std::string pname = GetExePath() + "\\clam64stuff\\freshclam.exe"; std::wstring widestr = std::wstring(pname.begin(), pname.end());
 		//std::cout << "\n\t" << pname << std::endl;
 		pname = "\""+pname+"\"";
 		//getch();
 		system(pname.c_str());
 	}
 	catch (int e) {
-		std::cout << "\nsomething borked up";
+		//std::cout << "\nsomething borked up";
 	}
 
 	return true;
@@ -1972,6 +1972,7 @@ inline SchedulerObj LavaScan::LoadTaskSchedulerFile()
 }
 
 inline LavaScan::LavaScan() {
+
 	CurrentScanCount = 0;
 	currentScanGoing = "";
 	num_found = 0; num_removed = 0;
@@ -1983,6 +1984,16 @@ inline LavaScan::LavaScan() {
 	std::string ExePath = GetExePath();
 	std::string AntibodyFile = ExePath + "\\Locations.LavaAnti";
 	this->AntibodyFileLocation = AntibodyFile;
+
+	std::cout << R"(
+========================================================
+	|            /\     \        /    /\        
+	|           /  \     \      /    /  \       
+	|          /----\     \    /    /----\     
+	|         /      \     \  /    /      \     
+	-------- /        \     \/    /        \    
+========================================================
+	)" << "\n";
 
 	printf("Updating virus databse...\n");
 	if (!update_virus_database()) {//checks whether failed to update the database
@@ -2010,7 +2021,7 @@ inline LavaScan::LavaScan() {
 	}
 
 	printf("Inititalizing signature database...\n");
-	printf("Default database path: %s\n", cl_retdbdir());
+	//printf("Default database path: %s\n", cl_retdbdir());
 
 	if ((ret = cl_load(cl_retdbdir(), engine, &sigs, CL_DB_STDOPT)) != CL_SUCCESS) { //Loads the database file from the default db folder
 		printf("Can't initialize signature database: %s\n", cl_strerror(ret)); //returns the error name in case of error
