@@ -74,6 +74,29 @@ int countFiles(const std::string& refcstrRootDirectory, const std::string& refcs
 	return 0;
 }
 
+namespace fs = std::filesystem;
+std::string GetExeFileName() {
+	char buffer[MAX_PATH] = {};
+	::GetModuleFileNameA(NULL, buffer, MAX_PATH);
+	return std::string(buffer);
+}
+std::string GetExePath()
+{
+	std::string f = GetExeFileName();
+	return f.substr(0, f.find_last_of("\\/"));
+}
+std::string GetLAVAFolder()
+{
+	const unsigned long maxDir = 260;
+	char currentDir[maxDir];
+	GetCurrentDirectoryA(maxDir, currentDir);
+	std::string str = std::string(currentDir);
+	fs::path p = str;
+	/*std::cout << p.parent_path() << std::endl;*/
+	//getch();
+	return p.parent_path().string();
+}
+
 /*
 Custom class to handle writting scheduler info to file
 examples on writting and reading this obj :
@@ -172,7 +195,7 @@ public:
 				s.append(path);
 			}
 			else {
-				s.append(path).append("\t");
+				s.append(path).append("|");
 			}
 			i++;
 		}
@@ -183,15 +206,34 @@ public:
 	std::set<std::string> returnSet() {
 		// convert tab delim string to set :)
 		std::set<std::string> res;
-		std::stringstream ss(this->manipulatedFiles);
+		//std::stringstream ss(this->manipulatedFiles);
 
-		for (std::string i; ss >> i;) {
+		/*for (std::string i; ss >> i;) {
 			res.insert(i);
-			if (ss.peek() == '\t')
+			if (ss.peek() == '|')
 				ss.ignore();
+		}*/
+
+		std::stringstream s_stream(this->manipulatedFiles); //create string stream from the string
+		while (s_stream.good()) {
+			std::string substr;
+			std::getline(s_stream, substr, '|'); //get first string delimited by comma
+			res.insert(substr);
 		}
+
+		//for (auto s: res) {    //print all splitted strings
+		//	std::cout << s << std::endl;
+		//}
+
 		this->filesToBeScanned = res;
 		return res;
+	}
+
+	bool DumpSchedulerObj() {
+		std::ofstream ofs(GetExePath()+ "\\"+ "TaskScheduler.Lava");
+		ofs << *this;
+		ofs.close();
+		return true;
 	}
 
 	SchedulerObj(std::string _type, std::string _status,
@@ -1064,8 +1106,6 @@ inline std::string LavaScan::GetDownloadsFolder()
 	return "";
 }
 
-namespace fs = std::filesystem;
-
 //inline int LavaScan::TotalSetFileCount(std::set<std::string> p) {
 //	int count = 0;
 //	for (auto path : p) {
@@ -1709,28 +1749,6 @@ inline void LavaScan::check_config_files() {
 	_unlink("..\\clam64stuff\\freshclam.conf");
 	rename("..\\clam64stuff\\clamd_temp.conf", "..\\clam64stuff\\clamd.conf");
 	rename("..\\clam64stuff\\freshclam_temp.conf", "..\\clam64stuff\\freshclam.conf");
-}
-
-std::string GetExeFileName() {
-	char buffer[MAX_PATH] = {};
-	::GetModuleFileNameA(NULL, buffer, MAX_PATH);
-	return std::string(buffer);
-}
-std::string GetExePath()
-{
-	std::string f = GetExeFileName();
-	return f.substr(0, f.find_last_of("\\/"));
-}
-std::string GetLAVAFolder()
-{
-	const unsigned long maxDir = 260;
-	char currentDir[maxDir];
-	GetCurrentDirectoryA(maxDir, currentDir);
-	std::string str = std::string(currentDir);
-	fs::path p = str;
-	/*std::cout << p.parent_path() << std::endl;*/
-	//getch();
-	return p.parent_path().string();
 }
 
 inline bool LavaScan::update_virus_database() {

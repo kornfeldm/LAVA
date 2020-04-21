@@ -72,19 +72,8 @@ static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 
 				/* User has clicked the "Add Folder" button.
 				 * Add the contents of szLastSelection to your list. */
-				//printf("%s\n", g_Multi.szLastSelection);
-#ifndef UNICODE  
-				typedef std::string String;
-#else
-				typedef std::wstring String;
-#endif
-				if (advancedScanPaths.find(ToNarrow(g_Multi.szLastSelection)) == advancedScanPaths.end()) {
-					advancedScanPaths.insert(ToNarrow(g_Multi.szLastSelection));
-					// thread to count that shit carti
-					std::thread t1 = std::thread([] {FileCount(ToNarrow(g_Multi.szLastSelection)); });
-					t1.detach();
-				}
-				
+				 //printf("%s\n", g_Multi.szLastSelection);
+				advancedScanPaths.insert(ToNarrow(g_Multi.szLastSelection));
 			}
 			else
 			{
@@ -94,11 +83,11 @@ static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 
 			/* Eat the BN_CLICKED message so the dialog is not closed. */
 			return 0;
+			}
 		}
-	}
 
 	return CallWindowProc(g_Multi.oldWndProc, hwnd, uMsg, wParam, lParam);
-}
+	}
 
 
 /*
@@ -138,7 +127,7 @@ static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPAR
  * This function is not thread safe. It must not be called from more than
  * one thread at a time.
  */
-UINT MultiFolderSelect(HWND hWnd, LPCTSTR szTitle, CString folder=L"C:\\")
+UINT MultiFolderSelect(HWND hWnd, LPCTSTR szTitle, CString folder = L"C:\\")
 {
 	LPITEMIDLIST pidl = NULL;
 	BROWSEINFO   bi = { 0 };
@@ -148,8 +137,8 @@ UINT MultiFolderSelect(HWND hWnd, LPCTSTR szTitle, CString folder=L"C:\\")
 	bi.pszDisplayName = buf;
 	bi.pidlRoot = 0;
 	bi.lpszTitle = szTitle;
-	bi.ulFlags = BIF_BROWSEFORPRINTER | BIF_BROWSEINCLUDEFILES | BIF_BROWSEINCLUDEURLS | 
-		BIF_NEWDIALOGSTYLE | BIF_SHAREABLE | 
+	bi.ulFlags = BIF_BROWSEFORPRINTER | BIF_BROWSEINCLUDEFILES | BIF_BROWSEINCLUDEURLS |
+		BIF_NEWDIALOGSTYLE | BIF_SHAREABLE |
 		BIF_NONEWFOLDERBUTTON | BIF_USENEWUI;
 	bi.lParam = reinterpret_cast<LPARAM>(static_cast<LPCTSTR>(folder));
 	bi.lpfn = BrowseCallbackProc;
@@ -266,7 +255,7 @@ public:
 		unsigned int type; //0=once, 1=daily, 2=weekly, 3=monthly
 		std::string startDate;
 		std::string startTime;
-		int reccuring; // happen every x days or x weeks or x months
+		int reccuring=1; // happen every x days or x weeks or x months
 		std::set<int> daysOfWeek; //what days to do weekly scan. ex: every two weeks occur on mon and fri at 6pm starting 4/20/20 {0->6}
 		std::set<int> months; // if months size =0 include all, else do only whats in the set
 		bool days_on_switch; // false days true on
@@ -275,6 +264,7 @@ public:
 	} _schedulerInfo;
 	//ProgressMonitor pm;
 	struct tm sel_date;
+	SchedulerObj fs;
 	
 	/* MEMBER FUNCTIONS */
 	static struct nk_image icon_load(const char* filename, bool flip = false);
@@ -482,6 +472,7 @@ inline bool FE::DrawMainPage()
 		nk_layout_row_dynamic(this->ctx, 75, 1);
 		if (nk_button_image_label(this->ctx, this->scanBug, "             Scheduled Scans", NK_TEXT_ALIGN_RIGHT)) {
 			this->view = 6;
+			ScheduledObject = this->LoadTaskSchedulerFile();
 		}
 	}
 	nk_end(this->ctx);
@@ -915,12 +906,12 @@ inline bool FE::DrawInProgressScan()
 				// no count here get out
 				break;
 			case 4: //count the scheduled scan shit
-				for (auto path : advancedScanPaths) {
-					//std::string p = ReplaceString(path, "\\", "\\\\");
-					//std::replace(path.begin(), path.end(), '\\', '/');
-					//std::cout << "\n\t " << path;
-					countFiles(path, "*", true);
-				}
+				//for (auto path : advancedScanPaths) {
+				//	//std::string p = ReplaceString(path, "\\", "\\\\");
+				//	//std::replace(path.begin(), path.end(), '\\', '/');
+				//	//std::cout << "\n\t " << path;
+				//	countFiles(path, "*", true);
+				//} // we count as we add in advc screen view
 				break;
 			default:
 				break;
@@ -1455,7 +1446,7 @@ inline bool FE::ScheduleAdvScanView()
 		nk_style_set_font(this->ctx, &this->font->handle);
 	}
 	nk_end(this->ctx);
-
+	this->fs = SchedulerObj();
 	switch (this->_schedulerInfo.type) {
 		//std::cout << "\n\tcurrent select: " << this->_schedulerInfo.type;
 	case -1:
@@ -1551,7 +1542,7 @@ inline bool FE::ScheduleAdvScanView()
 
 			// day...input?
 			/* date combobox */
-			
+			fs.type = "Daily";
 			this->displayCalendar(125, 210,true);
 			this->displayScheduleArrows();
 		}
@@ -1563,6 +1554,7 @@ inline bool FE::ScheduleAdvScanView()
 	case 1://weekly
 		try {
 			this->displayScheduleType();
+			fs.type = "Weekly";
 			this->displayCalendar(125, 210, true);
 			this->displayScheduleArrows();
 		}
@@ -1574,6 +1566,7 @@ inline bool FE::ScheduleAdvScanView()
 	case 2: //mohnhtly
 		try {
 			this->displayScheduleType();
+			fs.type = "Monthly";
 			this->displayCalendar(125, 210, true);
 			this->displayScheduleArrows();
 		}
@@ -1585,6 +1578,7 @@ inline bool FE::ScheduleAdvScanView()
 	case 3: //one time
 		try {
 			this->displayScheduleType();
+			fs.type = "Run Once";
 			this->displayCalendar(125, 210, false);
 			this->displayScheduleArrows();
 		}
@@ -1647,8 +1641,10 @@ inline bool FE::displayScheduleArrows()
 			//this->view = 1;
 			// print shit based on input L)
 			sel_date.tm_year += 1900;
-			SchedSaveFile fs; 
 			fs.filesToBeScanned = advancedScanPaths;
+			time_t _tm = time(NULL);
+			struct tm* curtime = localtime(&_tm);
+			fs.startedOn = asctime(curtime); fs.startedOn.pop_back();
 			switch (this->_schedulerInfo.type) {
 			case 0: //daily
 				/*std::cout << "\ndaily\n\t" << sel_date.tm_mon <<"/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " days\n";
@@ -1657,6 +1653,11 @@ inline bool FE::displayScheduleArrows()
 					std::cout << "\n\t " << s;
 				}*/
 				scheduleScanDaily(sel_date.tm_mon, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
+				this->CreateTaskSchedulerFile();
+				fs.Manipulate();
+				fs.DumpSchedulerObj();
+				this->IsThereAScheduledTask = true;
+
 				break;
 			case 1: // weekly
 				/*std::cout << "\nweekly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " weekz\n";
@@ -1665,6 +1666,11 @@ inline bool FE::displayScheduleArrows()
 					std::cout << "\n\t " << s;
 				}*/
 				scheduleScanWeekly(sel_date.tm_mon, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
+				this->CreateTaskSchedulerFile();
+				fs.Manipulate();
+				fs.DumpSchedulerObj();
+				this->IsThereAScheduledTask = true;
+
 				break;
 			case 2: //monthly
 				/*std::cout << "\nmonthly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << this->_schedulerInfo.reccuring << " months\n";
@@ -1673,11 +1679,21 @@ inline bool FE::displayScheduleArrows()
 					std::cout << "\n\t " << s;
 				}*/
 				scheduleScanMonthly(sel_date.tm_mon, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
+				this->CreateTaskSchedulerFile();
+				fs.Manipulate();
+				fs.DumpSchedulerObj();
+				this->IsThereAScheduledTask = true;
+
 				break;
 			default: //3=one time 
 				/*std::cout << "\nmonthly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << this->_schedulerInfo.reccuring << " months\n";
 				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";*/
 				scheduleScanOnce(sel_date.tm_mon, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min);
+				this->CreateTaskSchedulerFile();
+				fs.Manipulate();
+				fs.DumpSchedulerObj();
+				this->IsThereAScheduledTask = true;
+
 				break;
 			}
 			this->view = 0;
@@ -1847,7 +1863,7 @@ inline bool FE::displayCalendar(int x, int y, bool reccurring)
 			nk_layout_row_static(ctx, 24, 155, 1);
 			nk_label_wrap(this->ctx, "Recur Every : ");
 		}nk_end(this->ctx);
-
+		//this->_schedulerInfo.reccuring = 1;
 		// property brothers box
 		if (nk_begin(this->ctx, "recurringbox", nk_rect(x+160, y + 66, 170, 30)
 			, NK_WINDOW_NO_SCROLLBAR)) {
@@ -1872,6 +1888,38 @@ inline bool FE::displayCalendar(int x, int y, bool reccurring)
 	}
 
 	nk_style_set_font(this->ctx, &this->font->handle);
+
+	/*fs.startedOn */
+	std::ostringstream oss;
+	oss << std::put_time(&sel_date, "%Y-%m-%d %H:%M:%S");
+	auto str = oss.str();
+
+	if (reccurring) {
+
+		if (this->_schedulerInfo.reccuring > 1) {
+			std::string freq = "";
+			if (this->_schedulerInfo.type == 0) { freq = "days"; }
+			else if (this->_schedulerInfo.type == 1) { freq = "weeks"; }
+			else { freq = "months"; }
+
+			fs.status_text = std::string("Run every ").append(std::to_string(this->_schedulerInfo.reccuring))
+				.append(" ").append(freq).append(" starting on ").append(str);
+		}
+		else {
+			std::string freq = "";
+			if (this->_schedulerInfo.type == 0) { freq = "daily"; }
+			else if (this->_schedulerInfo.type == 1) { freq = "weekly"; }
+			else { freq = "monthly"; }
+			
+			fs.status_text = std::string("Run ").append(freq).append(" starting on ")
+				.append(str);
+		}
+	}
+	else {
+		fs.status_text = std::string("Run Once on ")
+			.append(str);
+	}
+
 	return true;
 }
 
