@@ -1799,7 +1799,7 @@ inline void LavaScan::check_db_folder() {
 		if (int ret = CreateDirectoryA(cl_retdbdir(), NULL) == 0) {
 			if (ret == ERROR_ALREADY_EXISTS) {
 				//direcotry already exists
-				//std::cout<<"Quarantine Direcotory Ready\n";
+				std::cout<<"db folder Ready\n";
 			}
 			else if (ret == ERROR_PATH_NOT_FOUND) {
 				//std::cout<<"frigg this case";
@@ -1872,8 +1872,7 @@ inline void LavaScan::check_config_files() {
 
 inline bool LavaScan::update_virus_database() {
 	//std::cout << "\n " << GetExePath() << "\nend";
-	
-	
+	//std::cout << "\nlavafolder: " + GetLAVAFolder();
 	try {
 		check_db_folder();//checking the existence (creating) of db folder
 		check_config_files();//checking/updating config files
@@ -1914,7 +1913,7 @@ inline bool LavaScan::update_virus_database() {
 		//CloseHandle(pi.hProcess);
 		//CloseHandle(pi.hThread);
 		
-		std::string pname = GetLAVAFolder() + "\\clam64stuff\\freshclam.exe"; std::wstring widestr = std::wstring(pname.begin(), pname.end());
+		std::string pname = GetLAVAFolder() + "\\Debug\\clam64stuff\\freshclam.exe"; std::wstring widestr = std::wstring(pname.begin(), pname.end());
 		//std::cout << "\n\t" << pname << std::endl;
 		pname = "\""+pname+"\"";
 		//getch();
