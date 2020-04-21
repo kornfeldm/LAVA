@@ -449,11 +449,45 @@ inline void LavaScan::SupportPage() {
 inline int LavaScan::scheduleScanDaily(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften = 1) {
 	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
 	std::string often = "1";
+	std::string month = "1";
+	std::string day = "1";
+	std::string year = "2000";
+	std::string date = "01/01/2000";
 	std::string time = "00:00";
 	std::string hour = "00";
 	std::string minute = "00";
 
-
+	if (inputMonth < 1 || inputMonth > 31) {
+		return -1;
+	}
+	else {
+		if (inputMonth > 10)
+		{
+			month = std::to_string(inputMonth);
+		}
+		else {
+			month = "0" + std::to_string(inputMonth);
+		}
+	}
+	if (inputDay < 1 || inputDay > 31) {
+		return -2;
+	}
+	else {
+		if (inputDay > 10)
+		{
+			day = std::to_string(inputDay);
+		}
+		else {
+			day = "0" + std::to_string(inputDay);
+		}
+	}
+	if (inputYear < 1900 || inputYear > 3000) {
+		return -3;
+	}
+	else {
+		year = std::to_string(inputYear);
+	}
+	date = month + "/" + day + "/" + year;
 	if (inputHour < 0 || inputHour > 23) {
 		return -1;
 	}
@@ -486,8 +520,9 @@ inline int LavaScan::scheduleScanDaily(int inputMonth, int inputDay, int inputYe
 		often = std::to_string(inputOften);
 	}
 
-	std::string path = "\"C:\\Windows\\System32\\notepad.exe\""; //By launching this executable
-	std::string cmdcpp = "SCHTASKS /CREATE /SC Daily /mo " + often + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time;
+	std::string path = GetExePath() + "\\LAVA.exe"; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Daily /mo " + often + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time + " /SD " + date;
+	//std::cout << cmdcpp << std::endl;
 	system(cmdcpp.c_str());
 	return 0;
 }
@@ -499,37 +534,82 @@ inline int LavaScan::scheduleScanDaily(int inputMonth, int inputDay, int inputYe
 inline int LavaScan::scheduleScanWeekly(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften = 1) {
 	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
 	std::string often = "1";
-	std::string day = "Sun";
+	std::string weekday = "Sun";
+	std::string month = "1";
+	std::string day = "1";
+	std::string year = "2000";
+	std::string date = "01/01/2000";
 	std::string time = "00:00";
 	std::string hour = "00";
 	std::string minute = "00";
 
-	switch (inputDay) {
+	//Source: https://stackoverflow.com/questions/11972368/c-get-which-day-by-input-date/26307023
+	tm timeStruct = {};
+	timeStruct.tm_year = inputYear - 1900;
+	timeStruct.tm_mon = inputMonth - 1;
+	timeStruct.tm_mday = inputDay;
+	timeStruct.tm_hour = inputHour;    //  To avoid any doubts about summer time, etc.
+	mktime(&timeStruct);
+	int weekDay = timeStruct.tm_wday + 1;  //  0...6 for Sunday...Saturday
+
+	switch (weekDay) {
 	case 1:
-		day = "SUN";
+		weekday = "SUN";
 		break;
 	case 2:
-		day = "MON";
+		weekday = "MON";
 		break;
 	case 3:
-		day = "TUE";
+		weekday = "TUE";
 		break;
 	case 4:
-		day = "WED";
+		weekday = "WED";
 		break;
 	case 5:
-		day = "THU";
+		weekday = "THU";
 		break;
 	case 6:
-		day = "FRI";
+		weekday = "FRI";
 		break;
 	case 7:
-		day = "SAT";
+		weekday = "SAT";
 		break;
 	default:
 		return -1;
 		break;
 	}
+
+	if (inputMonth < 1 || inputMonth > 31) {
+		return -1;
+	}
+	else {
+		if (inputMonth > 10)
+		{
+			month = std::to_string(inputMonth);
+		}
+		else {
+			month = "0" + std::to_string(inputMonth);
+		}
+	}
+	if (inputDay < 1 || inputDay > 31) {
+		return -2;
+	}
+	else {
+		if (inputDay > 10)
+		{
+			day = std::to_string(inputDay);
+		}
+		else {
+			day = "0" + std::to_string(inputDay);
+		}
+	}
+	if (inputYear < 1900 || inputYear > 3000) {
+		return -3;
+	}
+	else {
+		year = std::to_string(inputYear);
+	}
+	date = month + "/" + day + "/" + year;
 
 	if (inputHour < 0 || inputHour > 23) {
 		return -2;
@@ -560,8 +640,8 @@ inline int LavaScan::scheduleScanWeekly(int inputMonth, int inputDay, int inputY
 		often = std::to_string(inputOften);
 	}
 
-	std::string path = "\"C:\\Windows\\System32\\notepad.exe\""; //By launching this executable
-	std::string cmdcpp = "SCHTASKS /CREATE /SC Weekly /mo " + often + " /D " + day + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time;
+	std::string path = GetExePath() + "\\LAVA.exe"; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Weekly /mo " + often + " /D " + weekday + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time + " /SD " + date;
 	system(cmdcpp.c_str());
 	return 0;
 }
@@ -573,20 +653,50 @@ inline int LavaScan::scheduleScanWeekly(int inputMonth, int inputDay, int inputY
 inline int LavaScan::scheduleScanMonthly(int inputMonth, int inputDay, int inputYear, int inputHour, int inputMinute, int inputOften = 1) {
 	//Yes it's easier to just use strings, but the system command can be attacked with an injection attack if not used carefully
 	std::string often = "1";
+	std::string month = "1";
 	std::string day = "1";
+	std::string year = "2000";
+	std::string date = "01/01/2000";
 	std::string time = "00:00";
 	std::string hour = "00";
 	std::string minute = "00";
 
-	if (inputDay < 1 || inputDay > 31) {
+
+
+	if (inputMonth < 1 || inputMonth > 31) {
 		return -1;
 	}
 	else {
-		day = std::to_string(inputDay);
+		if (inputMonth > 10)
+		{
+			month = std::to_string(inputMonth);
+		}
+		else {
+			month = "0" + std::to_string(inputMonth);
+		}
 	}
+	if (inputDay < 1 || inputDay > 31) {
+		return -2;
+	}
+	else {
+		if (inputDay > 10)
+		{
+			day = std::to_string(inputDay);
+		}
+		else {
+			day = "0" + std::to_string(inputDay);
+		}
+	}
+	if (inputYear < 1900 || inputYear > 3000) {
+		return -3;
+	}
+	else {
+		year = std::to_string(inputYear);
+	}
+	date = month + "/" + day + "/" + year;
 
 	if (inputHour < 0 || inputHour > 23) {
-		return -2;
+		return -3;
 	}
 
 	if (inputHour < 10) {
@@ -597,7 +707,7 @@ inline int LavaScan::scheduleScanMonthly(int inputMonth, int inputDay, int input
 	}
 
 	if (inputMinute < 0 || inputMinute > 59) {
-		return -3;
+		return -4;
 	}
 
 	if (inputMinute < 10) {
@@ -617,8 +727,9 @@ inline int LavaScan::scheduleScanMonthly(int inputMonth, int inputDay, int input
 		often = std::to_string(inputOften);
 	}
 
-	std::string path = "\"C:\\Windows\\System32\\notepad.exe\""; //By launching this executable
-	std::string cmdcpp = "SCHTASKS /CREATE /SC Monthly /mo " + often + " /D " + day + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time;
+	std::string path = GetExePath() + "\\LAVA.exe"; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Monthly /mo " + often + " /D " + day + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time + " /SD " + date;
+	//std::cout << cmdcpp << std::endl;
 	system(cmdcpp.c_str());
 	return 0;
 }
@@ -694,8 +805,9 @@ inline int LavaScan::scheduleScanOnce(int inputMonth, int inputDay, int inputYea
 
 	time = hour + ":" + minute;
 
-	std::string path = "\"C:\\Windows\\System32\\notepad.exe\""; //By launching this executable
+	std::string path = GetExePath() + "\\LAVA.exe"; //By launching this executable
 	std::string cmdcpp = "SCHTASKS /CREATE /SC Once /SD " + date + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time;
+	//std::cout << cmdcpp << std::endl;
 	system(cmdcpp.c_str());
 	return 0;
 }
@@ -703,6 +815,7 @@ inline int LavaScan::scheduleScanOnce(int inputMonth, int inputDay, int inputYea
 //Removes the scheduled scan and returns 0 on completion
 inline int LavaScan::rmScheduledScan() {
 	std::string cmdcpp = "SCHTASKS /DELETE /TN \"LAVA\\ScheduleScan\"";
+	std::cout << cmdcpp << std::endl;
 	system(cmdcpp.c_str());
 	return 0;
 }

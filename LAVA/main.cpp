@@ -81,7 +81,7 @@ int main()
 	}*/
 
 	std::cout << "Hello World!\n";
-	
+
 	FE FrontEnd = FE();
 
 	/* Platform */
