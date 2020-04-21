@@ -3,6 +3,7 @@
 #define LAVASCAN_H
 #pragma warning(disable : 4996) //_CRT_SECURE_NO_WARNINGS
 extern std::string CurrentScanFile = std::string("");
+int OpenType = 0;
 // Define user defined literal "_quoted" operator.
 std::string operator"" _quoted(const char* text, std::size_t len) {
 	return "\"" + std::string(text, len) + "\"";
@@ -526,6 +527,7 @@ public:
 	WorkQueue work_queue;
 	bool IsThereAScheduledTask;
 	SchedulerObj ScheduledObject;
+	//int OpenType;
 	// constructor
 	LavaScan(); // default
 	/* scans */
@@ -1928,7 +1930,7 @@ inline LavaScan::LavaScan() {
 	std::thread t1 = std::thread([this] {this->UpdatePreviousScans(); });
 	t1.detach();
 
-	std::cout << "\n\t" << GetExePath();
+	//std::cout << "\n\t" << GetExePath();
 
 	// if task scheduer file doesnt exist create
 	if (!this->CheckIfTaskSchedulerFileExists()) {
@@ -1945,11 +1947,16 @@ inline LavaScan::LavaScan() {
 		}
 		file.close();
 	}
-	else {
+	else { // file exists
 		std::ifstream file(this->PathToSchedulerInfo);
 		if (is_empty(file)) {
 			//std::cout << "\n\n EMPTY AF BRUV 2\n\n";
 			IsThereAScheduledTask = false;
+			if (OpenType >= 1) {
+				// launched from scheduler...just exit and take ur losses :(
+				file.close();
+				exit(10);
+			}
 		}
 		else { 
 			IsThereAScheduledTask = true;
@@ -1959,7 +1966,7 @@ inline LavaScan::LavaScan() {
 		}
 		file.close();
 	}
-
+	//sstd::cout << "\n\topentype : " << OpenType;
 }
 
 #endif

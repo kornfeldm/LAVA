@@ -184,6 +184,7 @@ struct pics {
 	const char* support;
 	const char* home;
 	const char* scanBug;
+	const char* deleteSched;
 };
 
 /* FE CLASS */
@@ -196,7 +197,7 @@ public:
 	FE(int i);
 
 	/* MEMBER VARS */
-	int OpenType; // if =1, then run by task scheduler
+	/*int OpenType;*/ // if =1, then run by task scheduler
 	struct nk_context* ctx;
 	struct nk_command_buffer* canvas;
 	// font stuff
@@ -234,6 +235,7 @@ public:
 	struct nk_image support;
 	struct nk_image home;
 	struct nk_image scanBug;
+	struct nk_image deleteSched;
 	//std::string currentScanGoing;
 	std::queue<int> scanTasks;
 	std::vector<std::vector<std::string>> scanHistorySet;
@@ -431,7 +433,7 @@ inline bool FE::DrawMainPage()
 	//nk_end(this->ctx);
 
 	/* SCAN ICON */
-	if (nk_begin(this->ctx, "scan", nk_rect(WINDOW_WIDTH * .2, WINDOW_HEIGHT * .49, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3),
+	if (nk_begin(this->ctx, "scan", nk_rect(WINDOW_WIDTH * .1, WINDOW_HEIGHT * .49, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3),
 		NK_WINDOW_NO_SCROLLBAR)) {
 		// hidden button to press behind icon
 		nk_layout_row_static(ctx, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3, 1);
@@ -445,14 +447,14 @@ inline bool FE::DrawMainPage()
 	}
 	nk_end(this->ctx);
 	/* SCAN TEXT */
-	struct nk_rect SCANTEXT = nk_rect(WINDOW_WIDTH * .2-20, WINDOW_HEIGHT * .49+ WINDOW_HEIGHT * .3+15, 400, 84);
+	struct nk_rect SCANTEXT = nk_rect(WINDOW_WIDTH * .1-20, WINDOW_HEIGHT * .49+ WINDOW_HEIGHT * .3+15, 400, 84);
 	if (nk_begin(this->ctx, "SCANTEXT", SCANTEXT, NK_WINDOW_NO_SCROLLBAR)) {
 		nk_draw_text(nk_window_get_canvas(this->ctx), SCANTEXT, " Scans", 6, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
 
 	/* history ICON */
-	if (nk_begin(this->ctx, "history", nk_rect(WINDOW_WIDTH * .6, WINDOW_HEIGHT * .49, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3),
+	if (nk_begin(this->ctx, "history", nk_rect(WINDOW_WIDTH * .5, WINDOW_HEIGHT * .49, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3),
 		NK_WINDOW_NO_SCROLLBAR)) {
 		// hidden button behind icon to press
 		nk_layout_row_static(ctx, WINDOW_HEIGHT * .3, WINDOW_HEIGHT * .3, 1);
@@ -467,15 +469,27 @@ inline bool FE::DrawMainPage()
 	}
 	nk_end(this->ctx);
 	/* HISTORY TEXT */
-	struct nk_rect HISTTEXT = nk_rect(WINDOW_WIDTH * .6-50, WINDOW_HEIGHT * .49+ WINDOW_HEIGHT * .3+15, 400, 84);
+	struct nk_rect HISTTEXT = nk_rect(WINDOW_WIDTH * .5-50, WINDOW_HEIGHT * .49+ WINDOW_HEIGHT * .3+15, 400, 84);
 	if (nk_begin(this->ctx, "HISTTEXT", HISTTEXT, NK_WINDOW_NO_SCROLLBAR)) {
 		nk_draw_text(nk_window_get_canvas(this->ctx), HISTTEXT, " History", 8, &this->font4->handle, nk_rgb(255, 255, 255), nk_rgb(255, 255, 255));
 	}
 	nk_end(this->ctx);
 
+	// SCHEDULE VIEW PG
+	nk_style_set_font(this->ctx, &this->font5->handle);
+	if (nk_begin(this->ctx, "scheduledscanspg", nk_rect(WINDOW_WIDTH - 262, WINDOW_HEIGHT - 80, 260, 78),
+		NK_WINDOW_NO_SCROLLBAR)) {
+		nk_layout_row_dynamic(this->ctx, 75, 1);
+		if (nk_button_image_label(this->ctx, this->scanBug, "             Scheduled Scans", NK_TEXT_ALIGN_RIGHT)) {
+			this->view = 6;
+		}
+	}
+	nk_end(this->ctx);
+	nk_style_set_font(this->ctx, &this->font->handle);
+
 	// SUPPORT PAGE
 	nk_style_set_font(this->ctx, &this->font5->handle);
-	if (nk_begin(this->ctx, "SUPPORT", nk_rect(WINDOW_WIDTH-190, WINDOW_HEIGHT-80, 188, 78), 
+	if (nk_begin(this->ctx, "SUPPORT", nk_rect(WINDOW_WIDTH-190, WINDOW_HEIGHT- 80 - 78 - 3, 188, 78),
 		NK_WINDOW_NO_SCROLLBAR)) {
 		nk_layout_row_dynamic(this->ctx, 75,1);
 		if (nk_button_image_label(this->ctx, this->support, "             Support", NK_TEXT_ALIGN_RIGHT)) {
@@ -1165,15 +1179,16 @@ inline FE::FE(int i) {
 	this->pp.support = "./Assets/Support.png";
 	this->pp.home = "./Assets/homeicon.png";
 	this->pp.scanBug = "./Assets/scanBug.png";
+	this->pp.deleteSched = "./Assets/deleteSched.png";
 	this->scanHistorySet = read_log();
 
 	if (i <= 1) {
 		// only 1 arg to lava, regularly opening
-		this->OpenType = 0;
+		OpenType = 0;
 		//std::cout << "openend normally\n";
 	}
 	else {
-		this->OpenType = 1;
+		OpenType = 1;
 	}
 
 }
@@ -1947,18 +1962,50 @@ inline bool FE::CurrentScheduleScanView()
 			nk_end(this->ctx);
 		}
 
-
-		// SUPPORT PAGE
-		if (nk_begin(this->ctx, "DONEBRUV", nk_rect(WINDOW_WIDTH *.5-175, WINDOW_HEIGHT - 125, 350, 100),
-			NK_WINDOW_NO_SCROLLBAR)) {
-			nk_layout_row_dynamic(this->ctx, 105, 1);
-			if (nk_button_image_label(this->ctx, this->home, "          Return Home", NK_TEXT_ALIGN_RIGHT)) {
-				this->view = 0;
-				std::cout << "\ntype; " << this->ScheduledObject.type;
-				std::cout << "\nstatus; " << this->ScheduledObject.status_text;
+		if (IsThereAScheduledTask) { // display both btns
+			// GO HOME FROM SCHEDULE VIEW
+			if (nk_begin(this->ctx, "DONEBRUV", nk_rect(WINDOW_WIDTH * .5 - 415, WINDOW_HEIGHT - 125, 410, 105),
+				NK_WINDOW_NO_SCROLLBAR)) {
+				nk_layout_row_dynamic(this->ctx, 105, 1);
+				if (nk_button_image_label(this->ctx, this->home, "              Return Home", NK_TEXT_ALIGN_RIGHT)) {
+					this->view = 0;
+					/*std::cout << "\ntype; " << this->ScheduledObject.type;
+					std::cout << "\nstatus; " << this->ScheduledObject.status_text;*/
+				}
 			}
+			nk_end(this->ctx);
+
+			// DELETE SCHED SCAN IF U WANT
+			if (nk_begin(this->ctx, "DELSCHEDSCANREEEE", nk_rect(WINDOW_WIDTH * .5 + 5, WINDOW_HEIGHT - 125, 410, 105),
+				NK_WINDOW_NO_SCROLLBAR)) {
+				nk_layout_row_dynamic(this->ctx, 105, 1);
+				if (nk_button_image_label(this->ctx, this->deleteSched,
+					"            Remove Sheduled Scan", NK_TEXT_ALIGN_RIGHT)) {
+					this->view = 0;
+					// remove the file for now -- if file does not exist lava kills it self RIP PEDRO
+					this->CreateTaskSchedulerFile(); // just overwrites file wit nothin
+					this->ScheduledObject = SchedulerObj(); // cls
+					IsThereAScheduledTask = false;
+
+				}
+			}
+			nk_end(this->ctx);
 		}
-		nk_end(this->ctx);
+		else {
+			// GO HOME FROM SCHEDULE VIEW
+			if (nk_begin(this->ctx, "DONEBRUV", nk_rect(WINDOW_WIDTH * .5 - 205, WINDOW_HEIGHT - 125, 410, 105),
+				NK_WINDOW_NO_SCROLLBAR)) {
+				nk_layout_row_dynamic(this->ctx, 105, 1);
+				if (nk_button_image_label(this->ctx, this->home, "              Return Home", NK_TEXT_ALIGN_RIGHT)) {
+					this->view = 0;
+					/*std::cout << "\ntype; " << this->ScheduledObject.type;
+					std::cout << "\nstatus; " << this->ScheduledObject.status_text;*/
+				}
+			}
+			nk_end(this->ctx);
+		}
+
+		
 
 		return true;
 	}
@@ -2068,19 +2115,33 @@ inline bool FE::init(sf::Window *win) {
 	this->support = this->icon_load(pp.support);
 	this->home = this->icon_load(pp.home);
 	this->scanBug = this->icon_load(pp.scanBug);
+	this->deleteSched = this->icon_load(pp.deleteSched);
 	
-	if (this->OpenType >= 1) {
+	if (OpenType >= 1) {
 		//std::cout << "opened thru task scheduler\n";
 		//this->view = 6; // view the scheduler task
 		// load the scheduled obj file into advancescannow.
 		// set type to scheduled
 		// load current scan page
+		if (this->CheckIfTaskSchedulerFileExists()) {
+			std::ifstream file(this->PathToSchedulerInfo);
+			if (is_empty(file)) {
+				//std::cout << "\n\n EMPTY AF BRUV 2\n\n";
+				IsThereAScheduledTask = false;
+
+				// launched from scheduler...just exit and take ur losses :(
+				file.close();
+				exit(10);
+				
+			}
+		}
 		advancedScanPaths.clear(); advancedScanPaths = this->ScheduledObject.filesToBeScanned;
 		this->currentScanGoing = "Scheduled";
 		this->scanTasks.push(4); //4=scheduled
 		this->view = 3;
 	}
-
+	
+	//std::cout << "\n\topentype : " << OpenType;
 	return true;
 }
 
