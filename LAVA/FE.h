@@ -900,6 +900,14 @@ inline bool FE::DrawInProgressScan()
 			case 3: //adv
 				// no count here get out
 				break;
+			case 4: //count the scheduled scan shit
+				for (auto path : advancedScanPaths) {
+					//std::string p = ReplaceString(path, "\\", "\\\\");
+					//std::replace(path.begin(), path.end(), '\\', '/');
+					//std::cout << "\n\t " << path;
+					countFiles(path, "*", true);
+				}
+				break;
 			default:
 				break;
 			}
@@ -918,6 +926,9 @@ inline bool FE::DrawInProgressScan()
 			case 3: //adv
 				//this->maxfiles = this->TotalSetFileCount(advancedScanPaths);
 				//pm.Reccommend();
+				this->AdvanceScanNow(advancedScanPaths);
+				break;
+			case 4:
 				this->AdvanceScanNow(advancedScanPaths);
 				break;
 			default:
@@ -1163,8 +1174,6 @@ inline FE::FE(int i) {
 	}
 	else {
 		this->OpenType = 1;
-		//std::cout << "opened thru task scheduler\n";
-		this->view = 6; // view the scheduler task
 	}
 
 }
@@ -2060,6 +2069,18 @@ inline bool FE::init(sf::Window *win) {
 	this->home = this->icon_load(pp.home);
 	this->scanBug = this->icon_load(pp.scanBug);
 	
+	if (this->OpenType >= 1) {
+		//std::cout << "opened thru task scheduler\n";
+		//this->view = 6; // view the scheduler task
+		// load the scheduled obj file into advancescannow.
+		// set type to scheduled
+		// load current scan page
+		advancedScanPaths.clear(); advancedScanPaths = this->ScheduledObject.filesToBeScanned;
+		this->currentScanGoing = "Scheduled";
+		this->scanTasks.push(4); //4=scheduled
+		this->view = 3;
+	}
+
 	return true;
 }
 
