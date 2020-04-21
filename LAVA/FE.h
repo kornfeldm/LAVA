@@ -1658,12 +1658,12 @@ inline bool FE::displayScheduleArrows()
 				for (auto s : advancedScanPaths) {
 					std::cout << "\n\t " << s;
 				}*/
-				scheduleScanDaily(sel_date.tm_mon, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
+				scheduleScanDaily(sel_date.tm_mon + 1, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
 				this->CreateTaskSchedulerFile();
 				fs.Manipulate();
 				fs.DumpSchedulerObj();
 				this->IsThereAScheduledTask = true;
-
+				
 				break;
 			case 1: // weekly
 				/*std::cout << "\nweekly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " weekz\n";
@@ -1671,11 +1671,12 @@ inline bool FE::displayScheduleArrows()
 				for (auto s : advancedScanPaths) {
 					std::cout << "\n\t " << s;
 				}*/
-				scheduleScanWeekly(sel_date.tm_mon, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
+
+				scheduleScanWeekly(sel_date.tm_mon + 1, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
 				this->CreateTaskSchedulerFile();
 				fs.Manipulate();
 				fs.DumpSchedulerObj();
-				this->IsThereAScheduledTask = true;
+				this->IsThereAScheduledTask = true;				
 
 				break;
 			case 2: //monthly
@@ -1684,7 +1685,7 @@ inline bool FE::displayScheduleArrows()
 				/*for (auto s : advancedscanpaths) {
 					std::cout << "\n\t " << s;
 				}*/
-				scheduleScanMonthly(sel_date.tm_mon, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
+				scheduleScanMonthly(sel_date.tm_mon + 1, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
 				this->CreateTaskSchedulerFile();
 				fs.Manipulate();
 				fs.DumpSchedulerObj();
@@ -1694,7 +1695,7 @@ inline bool FE::displayScheduleArrows()
 			default: //3=one time 
 				/*std::cout << "\nmonthly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << this->_schedulerInfo.reccuring << " months\n";
 				std::cout << "\tiempo\n\t" << sel_date.tm_hour << ":" << sel_date.tm_min << ":" << sel_date.tm_sec << "\n";*/
-				scheduleScanOnce(sel_date.tm_mon, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min);
+				scheduleScanOnce(sel_date.tm_mon + 1, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min);
 				this->CreateTaskSchedulerFile();
 				fs.Manipulate();
 				fs.DumpSchedulerObj();
