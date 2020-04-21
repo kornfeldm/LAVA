@@ -478,27 +478,33 @@ public:
 
 void FileCount(std::string dirPath)
 {
-	auto dirIter = std::filesystem::recursive_directory_iterator(dirPath, std::filesystem::directory_options::skip_permission_denied);
-	struct stat s;
-	if (stat(dirPath.c_str(), &s) == 0)
-	{
-		if (s.st_mode & S_IFDIR)
+	try {
+		auto dirIter = std::filesystem::recursive_directory_iterator(dirPath, std::filesystem::directory_options::skip_permission_denied);
+		struct stat s;
+		if (stat(dirPath.c_str(), &s) == 0)
 		{
-			for (auto& entry : dirIter)
+			if (s.st_mode & S_IFDIR)
 			{
-				if (entry.is_regular_file())
+				for (auto& entry : dirIter)
 				{
-					/*std::cout << "\n\t\tfile " << entry.path();
-					std::cout << "\n counter : " << total_Count;*/
-					++total_Count;
+					if (entry.is_regular_file())
+					{
+						/*std::cout << "\n\t\tfile " << entry.path();
+						std::cout << "\n counter : " << total_Count;*/
+						++total_Count;
+					}
 				}
 			}
-		}
-		else if (s.st_mode & S_IFREG)
-		{
-			++total_Count;
+			else if (s.st_mode & S_IFREG)
+			{
+				++total_Count;
+			}
 		}
 	}
+	catch (int e) {
+		std::cout << "we diehere;";
+	}
+	
 }
 
 class WorkQueue
@@ -541,7 +547,7 @@ std::string GetExePath();
 
 std::string GetAntibodyPath() {
 	std::string ExePath = GetExePath();
-	std::string AntibodyFile = ExePath + "\\..\\..\\Locations.LavaAnti";
+	std::string AntibodyFile = ExePath + "\\Locations.LavaAnti";
 	return AntibodyFile;
 }
 
@@ -1346,7 +1352,7 @@ inline bool LavaScan::scanDirectory(std::string dirPath) {
 bool LavaScan::QuickScan()
 {
 	std::string ExePath = GetExePath();
-	std::string AntibodyFile = ExePath + "\\..\\..\\Locations.LavaAnti";
+	std::string AntibodyFile = ExePath + "\\Locations.LavaAnti";
 	AntibodyFileLocation = AntibodyFile;
 	this->num_found = 0; //setting virus counter to 0
 	this->start_time = get_time();//getting start time for scan
@@ -1785,7 +1791,7 @@ inline bool LavaScan::moveQuarantineHome(std::set<q_entry> q)
 //function that checks if the db folder exists, if not, creates it
 inline void LavaScan::check_db_folder() {
 	struct stat buf;
-	stat(".\\x64\\Debug\\db", &buf);
+	stat(".\\db", &buf);
 	//check if the db directory exists
 	if (!(buf.st_mode & S_IFDIR)) {
 		//case if it doesn't exist
@@ -1821,10 +1827,10 @@ inline void LavaScan::check_config_files() {
 	std::fstream clamd_temp;
 	std::fstream freshclam_file;
 	std::fstream freshclam_temp;
-	clamd_file.open("..\\clam64stuff\\clamd.conf", std::ios::in | std::ios::out);
-	clamd_temp.open("..\\clam64stuff\\clamd_temp.conf", std::ios::out);
-	freshclam_file.open("..\\clam64stuff\\freshclam.conf", std::ios::in | std::ios::out);
-	freshclam_temp.open("..\\clam64stuff\\freshclam_temp.conf", std::ios::out);
+	clamd_file.open(".\\clam64stuff\\clamd.conf", std::ios::in | std::ios::out);
+	clamd_temp.open(".\\clam64stuff\\clamd_temp.conf", std::ios::out);
+	freshclam_file.open(".\\clam64stuff\\freshclam.conf", std::ios::in | std::ios::out);
+	freshclam_temp.open(".\\clam64stuff\\freshclam_temp.conf", std::ios::out);
 
 	clamd_temp << "";
 	freshclam_temp << "";
@@ -1858,10 +1864,10 @@ inline void LavaScan::check_config_files() {
 	freshclam_file.close();
 	clamd_temp.close();
 	freshclam_temp.close();
-	_unlink("..\\clam64stuff\\clamd.conf");
-	_unlink("..\\clam64stuff\\freshclam.conf");
-	rename("..\\clam64stuff\\clamd_temp.conf", "..\\clam64stuff\\clamd.conf");
-	rename("..\\clam64stuff\\freshclam_temp.conf", "..\\clam64stuff\\freshclam.conf");
+	_unlink(".\\clam64stuff\\clamd.conf");
+	_unlink(".\\clam64stuff\\freshclam.conf");
+	rename(".\\clam64stuff\\clamd_temp.conf", ".\\clam64stuff\\clamd.conf");
+	rename(".\\clam64stuff\\freshclam_temp.conf", ".\\clam64stuff\\freshclam.conf");
 }
 
 inline bool LavaScan::update_virus_database() {
@@ -1976,7 +1982,7 @@ inline LavaScan::LavaScan() {
 	PathToSchedulerInfo = GetExePath() + "\\TaskScheduler.Lava";
 
 	std::string ExePath = GetExePath();
-	std::string AntibodyFile = ExePath + "\\..\\..\\Locations.LavaAnti";
+	std::string AntibodyFile = ExePath + "\\Locations.LavaAnti";
 	this->AntibodyFileLocation = AntibodyFile;
 
 	printf("Updating virus databse...\n");

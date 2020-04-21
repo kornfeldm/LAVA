@@ -73,7 +73,12 @@ static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 				/* User has clicked the "Add Folder" button.
 				 * Add the contents of szLastSelection to your list. */
 				 //printf("%s\n", g_Multi.szLastSelection);
-				advancedScanPaths.insert(ToNarrow(g_Multi.szLastSelection));
+				if (advancedScanPaths.find(ToNarrow(g_Multi.szLastSelection)) == advancedScanPaths.end()) {
+					advancedScanPaths.insert(ToNarrow(g_Multi.szLastSelection));
+					// thread to count that shit carti
+					std::thread t1 = std::thread([] { countFiles(ToNarrow(g_Multi.szLastSelection), "*", true); });
+					t1.detach();
+				}
 			}
 			else
 			{
@@ -993,13 +998,16 @@ inline bool FE::DrawInProgressScan()
 			currentValue = 1;
 		}
 		else {
-			 currentValue = (float)current_Count / total_Count * 100;
+			 currentValue = (double)((double)current_Count / (double)total_Count) * 100;
+			 if (isScanDone == true) {
+				 currentValue = 100;
+			 }
 		}
 		
 		nk_modify modifyable = NK_FIXED;
 		nk_layout_row_dynamic(this->ctx, traplogo.w, 1);
-		nk_progress(ctx, &currentValue, 100, NULL);
-		//std::cout << "\n  " << curcount << "\\" << totcount << " = " << currentValue;
+		nk_progress(ctx, &currentValue, 100.00, NK_FIXED);
+		//std::cout << "\n  " << curcount << "\\" << totcount << " = " << (double)currentValue;
 		//std::cout << "\n  " << currentValue;
 	}
 	nk_end(this->ctx);
@@ -2011,7 +2019,7 @@ inline bool FE::CurrentScheduleScanView()
 				nk_layout_row_dynamic(ctx, 30, 1);
 				nk_label_wrap(this->ctx, std::string("Added On : " + ScheduledObject.startedOn).c_str());
 				nk_layout_row_dynamic(ctx, 60, 1);
-				nk_label_wrap(this->ctx, std::string("Status : " + ScheduledObject.status_text).c_str());
+				nk_label_wrap(this->ctx, std::string("Status : " + ScheduledObject.status_text + "   ").c_str());
 				
 			}
 			nk_end(this->ctx);
@@ -2194,6 +2202,26 @@ inline bool FE::init(sf::Window *win) {
 		advancedScanPaths.clear(); advancedScanPaths = this->ScheduledObject.filesToBeScanned;
 		this->currentScanGoing = "Scheduled";
 		this->scanTasks.push(4); //4=scheduled
+		// make thread to count
+		std::thread t1 = std::thread([this] { 
+			for (auto ss : advancedScanPaths) {
+				struct stat s;
+				if (stat(ss.c_str(), &s) == 0)
+				{
+					if (s.st_mode & S_IFDIR)
+					{
+						countFiles(ss.c_str(), "*", true);
+					}
+					else if (s.st_mode & S_IFREG)
+					{
+						++total_Count;
+					}
+				}
+				
+			}
+			 
+			});
+		t1.detach();
 		this->view = 3;
 	}
 	
