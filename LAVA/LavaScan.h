@@ -709,7 +709,7 @@ inline int LavaScan::scheduleScanDaily(int inputMonth, int inputDay, int inputYe
 	}
 
 	std::string path = GetExePath() + "\\LAVA.exe"; //By launching this executable
-	std::string cmdcpp = "SCHTASKS /CREATE /SC Daily /mo " + often + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time + " /SD " + date;
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Daily /mo " + often + " /TN \"LAVA\\ScheduleScan\" /TR " + "\"\'" + path + "\' 1\"" + " /ST " + time + " /SD " + date + " /f > nul 2>&1";
 	//std::cout << cmdcpp << std::endl;
 	system(cmdcpp.c_str());
 	return 0;
@@ -829,7 +829,7 @@ inline int LavaScan::scheduleScanWeekly(int inputMonth, int inputDay, int inputY
 	}
 
 	std::string path = GetExePath() + "\\LAVA.exe"; //By launching this executable
-	std::string cmdcpp = "SCHTASKS /CREATE /SC Weekly /mo " + often + " /D " + weekday + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time + " /SD " + date;
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Weekly /mo " + often + " /D " + weekday + " /TN \"LAVA\\ScheduleScan\" /TR " + "\"\'" + path + "\' 1\"" + " /ST " + time + " /SD " + date + " /f > nul 2>&1";
 	system(cmdcpp.c_str());
 	return 0;
 }
@@ -916,7 +916,7 @@ inline int LavaScan::scheduleScanMonthly(int inputMonth, int inputDay, int input
 	}
 
 	std::string path = GetExePath() + "\\LAVA.exe"; //By launching this executable
-	std::string cmdcpp = "SCHTASKS /CREATE /SC Monthly /mo " + often + " /D " + day + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time + " /SD " + date;
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Monthly /mo " + often + " /D " + day + " /TN \"LAVA\\ScheduleScan\" /TR " + "\"\'" + path + "\' 1\"" + " /ST " + time + " /SD " + date + " /f > nul 2>&1";
 	//std::cout << cmdcpp << std::endl;
 	system(cmdcpp.c_str());
 	return 0;
@@ -994,7 +994,7 @@ inline int LavaScan::scheduleScanOnce(int inputMonth, int inputDay, int inputYea
 	time = hour + ":" + minute;
 
 	std::string path = GetExePath() + "\\LAVA.exe"; //By launching this executable
-	std::string cmdcpp = "SCHTASKS /CREATE /SC Once /SD " + date + " /TN \"LAVA\\ScheduleScan\" /TR " + path + " /ST " + time;
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Once /SD " + date + " /TN \"LAVA\\ScheduleScan\" /TR " + "\"\'" + path + "\' 1\"" + " /ST " + time + " /f > nul 2>&1";
 	//std::cout << cmdcpp << std::endl;
 	system(cmdcpp.c_str());
 	return 0;
@@ -1002,7 +1002,7 @@ inline int LavaScan::scheduleScanOnce(int inputMonth, int inputDay, int inputYea
 
 //Removes the scheduled scan and returns 0 on completion
 inline int LavaScan::rmScheduledScan() {
-	std::string cmdcpp = "SCHTASKS /DELETE /TN \"LAVA\\ScheduleScan\"";
+	std::string cmdcpp = "(SCHTASKS /DELETE /TN \"LAVA\\ScheduleScan\" /F ) > nul 2>&1";
 	std::cout << cmdcpp << std::endl;
 	system(cmdcpp.c_str());
 	return 0;

@@ -2041,6 +2041,7 @@ inline bool FE::CurrentScheduleScanView()
 					this->CreateTaskSchedulerFile(); // just overwrites file wit nothin
 					this->ScheduledObject = SchedulerObj(); // cls
 					IsThereAScheduledTask = false;
+					this->rmScheduledScan(); //try removing
 
 				}
 			}
