@@ -73,6 +73,134 @@ int countFiles(const std::string& refcstrRootDirectory, const std::string& refcs
 	return 0;
 }
 
+/*
+Custom class to handle writting scheduler info to file
+examples on writting and reading this obj :
+
+	// CREATING OBJ
+	SchedulerObj job( "monthly", "Will run every x month starting on tues april 20 at 12:20.",
+	"Wed April 18 14:20", a);
+
+	// WRITTING OBJ
+	std::ofstream ofs("ScheduleInfo.Lava");
+	ofs << job;
+	ofs.close();
+
+	// OPENING / READING OBJ
+	std::ifstream ifs("ScheduleInfo.Lava");
+	SchedulerObj in;
+	// read the object back in
+	if (ifs.is_open()) {
+		ifs >> in;
+		for (auto s : in.returnSet()) // will print contents of set
+			std::cout << s << "\n";
+	}
+	ifs.close();
+
+*/
+class SchedulerObj {
+public:
+	std::string type;
+	std::string status_text;// maybe
+	std::string startedOn; // ok
+	std::set<std::string> filesToBeScanned; // notTAB DELIMITTED
+	std::string manipulatedFiles; // == tab delimited set as str
+
+	// override insertion
+	friend std::ostream& operator<<(std::ostream& os, const SchedulerObj& s)
+	{
+		// write out individual members of s with an end of line between each one
+		os << s.type << '\n';
+		os << s.status_text << '\n';
+		os << s.startedOn << '\n';
+		os << s.manipulatedFiles;
+
+		return os;
+	}
+
+	// Extraction operator
+	friend std::istream& operator>>(std::istream& is, SchedulerObj& s)
+	{
+		//std::ifstream ifs("ScheduleInfo.Lava");
+		std::string line; int num = 0;
+		while (std::getline(is, line)) {
+			// using printf() in all tests for consistency
+		//printf("%s\n", line.c_str());
+			switch (num) {
+			case 0:
+				s.type = line;
+				break;
+			case 1:
+				s.status_text = line;
+				break;
+			case 2:
+				s.startedOn = line;
+				break;
+			case 3:
+				s.manipulatedFiles = line;
+				break;
+			default:
+				//do nothing
+				break;
+			}
+
+			num++;
+		}
+		//file.close();
+
+		// old n bad
+		// read in individual members of s
+		//is >> s.type >> s.status_text >> s.startedOn >> s.manipulatedFiles;
+		return is;
+	}
+
+	void Manipulate() {
+		int i = 0;
+		std::string s = "";
+		for (auto path : this->filesToBeScanned) {
+			if (i == this->filesToBeScanned.size() - 1) {
+				s.append(path);
+			}
+			else {
+				s.append(path).append("\t");
+			}
+			i++;
+		}
+		this->manipulatedFiles = s;
+		return;
+	}
+
+	std::set<std::string> returnSet() {
+		// convert tab delim string to set :)
+		std::set<std::string> res;
+		std::stringstream ss(this->manipulatedFiles);
+
+		for (std::string i; ss >> i;) {
+			res.insert(i);
+			if (ss.peek() == '\t')
+				ss.ignore();
+		}
+		this->filesToBeScanned = res;
+		return res;
+	}
+
+	SchedulerObj(std::string _type, std::string _status,
+		std::string _startedOn, std::set<std::string> _filesNFolders) {
+		this->type = _type;
+		this->status_text = _status;
+		this->startedOn = _startedOn;
+		this->filesToBeScanned = _filesNFolders;
+		// turn set into tab delim string
+		this->Manipulate();
+		//this->DumpAll();
+	}
+
+	SchedulerObj() {
+		// means we gotta use ifstream
+	}
+
+};
+
 class ProgressMonitor {
 
 	/*
@@ -384,6 +512,7 @@ public:
 	std::set<LavaScan::q_entry> QuarantineContents;
 	int num_found;
 	int num_removed;
+	std::string PathToSchedulerInfo;
 	ProgressMonitor pm;
 	WorkQueue work_queue;
 	// constructor
@@ -1651,6 +1780,7 @@ inline LavaScan::LavaScan() {
 	isScanDone = false;
 	start_time = std::string("");
 	finish_time = std::string("");
+	PathToSchedulerInfo = GetExePath() + "TaskScheduler.Lava";
 
 	std::string ExePath = GetExePath();
 	std::string AntibodyFile = ExePath + "\\..\\..\\Locations.LavaAnti";

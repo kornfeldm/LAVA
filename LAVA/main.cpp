@@ -70,7 +70,7 @@
 //struct nk_command_buffer* canvas;
 //struct nk_rect total_space;
 
-int main()
+int main(int argc, char* argv[])
 {
 	// how to use count files f
 	/*iNumberOfFiles = countFiles("c:", "*", true);
@@ -80,9 +80,9 @@ int main()
 		return -1;
 	}*/
 
-	std::cout << "Hello World!\n";
+	//std::cout << "Hello World!\n";
 	
-	FE FrontEnd = FE();
+	FE FrontEnd = FE(argc);
 
 	/* Platform */
 	sf::ContextSettings settings(24, 8, 4, 2, 2);

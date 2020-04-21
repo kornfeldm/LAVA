@@ -191,9 +191,10 @@ private:
 public:
 	/* CONSTRUCTORS */
 	bool init(sf::Window *win);
-	FE();
+	FE(int i);
 
 	/* MEMBER VARS */
+	int OpenType; // if =1, then run by task scheduler
 	struct nk_context* ctx;
 	struct nk_command_buffer* canvas;
 	// font stuff
@@ -207,7 +208,7 @@ public:
 	struct nk_font* font3;
 	struct nk_font* font4;
 	struct nk_font* font5;
-	const char* font_path = "../Assets/font.ttf";
+	const char* font_path = "./Assets/font.ttf";
 	//struct nk_font_config* fontCFG;// can be null so commenting out for mem
 	struct nk_colorf bg;
 	struct nk_colorf whiteFont;
@@ -1114,7 +1115,7 @@ inline bool FE::DrawScansPage()
 	return true;
 }
 
-inline FE::FE() {
+inline FE::FE(int i) {
 	//currentScanGoing = "";
 	this->view = 0;
 	this->m_scanViews = 0;
@@ -1125,23 +1126,34 @@ inline FE::FE() {
 	this->sel_date = *localtime(&now);
 	sel_date.tm_sec = 0;*/
 	/* INIT IMAGES */
-	this->pp.scan = "../Assets/scan2.png";
-	this->pp.rectLogo = "../Assets/rectLogo.png";
-	this->pp.trapLogo = "../Assets/trapLogo.png";
-	this->pp.squareLogo = "../Assets/squareLogo.png";
-	this->pp.history = "../Assets/historylarger.png";
-	this->pp.backArrow = "../Assets/back_arrow.png";
-	//this->pp.chooseScan = "../Assets/chooseScan.png";
-	this->pp.chooseScan = "../Assets/choosescan2.png";
-	this->pp.triangleButton = "../Assets/triangle.png";
-	this->pp.addButton = "../Assets/add.png";
-	this->pp.calendar = "../Assets/calendar.png";
-	this->pp.trash = "../Assets/trash.png";
-	this->pp.purpleBack = "../Assets/goback.png";
-	this->pp.purpleFwd = "../Assets/cont.png";
-	this->pp.done = "../Assets/done.png";
-	this->pp.support = "../Assets/Support.png";
+	this->pp.scan = "./Assets/scan2.png";
+	this->pp.rectLogo = "./Assets/rectLogo.png";
+	this->pp.trapLogo = "./Assets/trapLogo.png";
+	this->pp.squareLogo = "./Assets/squareLogo.png";
+	this->pp.history = "./Assets/historylarger.png";
+	this->pp.backArrow = "./Assets/back_arrow.png";
+	//this->pp.chooseScan = "./Assets/chooseScan.png";
+	this->pp.chooseScan = "./Assets/choosescan2.png";
+	this->pp.triangleButton = "./Assets/triangle.png";
+	this->pp.addButton = "./Assets/add.png";
+	this->pp.calendar = "./Assets/calendar.png";
+	this->pp.trash = "./Assets/trash.png";
+	this->pp.purpleBack = "./Assets/goback.png";
+	this->pp.purpleFwd = "./Assets/cont.png";
+	this->pp.done = "./Assets/done.png";
+	this->pp.support = "./Assets/Support.png";
 	this->scanHistorySet = read_log();
+
+	if (i <= 1) {
+		// only 1 arg to lava, regularly opening
+		this->OpenType = 0;
+		std::cout << "openend normally\n";
+	}
+	else {
+		this->OpenType = 1;
+		std::cout << "opened thru task scheduler\n";
+	}
+
 }
 
 inline void FE::UIPrintSet(std::set<std::string> s)
@@ -1157,7 +1169,7 @@ inline bool FE::ChangeFontSize(float s = 28) {
 	{//struct nk_font_atlas* atlas;
 		nk_sfml_font_stash_begin(&this->atlas);
 		//this->font = nk_font_atlas_add_from_file(this->atlas, this->font_path, 18, NULL);
-		struct nk_font* droid = nk_font_atlas_add_from_file(atlas, "../Assets/font.ttf", s, 0);
+		struct nk_font* droid = nk_font_atlas_add_from_file(atlas, "./Assets/font.ttf", s, 0);
 		nk_sfml_font_stash_end();
 		nk_style_set_font(this->ctx, &droid->handle);
 		//nk_init_default(this->ctx, &font->handle);
@@ -1561,6 +1573,13 @@ inline bool FE::ScheduleAdvScanView()
 	return true;
 }
 
+struct SchedSaveFile {
+	std::string type;
+	std::string status_text;
+	std::string startedOn;
+	std::set<std::string> filesToBeScanned;
+};
+
 inline bool FE::displayScheduleArrows()
 {
 	/* back arrow AT BOTTOM */
@@ -1591,6 +1610,8 @@ inline bool FE::displayScheduleArrows()
 			//this->view = 1;
 			// print shit based on input L)
 			sel_date.tm_year += 1900;
+			SchedSaveFile fs; 
+			fs.filesToBeScanned = advancedScanPaths;
 			switch (this->_schedulerInfo.type) {
 			case 0: //daily
 				/*std::cout << "\ndaily\n\t" << sel_date.tm_mon <<"/" << sel_date.tm_mday << "/" << sel_date.tm_year << "\n\trecur: " << this->_schedulerInfo.reccuring << " days\n";
@@ -1614,7 +1635,7 @@ inline bool FE::displayScheduleArrows()
 				/*for (auto s : advancedscanpaths) {
 					std::cout << "\n\t " << s;
 				}*/
-				scheduleScanMonthly(sel_date.tm_mday, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
+				scheduleScanMonthly(sel_date.tm_mon, sel_date.tm_mday, sel_date.tm_year, sel_date.tm_hour, sel_date.tm_min, this->_schedulerInfo.reccuring);
 				break;
 			default: //3=one time 
 				/*std::cout << "\nmonthly\n\t" << sel_date.tm_mon << "/" << sel_date.tm_mday << "/" << sel_date.tm_year << this->_schedulerInfo.reccuring << " months\n";
@@ -1830,29 +1851,29 @@ inline bool FE::init(sf::Window *win) {
 	// ihstory header font
 	{
 		nk_sfml_font_stash_begin(&this->atlas2);
-		this->font2 = nk_font_atlas_add_from_file(this->atlas2, "../Assets/font.ttf", 95, 0);
+		this->font2 = nk_font_atlas_add_from_file(this->atlas2, "./Assets/font.ttf", 95, 0);
 		nk_sfml_font_stash_end();
 	}
 	// smaller text
 	{
 		nk_sfml_font_stash_begin(&this->atlas3);
-		this->font3 = nk_font_atlas_add_from_file(this->atlas3, "../Assets/font.ttf", 18, 0);
+		this->font3 = nk_font_atlas_add_from_file(this->atlas3, "./Assets/font.ttf", 18, 0);
 		nk_sfml_font_stash_end();
 	}
 	{//logo text size 88;
 		nk_sfml_font_stash_begin(&this->atlas4);
-		this->font4 = nk_font_atlas_add_from_file(this->atlas4, "../Assets/font.ttf", 84, 0);
+		this->font4 = nk_font_atlas_add_from_file(this->atlas4, "./Assets/font.ttf", 84, 0);
 		nk_sfml_font_stash_end();
 	}
 	{//logo text size 22;
 		nk_sfml_font_stash_begin(&this->atlas5);
-		this->font5 = nk_font_atlas_add_from_file(this->atlas5, "../Assets/font.ttf", 22, 0);
+		this->font5 = nk_font_atlas_add_from_file(this->atlas5, "./Assets/font.ttf", 22, 0);
 		nk_sfml_font_stash_end();
 	}
 	{//struct nk_font_atlas* atlas;
 		nk_sfml_font_stash_begin(&this->atlas);
 		//this->font = nk_font_atlas_add_from_file(this->atlas, this->font_path, 18, NULL);
-		this->font= nk_font_atlas_add_from_file(this->atlas, "../Assets/font.ttf", DEFAULT_FONT_SIZE, 0);
+		this->font= nk_font_atlas_add_from_file(this->atlas, "./Assets/font.ttf", DEFAULT_FONT_SIZE, 0);
 		nk_sfml_font_stash_end();
 		nk_style_set_font(this->ctx, &this->font->handle);
 		//nk_init_default(this->ctx, &font->handle);
