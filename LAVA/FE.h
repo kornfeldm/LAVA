@@ -640,7 +640,7 @@ inline bool FE::AdvancedScanView() {
 		NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_DYNAMIC ))
 	{
 		int h = advancedScanPaths.size() * DEFAULT_FONT_SIZE + DEFAULT_FONT_SIZE;
-		if (h < 360) { h = 360; }
+		if (h < 340) { h = 340; }
 		nk_layout_row_dynamic(ctx, h, 1);
 		if (nk_list_view_begin(ctx, &view, "test", NK_WINDOW_BORDER, 25, 2)) {
 			// UIPrintSet(advancedScanPaths);
@@ -1987,15 +1987,15 @@ inline bool FE::CurrentScheduleScanView()
 				NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_DYNAMIC))
 			{
 				int h = this->ScheduledObject.filesToBeScanned.size() * DEFAULT_FONT_SIZE + DEFAULT_FONT_SIZE;
-				if (h < 200) { h = 200; }
+				if (h < 180) { h = 180; }
 				nk_layout_row_dynamic(ctx, h, 1);
 				if (nk_list_view_begin(ctx, &view, "test", NK_WINDOW_BORDER, 25, 2)) {
-					nk_layout_row_dynamic(ctx, 25, 1);
-					UIPrintSet(this->ScheduledObject.filesToBeScanned);
-					//std::cout << this->ScheduledObject.startedOn << "\n";
-					//printset(this->ScheduledObject.filesToBeScanned);
-					/*nk_label(this->ctx, list[0], NK_TEXT_ALIGN_LEFT);
-					nk_label(this->ctx, list[1], NK_TEXT_ALIGN_LEFT);*/
+					//nk_layout_row_dynamic(ctx, 25, 1);
+					//UIPrintSet(this->ScheduledObject.filesToBeScanned);
+					for (auto s : this->ScheduledObject.filesToBeScanned) {
+						nk_layout_row_static(ctx, 25, 16 * s.length(), 1);
+						nk_label(this->ctx, s.c_str(), NK_TEXT_ALIGN_LEFT);
+					}
 					nk_list_view_end(&view);
 				}
 			}
