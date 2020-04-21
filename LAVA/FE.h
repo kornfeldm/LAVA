@@ -1762,7 +1762,7 @@ inline bool FE::displayScheduleType()
 		nk_end(this->ctx);
 	}
 	catch (int e) {
-		std::cout << "failed the sched type bruv" << std::endl;
+		//std::cout << "failed the sched type bruv" << std::endl;
 	}
 	return true;
 }
