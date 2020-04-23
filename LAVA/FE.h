@@ -161,24 +161,24 @@ UINT MultiFolderSelect(HWND hWnd, LPCTSTR szTitle, CString folder = L"C:\\")
 
 
 struct pics {
-	const char* squareLogo;
-	const char* rectLogo;
-	const char* trapLogo;
-	const char* scan;
-	const char* history;
-	const char* backArrow;
-	const char* chooseScan;
-	const char* triangleButton;
-	const char* addButton;
-	const char* calendar;
-	const char* trash;
-	const char* purpleFwd;
-	const char* purpleBack;
-	const char* done;
-	const char* support;
-	const char* home;
-	const char* scanBug;
-	const char* deleteSched;
+	std::string squareLogo;
+	std::string rectLogo;
+	std::string trapLogo;
+	std::string scan;
+	std::string history;
+	std::string backArrow;
+	std::string chooseScan;
+	std::string triangleButton;
+	std::string addButton;
+	std::string calendar;
+	std::string trash;
+	std::string purpleFwd;
+	std::string purpleBack;
+	std::string done;
+	std::string support;
+	std::string home;
+	std::string scanBug;
+	std::string deleteSched;
 };
 
 /* FE CLASS */
@@ -205,7 +205,7 @@ public:
 	struct nk_font* font3;
 	struct nk_font* font4;
 	struct nk_font* font5;
-	const char* font_path = "./Assets/font.ttf";
+	const char* font_path = "Assets/font.ttf";
 	//struct nk_font_config* fontCFG;// can be null so commenting out for mem
 	struct nk_colorf bg;
 	struct nk_colorf whiteFont;
@@ -272,7 +272,7 @@ public:
 	SchedulerObj fs;
 	
 	/* MEMBER FUNCTIONS */
-	static struct nk_image icon_load(const char* filename, bool flip = false);
+	static struct nk_image icon_load(std::string f, bool flip = false);
 	bool dateInput();
 	bool drawImage(struct nk_image *img);
 	bool drawImageSubRect(struct nk_image* img, struct nk_rect* r);
@@ -299,8 +299,9 @@ public:
 	bool displayCalendar(int x, int y, bool reccurring);
 	bool CurrentScheduleScanView();
 };
-inline struct nk_image FE::icon_load(const char* filename, bool flip)
-{
+inline struct nk_image FE::icon_load(std::string f, bool flip)
+{	
+	const char* filename = f.c_str();
 	int x, y, n;
 	GLuint tex;
 	if (flip) {
@@ -1155,6 +1156,12 @@ inline bool FE::DrawScansPage()
 	return true;
 }
 
+std::string compPath(std::string ret) {
+	std::string folderPath = GetExePath() + "\\";
+	ret = folderPath.append(ret);
+	return ret;
+}
+
 inline FE::FE(int i) {
 	//currentScanGoing = "";
 	this->view = 0;
@@ -1166,27 +1173,49 @@ inline FE::FE(int i) {
 	this->sel_date = *localtime(&now);
 	sel_date.tm_sec = 0;*/
 	/* INIT IMAGES */
-	this->pp.scan = "./Assets/scan2.png";
-	this->pp.rectLogo = "./Assets/rectLogo.png";
-	this->pp.trapLogo = "./Assets/trapLogo.png";
-	this->pp.squareLogo = "./Assets/squareLogo.png";
-	this->pp.history = "./Assets/historylarger.png";
-	this->pp.backArrow = "./Assets/back_arrow.png";
+	std::string folderPath = GetExePath() + "\\";
+	/*std::cout << "\n\t" << folderPath;*/
+	std::string ret = compPath("Assets\\scan2.png");
+	this->pp.scan = ret;
+	ret = compPath("Assets\\rectLogo.png");
+	this->pp.rectLogo = ret;
+	ret = compPath("Assets\\trapLogo.png");
+	this->pp.trapLogo = ret;
+	ret = compPath("Assets\\squareLogo.png");
+	this->pp.squareLogo = ret;
+	ret = compPath("Assets\\historylarger.png");
+	this->pp.history = ret;
+	ret = compPath("Assets\\back_arrow.png");
+	this->pp.backArrow = ret;
+	ret = compPath("Assets\\choosescan2.png");
 	//this->pp.chooseScan = "./Assets/chooseScan.png";
-	this->pp.chooseScan = "./Assets/choosescan2.png";
-	this->pp.triangleButton = "./Assets/triangle.png";
-	this->pp.addButton = "./Assets/add.png";
-	this->pp.calendar = "./Assets/calendar.png";
-	this->pp.trash = "./Assets/trash.png";
-	this->pp.purpleBack = "./Assets/goback.png";
-	this->pp.purpleFwd = "./Assets/cont.png";
-	this->pp.done = "./Assets/done.png";
-	this->pp.support = "./Assets/Support.png";
-	this->pp.home = "./Assets/homeicon.png";
-	this->pp.scanBug = "./Assets/scanBug.png";
-	this->pp.deleteSched = "./Assets/deleteSched.png";
+	this->pp.chooseScan = ret;
+	ret = compPath("Assets\\triangle.png");
+	this->pp.triangleButton = ret;
+	ret = compPath("Assets\\add.png");
+	this->pp.addButton = ret;
+	ret = compPath("Assets\\calendar.png");
+	this->pp.calendar = ret;
+	ret = compPath("Assets\\trash.png");
+	this->pp.trash = ret;
+	ret = compPath("Assets\\goback.png");
+	this->pp.purpleBack = ret;
+	ret = compPath("Assets\\cont.png");
+	this->pp.purpleFwd = ret;
+	ret = compPath("Assets\\done.png");
+	this->pp.done = ret;
+	ret = compPath("Assets\\Support.png");
+	this->pp.support = ret;
+	ret = compPath("Assets\\homeicon.png");
+	this->pp.home = ret;
+	ret = compPath("Assets\\scanBug.png");
+	this->pp.scanBug = ret;
+	ret = compPath("Assets\\deleteSched.png");
+	this->pp.deleteSched = ret;
 	this->scanHistorySet = read_log();
-
+	/*std::cout << "\n\t" << pp.scan;
+	std::cout << "\n\t" << pp.trapLogo;
+	std::cout << "\n\t" << (std::string)pp.calendar;*/
 	if (i <= 1) {
 		// only 1 arg to lava, regularly opening
 		OpenType = 0;
@@ -2069,8 +2098,6 @@ inline bool FE::CurrentScheduleScanView()
 			nk_end(this->ctx);
 		}
 
-		
-
 		return true;
 	}
 	catch (int e) {
@@ -2080,6 +2107,8 @@ inline bool FE::CurrentScheduleScanView()
 }
 
 inline bool FE::init(sf::Window *win) {
+	std::string folderPath = GetExePath() + "\\" ;
+	//std::cout << "\n\t path : " << folderPath << std::endl;
 	glewExperimental = 1;
 	if (glewInit() != GLEW_OK) {
 		fprintf(stderr, "Failed to setup GLEW\n");
@@ -2092,29 +2121,29 @@ inline bool FE::init(sf::Window *win) {
 	// ihstory header font
 	{
 		nk_sfml_font_stash_begin(&this->atlas2);
-		this->font2 = nk_font_atlas_add_from_file(this->atlas2, "./Assets/font.ttf", 95, 0);
+		this->font2 = nk_font_atlas_add_from_file(this->atlas2, (folderPath+"Assets\\font.ttf").c_str(), 95, 0);
 		nk_sfml_font_stash_end();
 	}
 	// smaller text
 	{
 		nk_sfml_font_stash_begin(&this->atlas3);
-		this->font3 = nk_font_atlas_add_from_file(this->atlas3, "./Assets/font.ttf", 18, 0);
+		this->font3 = nk_font_atlas_add_from_file(this->atlas3, (folderPath + "Assets\\font.ttf").c_str(), 18, 0);
 		nk_sfml_font_stash_end();
 	}
 	{//logo text size 88;
 		nk_sfml_font_stash_begin(&this->atlas4);
-		this->font4 = nk_font_atlas_add_from_file(this->atlas4, "./Assets/font.ttf", 84, 0);
+		this->font4 = nk_font_atlas_add_from_file(this->atlas4, (folderPath + "Assets\\font.ttf").c_str(), 84, 0);
 		nk_sfml_font_stash_end();
 	}
 	{//logo text size 22;
 		nk_sfml_font_stash_begin(&this->atlas5);
-		this->font5 = nk_font_atlas_add_from_file(this->atlas5, "./Assets/font.ttf", 22, 0);
+		this->font5 = nk_font_atlas_add_from_file(this->atlas5, (folderPath + "Assets\\font.ttf").c_str(), 22, 0);
 		nk_sfml_font_stash_end();
 	}
 	{//struct nk_font_atlas* atlas;
 		nk_sfml_font_stash_begin(&this->atlas);
 		//this->font = nk_font_atlas_add_from_file(this->atlas, this->font_path, 18, NULL);
-		this->font= nk_font_atlas_add_from_file(this->atlas, "./Assets/font.ttf", DEFAULT_FONT_SIZE, 0);
+		this->font= nk_font_atlas_add_from_file(this->atlas, (folderPath + "Assets\\font.ttf").c_str(), DEFAULT_FONT_SIZE, 0);
 		nk_sfml_font_stash_end();
 		nk_style_set_font(this->ctx, &this->font->handle);
 		//nk_init_default(this->ctx, &font->handle);
