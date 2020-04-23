@@ -947,6 +947,7 @@ inline bool FE::DrawInProgressScan()
 				break;
 			case 4:
 				this->AdvanceScanNow(advancedScanPaths);
+				//this->log_scan();
 				break;
 			default:
 				break;
@@ -1236,7 +1237,7 @@ inline void FE::UIPrintSet(std::set<std::string> s)
 }
 
 inline bool FE::ChangeFontSize(float s = 28) {
-
+	// istne ver used so ignore chaning this func
 	{//struct nk_font_atlas* atlas;
 		nk_sfml_font_stash_begin(&this->atlas);
 		//this->font = nk_font_atlas_add_from_file(this->atlas, this->font_path, 18, NULL);
