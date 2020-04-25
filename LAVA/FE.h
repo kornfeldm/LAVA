@@ -1043,6 +1043,8 @@ inline bool FE::DrawInProgressScan()
 							this->ScheduledObject = SchedulerObj(); // cls
 							IsThereAScheduledTask = false;
 							this->rmScheduledScan(); //try removing
+							// del file
+							CreateTaskSchedulerFile();
 						}
 					}
 					// reset counters
