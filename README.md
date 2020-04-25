@@ -43,7 +43,7 @@ LAVA was made using the following projects:
 * Dirent (for directory traversal)
   * https://github.com/tronkko/dirent
 * Nuklear (for GUI)
-  * https://github.com/vurtun/nuklear
+  * https://github.com/Immediate-Mode-UI/Nuklear
  
 ### How is LAVA licensed?
 
@@ -64,8 +64,8 @@ Here are some of the most common errors with the code we've seen and how to solv
   1. Close Visual Studio
   2. Navigate to LAVA/LAVA/.vs/LAVA/v16/
   3. Delete Browse.VC.db
-  4. Reopen Visual Studio. It will regenerate the file and this typical solves the problem
+  4. Reopen Visual Studio. It will regenerate the file and this typical solves the problem.
 * Compiling the code fails to find a DLL file
-  * Copy the missing DLL file to the folder containing the EXE
+  * Copy the missing DLL file to the folder containing LAVA.exe.
 * Compiling the code fails to find a font, a quarantine, or any other file
   * This is likely an issue with the relative file paths. We have them set for the release, not debugging in Visual Studio, so the paths may be wrong. Updating the relative path for each item causing a problem should solve it.
