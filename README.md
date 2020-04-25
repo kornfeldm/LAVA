@@ -51,7 +51,7 @@ LAVA is licensed under the GNU GPLv3 agreement. The full agreement can be read h
 
 ## How Do I Download and Install LAVA?
 
-The latest release LAVA can be downloaded from the release tab above. This is the only official place to download LAVA from. The latest release offers two types of downloads:
+The latest release LAVA can be downloaded from the [release tab above](https://github.com/kornfeldm/LAVA/releases "LAVA Releases"). This is the only official place to download LAVA from. The latest release offers two types of downloads:
 * Installer
   * A single exe that will install everything, add LAVA to the start menu, and optionally add a shortcut to the desktop. However, it requires administrator privileges to run. **In most cases we would recommend this option.**
 * Zip file
