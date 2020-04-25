@@ -1034,15 +1034,17 @@ inline int LavaScan::scanFile(std::string filePath) {
 		{
 			printf("\n\nVIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!", filePath); //Infected file is in system folder
 		}
-		else {
-			quarantine_file(filePath, virname); //Infected file is not in system folder
-			std::string directory;
-			const size_t last_slash_idx = filePath.rfind('\\');
-			if (std::string::npos != last_slash_idx)
-			{
-				directory = filePath.substr(0, last_slash_idx);
+		else {//Infected file is not in system folder
+			if (filePath.find(".lava") == std::string::npos) { //check if the extension of the file is not .lava (if it is, then it is an already quarantined file)
+				quarantine_file(filePath, virname); //quarantine file
+				std::string directory;
+				const size_t last_slash_idx = filePath.rfind('\\');
+				if (std::string::npos != last_slash_idx)
+				{
+					directory = filePath.substr(0, last_slash_idx);
+				}
+				AddToAntibody(directory, GetAntibodyPath());
 			}
-			AddToAntibody(directory, GetAntibodyPath());
 		}
 	}
 	else {
