@@ -1036,6 +1036,15 @@ inline bool FE::DrawInProgressScan()
 					//fprintf(stdout, "testestestest\n");
 					this->view = 5;
 					nk_clear(this->ctx);
+					if (this->currentScanGoing == "Scheduled") {
+						// rm scan shit if scheduled one time
+						if (this->ScheduledObject.type == "Run Once") {
+							// one time so remove
+							this->ScheduledObject = SchedulerObj(); // cls
+							IsThereAScheduledTask = false;
+							this->rmScheduledScan(); //try removing
+						}
+					}
 					// reset counters
 					current_Count = 0;
 					total_Count = 0;
