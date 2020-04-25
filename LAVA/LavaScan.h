@@ -1032,7 +1032,7 @@ inline int LavaScan::scanFile(std::string filePath) {
 		//QUARANTINE FILE IF NOT IN SYSTEM FOLDER
 		if (filePath.substr(3, 7) == "Windows")
 		{
-			//printf("VIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!", filePath); //Infected file is in system folder
+			printf("\n\nVIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!", filePath); //Infected file is in system folder
 		}
 		else {
 			quarantine_file(filePath, virname); //Infected file is not in system folder
@@ -2022,7 +2022,7 @@ inline LavaScan::LavaScan() {
 		printf("ClamAV engine initialized\n");
 	}
 
-	printf("Inititalizing signature database...\n");
+	printf("LOADING VIRUS SIGNATURES TO CHECK...\n");
 	//printf("Default database path: %s\n", cl_retdbdir());
 
 	if ((ret = cl_load(cl_retdbdir(), engine, &sigs, CL_DB_STDOPT)) != CL_SUCCESS) { //Loads the database file from the default db folder
