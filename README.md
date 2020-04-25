@@ -19,7 +19,7 @@ LAVA is an academic project created by four undergraduate students at Hofstra Un
   * Quick Scan
      * Scans all directories in "Antibody File" (Locations.LavaAnti) 
        * Antibody file starts with only the documents and desktop folders
-       * As other scans such as Complete Scan or Advanced Scan detect malware, the "Antibody File" (Locations.LavaAnti) will be updated to contain the directories. If a parent directory is added, it will replace all its subdirectories. Likewise, subdirectories will not be added as they are already accounted for.
+       * As other scans such as Complete Scan or Advanced Scan detect malware, the Antibody File will be updated to contain the directories. If a parent directory is added, it will replace all its subdirectories. Likewise, subdirectories will not be added as they are already accounted for.
 * **Scheduled Scans**
   * The user can opt to schedule a scan for later. When this happens a task will be added to Windows Task Scheduler to launch LAVA and have it scan the specified task at the specified time(s). The following parameters can be used:
     * Once
@@ -37,7 +37,7 @@ LAVA is an academic project created by four undergraduate students at Hofstra Un
 
 LAVA was programmed in C++ as a Visual Studio 2019 command-line application. We opted to write LAVA in C++ to minimize overhead and maximize performance while still having access to certain higher-level features of a programming language.
 
-Lava was made with the following projects:
+LAVA was made using the following projects:
 * ClamAV (for malware detection, databases and Freshclam updates)
   * https://github.com/Cisco-Talos/clamav-devel
 * Dirent (for directory traversal)
