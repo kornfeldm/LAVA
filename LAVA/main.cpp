@@ -99,6 +99,11 @@ int main(int argc, char* argv[])
 	glViewport(0, 0, win.getSize().x, win.getSize().y);
 	FrontEnd.init(&win);
 
+	HWND Stealth;
+	AllocConsole();
+	Stealth = FindWindowA("ConsoleWindowClass", NULL);
+	ShowWindow(Stealth, 0);
+
 	while (win.isOpen())
 	{
 		/* Input */
