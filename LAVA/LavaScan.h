@@ -998,9 +998,11 @@ inline int LavaScan::scheduleScanOnce(int inputMonth, int inputDay, int inputYea
 	}
 
 	time = hour + ":" + minute;
-
-	std::string path = GetExePath() + "\\LAVA.exe"; //By launching this executable
-	std::string cmdcpp = "SCHTASKS /CREATE /SC Once /SD " + date + " /TN \"LAVA\\ScheduleScan\" /TR " + "\"\'" + path + "\' 1\"" + " /ST " + time + " /f > nul 2>&1";
+	//cmd /c "cd C:\Users\tom\Desktop\release2 && C:\Users\tom\Desktop\release2\LAVA.exe 1"
+	std::string path = GetExePath();
+	std::string fullPath = path +"\\LAVA.exe"; //By launching this executable
+	std::string cmdcpp = "SCHTASKS /CREATE /SC Once /SD " + date + " /TN \"LAVA\\ScheduleScan\" /TR " + "\"\'" + fullPath + "\' 1\"" + " /ST " + time +" /f > nul 2>&1";
+	//std::cout << "Current path is " << fs::current_path() << '\n';
 	//std::cout << cmdcpp << std::endl;
 	system(cmdcpp.c_str());
 	return 0;
@@ -1009,7 +1011,7 @@ inline int LavaScan::scheduleScanOnce(int inputMonth, int inputDay, int inputYea
 //Removes the scheduled scan and returns 0 on completion
 inline int LavaScan::rmScheduledScan() {
 	std::string cmdcpp = "(SCHTASKS /DELETE /TN \"LAVA\\ScheduleScan\" /F ) > nul 2>&1";
-	std::cout << cmdcpp << std::endl;
+	//std::cout << cmdcpp << std::endl;
 	system(cmdcpp.c_str());
 	return 0;
 }
@@ -1030,17 +1032,19 @@ inline int LavaScan::scanFile(std::string filePath) {
 		//QUARANTINE FILE IF NOT IN SYSTEM FOLDER
 		if (filePath.substr(3, 7) == "Windows")
 		{
-			//printf("VIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!", filePath); //Infected file is in system folder
+			printf("\n\nVIRUS DETECTED IN SYSTEM FOLDER! FILE %s IS INFECTED! IMMIDIATE ACTION REQUIRED!", filePath); //Infected file is in system folder
 		}
-		else {
-			quarantine_file(filePath, virname); //Infected file is not in system folder
-			std::string directory;
-			const size_t last_slash_idx = filePath.rfind('\\');
-			if (std::string::npos != last_slash_idx)
-			{
-				directory = filePath.substr(0, last_slash_idx);
+		else {//Infected file is not in system folder
+			if (filePath.find(".lava") == std::string::npos) { //check if the extension of the file is not .lava (if it is, then it is an already quarantined file)
+				quarantine_file(filePath, virname); //quarantine file
+				std::string directory;
+				const size_t last_slash_idx = filePath.rfind('\\');
+				if (std::string::npos != last_slash_idx)
+				{
+					directory = filePath.substr(0, last_slash_idx);
+				}
+				AddToAntibody(directory, GetAntibodyPath());
 			}
-			AddToAntibody(directory, GetAntibodyPath());
 		}
 	}
 	else {
@@ -2020,7 +2024,7 @@ inline LavaScan::LavaScan() {
 		printf("ClamAV engine initialized\n");
 	}
 
-	printf("Inititalizing signature database...\n");
+	printf("LOADING VIRUS SIGNATURES TO CHECK...\n");
 	//printf("Default database path: %s\n", cl_retdbdir());
 
 	if ((ret = cl_load(cl_retdbdir(), engine, &sigs, CL_DB_STDOPT)) != CL_SUCCESS) { //Loads the database file from the default db folder

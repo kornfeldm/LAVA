@@ -947,6 +947,7 @@ inline bool FE::DrawInProgressScan()
 				break;
 			case 4:
 				this->AdvanceScanNow(advancedScanPaths);
+				//this->log_scan();
 				break;
 			default:
 				break;
@@ -1035,6 +1036,17 @@ inline bool FE::DrawInProgressScan()
 					//fprintf(stdout, "testestestest\n");
 					this->view = 5;
 					nk_clear(this->ctx);
+					if (this->currentScanGoing == "Scheduled") {
+						// rm scan shit if scheduled one time
+						if (this->ScheduledObject.type == "Run Once") {
+							// one time so remove
+							this->ScheduledObject = SchedulerObj(); // cls
+							IsThereAScheduledTask = false;
+							this->rmScheduledScan(); //try removing
+							// del file
+							CreateTaskSchedulerFile();
+						}
+					}
 					// reset counters
 					current_Count = 0;
 					total_Count = 0;
@@ -1236,7 +1248,7 @@ inline void FE::UIPrintSet(std::set<std::string> s)
 }
 
 inline bool FE::ChangeFontSize(float s = 28) {
-
+	// istne ver used so ignore chaning this func
 	{//struct nk_font_atlas* atlas;
 		nk_sfml_font_stash_begin(&this->atlas);
 		//this->font = nk_font_atlas_add_from_file(this->atlas, this->font_path, 18, NULL);

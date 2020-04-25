@@ -85,6 +85,12 @@ int main(int argc, char* argv[])
 	
 	FE FrontEnd = FE(argc);
 
+	// set wd 
+	//std::wstring stemp = std::wstring(GetExePath().begin(), GetExePath().end());
+	chdir(GetExePath().c_str());
+	std::cout << "Current path is " << fs::current_path() << '\n';
+	
+
 	/* Platform */
 	sf::ContextSettings settings(24, 8, 4, 2, 2);
 	sf::Window win(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "LAVA", sf::Style::Close, settings);
@@ -92,6 +98,12 @@ int main(int argc, char* argv[])
 	win.setActive(true);
 	glViewport(0, 0, win.getSize().x, win.getSize().y);
 	FrontEnd.init(&win);
+
+	// hide console
+	HWND Stealth;
+	AllocConsole();
+	Stealth = FindWindowA("ConsoleWindowClass", NULL);
+	ShowWindow(Stealth, 0);
 
 	while (win.isOpen())
 	{
