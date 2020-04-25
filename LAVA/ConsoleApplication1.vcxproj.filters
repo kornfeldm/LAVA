@@ -6,5 +6,12 @@
   <ItemGroup>
     <ClInclude Include="FE.h" />
     <ClInclude Include="LavaScan.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="LAVA.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon.ico" />
   </ItemGroup>
 </Project>

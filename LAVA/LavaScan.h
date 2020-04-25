@@ -1999,7 +1999,7 @@ inline LavaScan::LavaScan() {
 ========================================================
 	)" << "\n";
 
-	printf("Updating virus databse...\n");
+	printf("Updating virus database...\n");
 	if (!update_virus_database()) {//checks whether failed to update the database
 		printf("Failed to update the database!\nError: %s\n", GetLastError());
 	}
