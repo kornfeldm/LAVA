@@ -1,6 +1,6 @@
 ![Lava Logo](LAVA/Assets/trapLogo.png)
 
-# LAVA (Lightweight Antivirus Application) v3.1
+# LAVA (Lightweight Antivirus Application) v3.1.1
 
 ##### Note: While we encourage anyone interested to explore our code and project as well as fork our project, it not intended to replace a professional piece of antivirus software and comes with no guarantees or warranty of any type. While we strive to produce the best possible software, the user assumes all risk as specified in the license agreement.
 
