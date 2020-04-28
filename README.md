@@ -43,10 +43,10 @@ LAVA was made using the following projects:
   * https://github.com/Cisco-Talos/clamav-devel
 * Dirent (for directory traversal)
   * https://github.com/tronkko/dirent
-* Nuklear (for GUI)
-  * https://github.com/Immediate-Mode-UI/Nuklear
 * Inno Setup (for packaging the installer)
   * https://github.com/jrsoftware/issrc
+* Nuklear (for GUI)
+  * https://github.com/Immediate-Mode-UI/Nuklear
  
 ### How is LAVA licensed?
 
