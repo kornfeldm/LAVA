@@ -45,6 +45,8 @@ LAVA was made using the following projects:
   * https://github.com/tronkko/dirent
 * Nuklear (for GUI)
   * https://github.com/Immediate-Mode-UI/Nuklear
+* Inno Setup (for packaging the installer)
+  * https://github.com/jrsoftware/issrc
  
 ### How is LAVA licensed?
 
